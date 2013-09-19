@@ -50,7 +50,7 @@ void TestRaft_add_peer(CuTest * tc)
 void TestRaft_remove_peer(CuTest * tc)
 {
     void *r;
-    int peer;
+    void *peer;
 
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);

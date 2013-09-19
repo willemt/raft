@@ -20,7 +20,7 @@ typedef struct {
     void* inbox;
 } sender_t;
 
-int sender_send(void* caller, void* udata, int peer, const unsigned char* data, int len)
+int sender_send(void* caller, void* udata, void* peer, const unsigned char* data, int len)
 {
     sender_t* me = udata;
     void* n;

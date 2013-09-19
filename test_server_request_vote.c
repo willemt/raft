@@ -18,7 +18,7 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     CuTest * tc
 )
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -33,9 +33,11 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     sender = sender_new();
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
+
     raft_set_current_term(r,1);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_requestvote(r,1,&rv);
+    raft_recv_requestvote(r,peer,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
     CuAssertTrue(tc, 0 == rvr->voteGranted);
@@ -47,7 +49,7 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     CuTest * tc
 )
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
@@ -63,10 +65,12 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     sender = sender_new();
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
+
     raft_set_external_functions(r,&funcs,sender);
     raft_set_current_term(r,1);
-    raft_vote(r,2);
-    raft_recv_requestvote(r,1,&rv);
+    raft_vote(r,peer);
+    raft_recv_requestvote(r,peer,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
     CuAssertTrue(tc, 0 == rvr->voteGranted);

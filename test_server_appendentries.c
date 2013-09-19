@@ -12,7 +12,7 @@
 /* 5.1 */
 void TestRaft_server_recv_appendentries_reply_false_when_term_less_than_currentterm(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -26,11 +26,12 @@ void TestRaft_server_recv_appendentries_reply_false_when_term_less_than_currentt
 
     sender = sender_new();
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
 
     /*  higher current term */
     raft_set_current_term(r,5);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
 
     /*  response is false */
     aer = sender_poll_msg(sender);
@@ -44,7 +45,7 @@ void TestRaft_server_recv_appendentries_reply_false_when_term_less_than_currentt
 /*  5.3 */
 void TestRaft_server_recv_appendentries_reply_false_if_log_does_not_contain_entry_at_prevLogIndex(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
@@ -61,9 +62,10 @@ void TestRaft_server_recv_appendentries_reply_false_if_log_does_not_contain_entr
     sender = sender_new();
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
     raft_set_current_term(r,5);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
     aer = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != aer);
     CuAssertTrue(tc, 0 == aer->success);
@@ -72,20 +74,22 @@ void TestRaft_server_recv_appendentries_reply_false_if_log_does_not_contain_entr
 /* 5.3 */
 void TestRaft_server_recv_appendentries_delete_entries_if_conflict_with_new_entries(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     msg_appendentries_t ae;
 
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 2;
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
+
     raft_set_current_term(r,1);
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
 }
 
 void TestRaft_server_recv_appendentries_add_new_entries_not_already_in_log(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -99,9 +103,11 @@ void TestRaft_server_recv_appendentries_add_new_entries_not_already_in_log(CuTes
     sender = sender_new();
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
+
     raft_set_current_term(r,1);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
 
 //    msg = sender_poll_msg(sender);
 //    CuAssertTrue(tc, aer);
@@ -113,7 +119,7 @@ void TestRaft_server_recv_appendentries_add_new_entries_not_already_in_log(CuTes
 //min(leaderCommit, last log index)
 void TestRaft_server_recv_appendentries_set_commitindex(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -127,9 +133,10 @@ void TestRaft_server_recv_appendentries_set_commitindex(CuTest * tc)
     sender = sender_new();
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
     raft_set_current_term(r,1);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
 
 //    msg = sender_poll_msg(sender);
 //    CuAssertTrue(tc, aer);

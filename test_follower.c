@@ -11,41 +11,44 @@
 
 void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
 
     msg_appendentries_t ae;
     memset(&ae,0,sizeof(msg_appendentries_t));
 
     r = raft_new();
+
     /* three nodes */
-    raft_add_peer(r,(void*)1);
+    peer = raft_add_peer(r,(void*)1);
     raft_add_peer(r,(void*)2);
+
     raft_set_current_term(r,1);
     raft_set_state(r,RAFT_STATE_FOLLOWER);
 
     CuAssertTrue(tc, 0 == raft_get_log_size(r));
 
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
     CuAssertTrue(tc, 1 == raft_get_log_size(r));
 }
 
 void TestRaft_follower_rejects_appendentries_if_idx_and_term_dont_match_preceding_ones(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
 
     msg_appendentries_t ae;
     memset(&ae,0,sizeof(msg_appendentries_t));
 
     r = raft_new();
     /* three nodes */
-    raft_add_peer(r,(void*)1);
+    peer = raft_add_peer(r,(void*)1);
     raft_add_peer(r,(void*)2);
+
     raft_set_current_term(r,1);
     raft_set_state(r,RAFT_STATE_FOLLOWER);
 
     CuAssertTrue(tc, 0 == raft_get_log_size(r));
 
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
     CuAssertTrue(tc, 1 == raft_get_log_size(r));
 }
 

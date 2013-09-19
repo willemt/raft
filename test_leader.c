@@ -64,7 +64,7 @@ set commitIndex = N (§5.2, §5.4).
 
 void TestRaft_leader_append_command_to_log_increases_idxno(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
 
     msg_command_t cmd;
     cmd.id = 1;
@@ -72,16 +72,17 @@ void TestRaft_leader_append_command_to_log_increases_idxno(CuTest * tc)
     cmd.len = strlen("command");
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
     raft_set_state(r,RAFT_STATE_LEADER);
     CuAssertTrue(tc, 0 == raft_get_log_size(r));
 
-    raft_recv_command(r,1,&cmd);
+    raft_recv_command(r,peer,&cmd);
     CuAssertTrue(tc, 1 == raft_get_log_size(r));
 }
 
 void TestRaft_leader_doesnt_append_command_if_unique_id_is_duplicate(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
 
     msg_command_t cmd;
     cmd.id = 1;
@@ -89,19 +90,47 @@ void TestRaft_leader_doesnt_append_command_if_unique_id_is_duplicate(CuTest * tc
     cmd.len = strlen("command");
 
     r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
     raft_set_state(r,RAFT_STATE_LEADER);
     CuAssertTrue(tc, 0 == raft_get_log_size(r));
 
-    raft_recv_command(r,1,&cmd);
+    raft_recv_command(r,peer,&cmd);
     CuAssertTrue(tc, 1 == raft_get_log_size(r));
 
-    raft_recv_command(r,1,&cmd);
+    raft_recv_command(r,peer,&cmd);
     CuAssertTrue(tc, 1 == raft_get_log_size(r));
 }
-
 
 void TestRaft_leader_increase_commitno_when_majority_have_entry_and_atleast_one_newer_entry(CuTest * tc)
 {
 
+}
+
+void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(CuTest * tc)
+{
+    void* peer;
+    void *r;
+    void *sender;
+    raft_external_functions_t funcs = {
+        .send = sender_send,
+        .log = NULL
+    };
+    msg_appendentries_t ae;
+
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 5;
+    ae.prevLogIndex = 6;
+    ae.prevLogTerm = 5;
+
+    sender = sender_new();
+    r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
+    raft_set_state(r,RAFT_STATE_LEADER);
+    raft_set_current_term(r,5);
+    raft_set_current_index(r,5);
+    raft_set_external_functions(r,&funcs,sender);
+    raft_recv_appendentries(r,peer,&ae);
+
+    CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
 

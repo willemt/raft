@@ -143,7 +143,7 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 /* Candidate 5.2 */
 void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
@@ -161,7 +161,7 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
 
     r = raft_new();
     /* three nodes */
-    raft_add_peer(r,(void*)1);
+    peer = raft_add_peer(r,(void*)1);
     raft_add_peer(r,(void*)2);
     raft_set_external_functions(r,&funcs,sender);
     raft_set_current_term(r,1);
@@ -170,7 +170,7 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
     CuAssertTrue(tc, 0 == raft_is_follower(r));
     raft_periodic(r);
 
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
 
@@ -211,7 +211,7 @@ void TestRaft_candidate_will_reject_requestvote_if_its_log_is_more_complete(CuTe
 /* Candidate 5.2 */
 void TestRaft_candidate_requestvote_includes_loginfo(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
@@ -223,13 +223,14 @@ void TestRaft_candidate_requestvote_includes_loginfo(CuTest * tc)
 
     r = raft_new();
     /* three nodes */
-    raft_add_peer(r,(void*)1);
+    peer = raft_add_peer(r,(void*)1);
     raft_add_peer(r,(void*)2);
+
     raft_set_external_functions(r,&funcs,sender);
     raft_set_current_term(r,5);
     raft_set_current_index(r,3);
     raft_set_state(r,RAFT_STATE_CANDIDATE);
-    raft_send_requestvote(r,1);
+    raft_send_requestvote(r,peer);
 
     msg = sender_poll_msg(sender);
 //    CuAssertTrue(tc, msg_is_requestvote(msg));
@@ -240,7 +241,7 @@ void TestRaft_candidate_requestvote_includes_loginfo(CuTest * tc)
 /* Candidate 5.2 */
 void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(CuTest * tc)
 {
-    void *r;
+    void *r, *peer;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
@@ -254,16 +255,18 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(CuTest
     sender = sender_new();
 
     r = raft_new();
+
     /* three nodes */
-    raft_add_peer(r,(void*)1);
+    peer = raft_add_peer(r,(void*)1);
     raft_add_peer(r,(void*)2);
+
     raft_set_external_functions(r,&funcs,sender);
     raft_set_current_term(r,1);
     raft_set_state(r,RAFT_STATE_CANDIDATE);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
     raft_periodic(r);
 
-    raft_recv_appendentries(r,1,&ae);
+    raft_recv_appendentries(r,peer,&ae);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
 

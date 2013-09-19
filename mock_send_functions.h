@@ -1,5 +1,5 @@
 
-int sender_send(void* caller, void* udata, const int peer,
+int sender_send(void* caller, void* udata, void* peer,
         const unsigned char* data, const int len);
 
 void* sender_new();

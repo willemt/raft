@@ -65,7 +65,7 @@ typedef int (
 )   (
     void *caller,
     void *udata,
-    const int peer,
+    void* peer,
     const unsigned char *send_data,
     const int len
 );
@@ -146,23 +146,23 @@ int raft_receive_append_entries(raft_server_t* me, msg_appendentries_t* ae);
 
 int raft_periodic(void* me_);
 
-int raft_recv_appendentries(void* me_, int peer, msg_appendentries_t* ae);
+int raft_recv_appendentries(void* me_, void* peer, msg_appendentries_t* ae);
 
-int raft_recv_requestvote(void* me_, int peer, msg_requestvote_t* vr);
+int raft_recv_requestvote(void* me_, void* peer, msg_requestvote_t* vr);
 
 void raft_execute_command(void* me_);
 
 void raft_set_election_timeout(void* me_, int millisec);
 
-int raft_vote(void* me_, int peer);
+int raft_vote(void* me_, void* peer);
 
-int raft_add_peer(void* me_, void* peer_udata);
+void* raft_add_peer(void* me_, void* peer_udata);
 
-int raft_remove_peer(void* me_, int peer);
+int raft_remove_peer(void* me_, void* peer);
 
 int raft_get_num_peers(void* me_);
 
-int raft_recv_command(void* me_, int peer, msg_command_t* cmd);
+int raft_recv_command(void* me_, void* peer, msg_command_t* cmd);
 
 int raft_get_log_size(void* me_);
 
@@ -182,4 +182,4 @@ int raft_is_leader(void* me_);
 
 int raft_is_candidate(void* me_);
 
-int raft_send_requestvote(void* me_, int peer);
+int raft_send_requestvote(void* me_, void* peer);

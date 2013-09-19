@@ -116,22 +116,22 @@ int raft_periodic(void* me_)
 
 /**
  * Invoked by leader to replicate log entries (§5.3); also used as heartbeat (§5.2). */
-int raft_recv_appendentries(void* me_, int peer, msg_appendentries_t* ae)
+int raft_recv_appendentries(void* me_, void* peer, msg_appendentries_t* ae)
 {
     return 0;
 }
 
-int raft_recv_appendentries_response(void* me_, int peer, msg_appendentries_response_t* ae)
+int raft_recv_appendentries_response(void* me_, void* peer, msg_appendentries_response_t* ae)
 {
     return 0;
 }
 
-int raft_recv_requestvote(void* me_, int peer, msg_requestvote_t* vr)
+int raft_recv_requestvote(void* me_, void* peer, msg_requestvote_t* vr)
 {
     return 0;
 }
 
-int raft_recv_requestvote_response(void* me_, int peer, msg_requestvote_response_t* r)
+int raft_recv_requestvote_response(void* me_, void* peer, msg_requestvote_response_t* r)
 {
     return 0;
 }
@@ -144,7 +144,7 @@ void raft_set_election_timeout(void* me_, int millisec)
 {
 }
 
-int raft_vote(void* me_, int peer)
+int raft_vote(void* me_, void* peer)
 {
     return 0;
 }
@@ -156,12 +156,12 @@ void raft_set_configuration(raft_server_t* me)
 }
 #endif
 
-int raft_add_peer(void* me_, void* peer_udata)
+void* raft_add_peer(void* me_, void* peer_udata)
 {
-    return 0;
+    return NULL;
 }
 
-int raft_remove_peer(void* me_, int peer)
+int raft_remove_peer(void* me_, void* peer)
 {
     return 0;
 }
@@ -172,7 +172,7 @@ int raft_get_num_peers(void* me_)
     return 0;
 }
 
-int raft_recv_command(void* me_, int peer, msg_command_t* cmd)
+int raft_recv_command(void* me_, void* peer, msg_command_t* cmd)
 {
     return 0;
 }
@@ -220,7 +220,7 @@ int raft_is_candidate(void* me_)
     return 0;
 }
 
-int raft_send_requestvote(void* me_, int peer)
+int raft_send_requestvote(void* me_, void* peer)
 {
 
     return 0;
