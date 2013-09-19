@@ -174,7 +174,7 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
 }
 
 /* Candidate 5.2 */
-void TestRaft_candidate_requestvote_includes_loginfo(CuTest * tc)
+void TestRaft_candidate_requestvote_includes_logIndex(CuTest * tc)
 {
     void *r, *peer;
     void *sender;
@@ -271,6 +271,6 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
 
     /* appendentry from invalid leader doesn't make candidate become follower */
     raft_recv_appendentries(r,peer,&ae);
-    CuAssertTrue(tc, 0 == raft_is_follower(r));
+    CuAssertTrue(tc, 1 == raft_is_candidate(r));
 }
 

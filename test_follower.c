@@ -10,7 +10,7 @@
 #include "mock_send_functions.h"
 
 /* 5.1 */
-void TestRaft_follower_recv_appendentries_reply_false_when_term_less_than_currentterm(CuTest * tc)
+void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(CuTest * tc)
 {
     void *r, *peer;
     void *sender;
@@ -39,7 +39,7 @@ void TestRaft_follower_recv_appendentries_reply_false_when_term_less_than_curren
     CuAssertTrue(tc, 0 == aer->success);
 }
 
-void TestRaft_follower_recv_appendentries_updates_currentterm_when_term_gt_currentterm(CuTest * tc)
+void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(CuTest * tc)
 {
     void *r, *peer;
     msg_appendentries_t ae;
@@ -62,7 +62,7 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_when_term_gt_curre
 }
 
 /*  5.3 */
-void TestRaft_follower_recv_appendentries_reply_false_if_log_does_not_contain_entry_at_prevLogIndex(CuTest * tc)
+void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prevLogIndex(CuTest * tc)
 {
     void *r, *peer;
     void *sender;
@@ -136,6 +136,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
     };
     msg_appendentries_t ae;
 
+    /* appendentries has multiple entries */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 2;
 
@@ -148,6 +149,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
     raft_set_external_functions(r,&funcs,sender);
     raft_recv_appendentries(r,peer,&ae);
 
+    CuAssertTrue(tc, 0);
 //    msg = sender_poll_msg(sender);
 //    CuAssertTrue(tc, aer);
 //    CuAssertTrue(tc, 1 == sender_msg_is_appendentries(msg));
@@ -156,7 +158,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
 
 //If leaderCommit > commitIndex, set commitIndex =
 //min(leaderCommit, last log index)
-void TestRaft_follower_recv_appendentries_set_commitindex(CuTest * tc)
+void TestRaft_follower_recv_appendentries_set_commitindex_to_prevLogIdx(CuTest * tc)
 {
     void *r, *peer;
     void *sender;
@@ -166,21 +168,50 @@ void TestRaft_follower_recv_appendentries_set_commitindex(CuTest * tc)
     };
     msg_appendentries_t ae;
 
-    memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 2;
-
     sender = sender_new();
-
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);
-    raft_set_current_term(r,1);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,peer,&ae);
 
-//    msg = sender_poll_msg(sender);
-//    CuAssertTrue(tc, aer);
-//    CuAssertTrue(tc, 1 == sender_msg_is_appendentries(msg));
-//    CuAssertTrue(tc, 1 == sender_msg_is_false(msg));
+    /* receive an appendentry with commit */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prevLogTerm = 1;
+    ae.prevLogIndex = 4;
+    ae.leaderCommit = 5;
+
+    /* receipt of appendentries changes commit index */
+    raft_recv_appendentries(r,peer,&ae);
+    /* set to 4 because prevLogIdx is lower */
+    CuAssertTrue(tc, 4 == raft_get_commit_index(r));
+}
+
+void TestRaft_follower_recv_appendentries_set_commitindex_to_LeaderCommit(CuTest * tc)
+{
+    void *r, *peer;
+    void *sender;
+    raft_external_functions_t funcs = {
+        .send = sender_send,
+        .log = NULL
+    };
+    msg_appendentries_t ae;
+
+    sender = sender_new();
+    r = raft_new();
+    peer = raft_add_peer(r,(void*)1);
+    raft_set_external_functions(r,&funcs,sender);
+
+    /* receive an appendentry with commit */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prevLogTerm = 1;
+    ae.prevLogIndex = 4;
+    ae.leaderCommit = 3;
+
+    /* receipt of appendentries changes commit index */
+    raft_recv_appendentries(r,peer,&ae);
+    /* set to 3 because leaderCommit is lower */
+    CuAssertTrue(tc, 3 == raft_get_commit_index(r));
 }
 
 void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
@@ -233,10 +264,31 @@ void TestRaft_follower_rejects_appendentries_if_idx_and_term_dont_match_precedin
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
-void TestRaft_follower_resends_command_if_request_from_leader_times_out(CuTest * tc)
+#if 0
+void T_estRaft_follower_resends_command_if_request_from_leader_timesout(CuTest * tc)
 {
+    void *r, *peer;
 
+    msg_appendentries_t ae;
+
+    /* appendentry */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+
+    r = raft_new();
+
+    /* three nodes */
+    peer = raft_add_peer(r,(void*)1);
+    raft_add_peer(r,(void*)2);
+
+    raft_set_state(r,RAFT_STATE_FOLLOWER);
+
+    /*  log size s */
+    CuAssertTrue(tc, 0 == raft_get_log_count(r));
+
+    raft_recv_appendentries(r,peer,&ae);
+    CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
+#endif
 
 void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(CuTest * tc)
 {

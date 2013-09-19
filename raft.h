@@ -35,6 +35,11 @@ typedef struct {
 } msg_command_t;
 
 typedef struct {
+    unsigned int id;
+    int wasCommitted;
+} msg_command_response_t;
+
+typedef struct {
     /* currentTerm, for candidate to update itself */
     int term;
 
@@ -78,15 +83,24 @@ typedef void (
 )    (
     void *udata,
     void *src,
-//    bt_peer_t * peer,
     const char *buf,
     ...
 );
 #endif
 
+typedef int (
+    *func_applylog_f
+)   (
+    void *caller,
+    void *udata,
+    const unsigned char *data,
+    const int len
+);
+
 typedef struct {
     func_send_f send;
     func_log_f log;
+    func_applylog_f applylog;
 } raft_external_functions_t;
 
 
@@ -189,5 +203,23 @@ int raft_is_candidate(void* me_);
 
 int raft_send_requestvote(void* me_, void* peer);
 
+void raft_send_appendentries(void* me_, void* peer);
+
 int raft_append_command(void* me_, unsigned char* data, int len);
+
+void raft_commit_command(void* me_, int logIndex);
+
+void* raft_peer_new();
+
+int raft_peer_is_leader(void* peer);
+
+int raft_peer_get_next_index(void* peer);
+
+void raft_peer_set_next_index(void* peer, int nextIdx);
+
+void raft_set_commit_index(void* me_, int commit_idx);
+
+void raft_set_lastapplied_index(void* me_, int idx);
+
+int raft_get_lastapplied_index(void* me_);
 

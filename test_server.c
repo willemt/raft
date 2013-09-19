@@ -84,6 +84,14 @@ void TestRaft_server_starts_with_election_timeout_of_1000ms(CuTest * tc)
     CuAssertTrue(tc, 1000 == raft_get_election_timeout(r));
 }
 
+void TestRaft_server_starts_with_request_timeout_of_500ms(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    CuAssertTrue(tc, 500 == raft_get_election_timeout(r));
+}
+
 void TestRaft_server_increases_logindex_when_command_appended(CuTest* tc)
 {
     void *r;
@@ -93,3 +101,17 @@ void TestRaft_server_increases_logindex_when_command_appended(CuTest* tc)
     raft_append_command(r,"aaa", 3);
     CuAssertTrue(tc, 1 == raft_get_current_index(r));
 }
+
+// If commitIndex > lastApplied: increment lastApplied, apply
+// log[lastApplied] to state machine (§5.3)
+void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitIndex(CuTest* tc)
+{
+    void *r;
+
+    r = raft_new();
+    raft_set_commit_index(r,5);
+    raft_set_lastapplied_index(r, 4);
+    raft_periodic(r,1);
+    CuAssertTrue(tc, 5 == raft_get_lastapplied_index(r));
+}
+

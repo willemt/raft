@@ -144,7 +144,16 @@ void raft_set_election_timeout(void* me_, int millisec)
 {
 }
 
+void raft_set_request_timeout(void* me_, int millisec)
+{
+}
+
 int raft_get_election_timeout(void* me_)
+{
+    return 0;
+}
+
+int raft_get_request_timeout(void* me_)
 {
     return 0;
 }
@@ -235,3 +244,32 @@ int raft_append_command(void* me_, unsigned char* data, int len)
 {
     return 0;
 }
+
+void raft_set_commit_index(void* me_, int commit_idx)
+{
+}
+
+void raft_set_lastapplied_index(void* me_, int idx)
+{
+}
+
+int raft_get_lastapplied_index(void* me_)
+{
+    return 0;
+}
+
+int raft_get_commit_index(void* me_)
+{
+    return 0;
+}
+
+void raft_commit_command(void* me_, int logIndex)
+{
+
+}
+
+void raft_send_appendentries(void* me_, void* peer)
+{
+
+}
+
