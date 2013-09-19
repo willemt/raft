@@ -74,10 +74,10 @@ void TestRaft_leader_append_command_to_log_increases_idxno(CuTest * tc)
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);
     raft_set_state(r,RAFT_STATE_LEADER);
-    CuAssertTrue(tc, 0 == raft_get_log_size(r));
+    CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
     raft_recv_command(r,peer,&cmd);
-    CuAssertTrue(tc, 1 == raft_get_log_size(r));
+    CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
 void TestRaft_leader_doesnt_append_command_if_unique_id_is_duplicate(CuTest * tc)
@@ -92,13 +92,13 @@ void TestRaft_leader_doesnt_append_command_if_unique_id_is_duplicate(CuTest * tc
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);
     raft_set_state(r,RAFT_STATE_LEADER);
-    CuAssertTrue(tc, 0 == raft_get_log_size(r));
+    CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
     raft_recv_command(r,peer,&cmd);
-    CuAssertTrue(tc, 1 == raft_get_log_size(r));
+    CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
     raft_recv_command(r,peer,&cmd);
-    CuAssertTrue(tc, 1 == raft_get_log_size(r));
+    CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
 void TestRaft_leader_increase_commitno_when_majority_have_entry_and_atleast_one_newer_entry(CuTest * tc)

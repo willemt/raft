@@ -121,8 +121,9 @@ CuTest* CuTestNew(const char* name, TestFunction function)
 
 void CuTestRun(CuTest* tc)
 {
+#if 0 /* debugging */
     printf(" running %s\n", tc->name);
-
+#endif
 	jmp_buf buf;
 	tc->jumpBuf = &buf;
 	if (setjmp(buf) == 0)
@@ -263,49 +264,27 @@ void CuSuiteRun(CuSuite* testSuite)
 	}
 }
 
-void CuSuiteSummary(CuSuite* testSuite, CuString* summary)
-{
-	int i;
-	for (i = 0 ; i < testSuite->count ; ++i)
-	{
-		CuTest* testCase = testSuite->list[i];
-		CuStringAppend(summary, testCase->failed ? "F" : ".");
-	}
-	CuStringAppend(summary, "\n\n");
-}
-
 void CuSuiteDetails(CuSuite* testSuite, CuString* details)
 {
 	int i;
 	int failCount = 0;
 
-	if (testSuite->failCount == 0)
-	{
-		int passCount = testSuite->count - testSuite->failCount;
-		const char* testWord = passCount == 1 ? "test" : "tests";
-		CuStringAppendFormat(details, "OK (%d %s)\n", passCount, testWord);
-	}
-	else
-	{
-		if (testSuite->failCount == 1)
-			CuStringAppend(details, "There was 1 failure:\n");
-		else
-			CuStringAppendFormat(details, "There were %d failures:\n", testSuite->failCount);
+        CuStringAppendFormat(details, "%d..%d\n", 1, testSuite->count);
 
-		for (i = 0 ; i < testSuite->count ; ++i)
-		{
-			CuTest* testCase = testSuite->list[i];
-			if (testCase->failed)
-			{
-				failCount++;
-				CuStringAppendFormat(details, "%d) %s: %s\n",
-					failCount, testCase->name, testCase->message);
-			}
-		}
-		CuStringAppend(details, "\n!!!FAILURES!!!\n");
+        for (i = 0 ; i < testSuite->count ; ++i)
+        {
+                CuTest* testCase = testSuite->list[i];
 
-		CuStringAppendFormat(details, "Runs: %d ",   testSuite->count);
-		CuStringAppendFormat(details, "Passes: %d ", testSuite->count - testSuite->failCount);
-		CuStringAppendFormat(details, "Fails: %d\n",  testSuite->failCount);
-	}
+                if (testCase->failed)
+                {
+                    failCount++;
+                    CuStringAppendFormat(details, "not ok %d - %s #%s\n",
+                            i+1, testCase->name, testCase->message);
+                }
+                else
+                {
+                    CuStringAppendFormat(details, "ok %d - %s\n",
+                            i+1, testCase->name);
+                }
+        }
 }

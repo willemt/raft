@@ -1,5 +1,6 @@
 
 enum {
+    RAFT_STATE_NONE,
     RAFT_STATE_FOLLOWER,
     RAFT_STATE_CANDIDATE,
     RAFT_STATE_LEADER
@@ -144,15 +145,19 @@ void raft_become_candidate(raft_server_t* me);
 
 int raft_receive_append_entries(raft_server_t* me, msg_appendentries_t* ae);
 
-int raft_periodic(void* me_);
+int raft_periodic(void* me_, int msec_since_last_period);
 
 int raft_recv_appendentries(void* me_, void* peer, msg_appendentries_t* ae);
 
 int raft_recv_requestvote(void* me_, void* peer, msg_requestvote_t* vr);
 
+int raft_recv_requestvote_response(void* me_, void* peer, msg_requestvote_response_t* r);
+
 void raft_execute_command(void* me_);
 
 void raft_set_election_timeout(void* me_, int millisec);
+
+int raft_get_election_timeout(void* me_);
 
 int raft_vote(void* me_, void* peer);
 
@@ -164,7 +169,7 @@ int raft_get_num_peers(void* me_);
 
 int raft_recv_command(void* me_, void* peer, msg_command_t* cmd);
 
-int raft_get_log_size(void* me_);
+int raft_get_log_count(void* me_);
 
 void raft_set_current_term(void* me_,int term);
 
@@ -183,3 +188,6 @@ int raft_is_leader(void* me_);
 int raft_is_candidate(void* me_);
 
 int raft_send_requestvote(void* me_, void* peer);
+
+int raft_append_command(void* me_, unsigned char* data, int len);
+

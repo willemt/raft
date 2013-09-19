@@ -6,7 +6,7 @@
 # Author: Asim Jalis
 # Date: 01/08/2003
 
-FILES=$1
+FILES=*.c
 
 #if test $# -eq 0 ; then FILES=*.c ; else FILES=$* ; fi
 
@@ -23,7 +23,7 @@ cat $FILES | grep '^void Test' |
         -e 's/$/(CuTest*);/' \
         -e 's/^/extern /'
 
-echo \
+echo -n \
 '
 
 void RunAllTests(void) 
@@ -41,7 +41,6 @@ cat $FILES | grep '^void Test' |
 echo \
 '
     CuSuiteRun(suite);
-    CuSuiteSummary(suite, output);
     CuSuiteDetails(suite, output);
     printf("%s\\n", output->buffer);
 }

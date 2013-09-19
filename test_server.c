@@ -54,6 +54,7 @@ void TestRaft_remove_peer(CuTest * tc)
 
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);
+    CuAssertTrue(tc, 1 == raft_get_num_peers(r));
     raft_remove_peer(r,peer);
     CuAssertTrue(tc, 0 == raft_get_num_peers(r));
 }
@@ -67,3 +68,28 @@ void TestRaft_set_state(CuTest * tc)
     CuAssertTrue(tc, RAFT_STATE_LEADER == raft_get_state(r));
 }
 
+void TestRaft_server_starts_as_follower(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    CuAssertTrue(tc, RAFT_STATE_FOLLOWER == raft_get_state(r));
+}
+
+void TestRaft_server_starts_with_election_timeout_of_1000ms(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    CuAssertTrue(tc, 1000 == raft_get_election_timeout(r));
+}
+
+void TestRaft_server_increases_logindex_when_command_appended(CuTest* tc)
+{
+    void *r;
+
+    r = raft_new();
+    CuAssertTrue(tc, 0 == raft_get_current_index(r));
+    raft_append_command(r,"aaa", 3);
+    CuAssertTrue(tc, 1 == raft_get_current_index(r));
+}

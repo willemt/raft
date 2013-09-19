@@ -107,7 +107,7 @@ int raft_election_timeout_elapsed(void* me_)
 }
 #endif
 
-int raft_periodic(void* me_)
+int raft_periodic(void* me_, int msec_since_last_period)
 {
     raft_server_t* me = me_;
 
@@ -144,6 +144,11 @@ void raft_set_election_timeout(void* me_, int millisec)
 {
 }
 
+int raft_get_election_timeout(void* me_)
+{
+    return 0;
+}
+
 int raft_vote(void* me_, void* peer)
 {
     return 0;
@@ -177,7 +182,7 @@ int raft_recv_command(void* me_, void* peer, msg_command_t* cmd)
     return 0;
 }
 
-int raft_get_log_size(void* me_)
+int raft_get_log_count(void* me_)
 {
     return 0;
 }
@@ -226,3 +231,7 @@ int raft_send_requestvote(void* me_, void* peer)
     return 0;
 }
 
+int raft_append_command(void* me_, unsigned char* data, int len)
+{
+    return 0;
+}
