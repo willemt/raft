@@ -92,7 +92,7 @@ typedef int (
 )   (
     void *caller,
     void *udata,
-    void* peer,
+    int peer,
     const unsigned char *send_data,
     const int len
 );
@@ -151,11 +151,11 @@ int raft_receive_append_entries(raft_server_t* me, msg_appendentries_t* ae);
 
 int raft_periodic(raft_server_t* me, int msec_since_last_period);
 
-int raft_recv_appendentries(raft_server_t* me, void* peer, msg_appendentries_t* ae);
+int raft_recv_appendentries(raft_server_t* me, int peer, msg_appendentries_t* ae);
 
-int raft_recv_requestvote(raft_server_t* me, void* peer, msg_requestvote_t* vr);
+int raft_recv_requestvote(raft_server_t* me, int peer, msg_requestvote_t* vr);
 
-int raft_recv_requestvote_response(raft_server_t* me, void* peer, msg_requestvote_response_t* r);
+int raft_recv_requestvote_response(raft_server_t* me, int peer, msg_requestvote_response_t* r);
 
 void raft_execute_command(raft_server_t* me);
 
@@ -163,15 +163,15 @@ void raft_set_election_timeout(raft_server_t* me, int millisec);
 
 int raft_get_election_timeout(raft_server_t* me);
 
-int raft_vote(raft_server_t* me, void* peer);
+int raft_vote(raft_server_t* me, int peer);
 
-raft_peer_t* raft_add_peer(raft_server_t* me, void* peer_udata);
+raft_peer_t* raft_add_peer(raft_server_t* me, int peer_udata);
 
-int raft_remove_peer(raft_server_t* me, void* peer);
+int raft_remove_peer(raft_server_t* me, int peer);
 
 int raft_get_num_peers(raft_server_t* me);
 
-int raft_recv_command(raft_server_t* me, void* peer, msg_command_t* cmd);
+int raft_recv_command(raft_server_t* me, int peer, msg_command_t* cmd);
 
 int raft_get_log_count(raft_server_t* me);
 
@@ -191,9 +191,9 @@ int raft_is_leader(raft_server_t* me);
 
 int raft_is_candidate(raft_server_t* me);
 
-int raft_send_requestvote(raft_server_t* me, void* peer);
+int raft_send_requestvote(raft_server_t* me, int peer);
 
-void raft_send_appendentries(raft_server_t* me, void* peer);
+void raft_send_appendentries(raft_server_t* me, int peer);
 
 int raft_append_command(raft_server_t* me, unsigned char* data, int len);
 

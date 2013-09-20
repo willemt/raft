@@ -37,7 +37,8 @@ void TestRaft_election_start_increments_term(CuTest * tc)
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
 }
 
-void TestRaft_add_peer(CuTest * tc)
+#if 0
+void T_estRaft_add_peer(CuTest * tc)
 {
     void *r;
 
@@ -47,7 +48,7 @@ void TestRaft_add_peer(CuTest * tc)
     CuAssertTrue(tc, 1 == raft_get_num_peers(r));
 }
 
-void TestRaft_dont_add_duplicate_peers(CuTest * tc)
+void T_estRaft_dont_add_duplicate_peers(CuTest * tc)
 {
     void *r;
 
@@ -58,7 +59,7 @@ void TestRaft_dont_add_duplicate_peers(CuTest * tc)
     CuAssertTrue(tc, 1 == raft_get_num_peers(r));
 }
 
-void TestRaft_remove_peer(CuTest * tc)
+void T_estRaft_remove_peer(CuTest * tc)
 {
     void *r;
     void *peer;
@@ -69,6 +70,7 @@ void TestRaft_remove_peer(CuTest * tc)
     raft_remove_peer(r,peer);
     CuAssertTrue(tc, 0 == raft_get_num_peers(r));
 }
+#endif
 
 void TestRaft_set_state(CuTest * tc)
 {

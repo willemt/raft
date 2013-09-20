@@ -12,7 +12,7 @@
 /* 5.1 */
 void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -21,9 +21,16 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     msg_appendentries_t ae;
     msg_appendentries_response_t *aer;
 
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
+
     sender = sender_new();
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
 
     /* term is low */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -32,7 +39,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     /*  higher current term */
     raft_set_current_term(r,5);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
 
     /*  response is false */
     aer = sender_poll_msg(sender);
@@ -42,22 +49,29 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
 
 void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     msg_appendentries_t ae;
     msg_appendentries_response_t *aer;
+
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
 
     /*  newer term */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 2;
 
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
 
     /*  older currentterm */
     raft_set_current_term(r,1);
 
     /*  appendentry has newer term, so we change our currentterm */
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
 
 }
@@ -65,19 +79,25 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
 /*  5.3 */
 void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_index(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
         .send = sender_send,
         .log = NULL
     };
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
     msg_appendentries_t ae;
     msg_appendentries_response_t *aer;
 
     sender = sender_new();
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
     raft_set_external_functions(r,&funcs,sender);
 
     /* log index that server doesn't have */
@@ -89,7 +109,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
     raft_set_current_term(r,5);
 
     /* trigger reply */
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     aer = sender_poll_msg(sender);
 
     /* reply is false */
@@ -100,11 +120,17 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
 /* 5.3 */
 void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     msg_appendentries_t ae;
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
 
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
 
     raft_set_current_term(r,2);
 
@@ -122,19 +148,26 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 2;
 
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 }
 
 void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
         .log = NULL
     };
     msg_appendentries_t ae;
+
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
 
     /* appendentries has multiple entries */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -143,11 +176,11 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
     sender = sender_new();
 
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
 
     raft_set_current_term(r,1);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
 
     CuAssertTrue(tc, 0);
 //    msg = sender_poll_msg(sender);
@@ -160,7 +193,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
 //min(leaderCommit, last log index)
 void TestRaft_follower_recv_appendentries_set_commitindex_to_prevLogIdx(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -168,9 +201,15 @@ void TestRaft_follower_recv_appendentries_set_commitindex_to_prevLogIdx(CuTest *
     };
     msg_appendentries_t ae;
 
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
     sender = sender_new();
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
     raft_set_external_functions(r,&funcs,sender);
 
     /* receive an appendentry with commit */
@@ -181,14 +220,14 @@ void TestRaft_follower_recv_appendentries_set_commitindex_to_prevLogIdx(CuTest *
     ae.leader_commit = 5;
 
     /* receipt of appendentries changes commit index */
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     /* set to 4 because prevLogIdx is lower */
     CuAssertTrue(tc, 4 == raft_get_commit_index(r));
 }
 
 void TestRaft_follower_recv_appendentries_set_commitindex_to_LeaderCommit(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -196,9 +235,16 @@ void TestRaft_follower_recv_appendentries_set_commitindex_to_LeaderCommit(CuTest
     };
     msg_appendentries_t ae;
 
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
+
     sender = sender_new();
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
     raft_set_external_functions(r,&funcs,sender);
 
     /* receive an appendentry with commit */
@@ -209,46 +255,54 @@ void TestRaft_follower_recv_appendentries_set_commitindex_to_LeaderCommit(CuTest
     ae.leader_commit = 3;
 
     /* receipt of appendentries changes commit index */
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     /* set to 3 because leaderCommit is lower */
     CuAssertTrue(tc, 3 == raft_get_commit_index(r));
 }
 
 void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
 
     msg_appendentries_t ae;
+
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
 
     /* appendentry */
     memset(&ae,0,sizeof(msg_appendentries_t));
 
     r = raft_new();
-
-    /* three nodes */
-    peer = raft_add_peer(r,(void*)1);
-    raft_add_peer(r,(void*)2);
+    raft_set_configuration(r,cfg);
 
     raft_set_state(r,RAFT_STATE_FOLLOWER);
 
     /*  log size s */
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
 void TestRaft_follower_rejects_appendentries_if_idx_and_term_dont_match_preceding_ones(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
 
     msg_appendentries_t ae;
 
-    r = raft_new();
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
 
-    /* three nodes */
-    peer = raft_add_peer(r,(void*)1);
-    raft_add_peer(r,(void*)2);
+
+    r = raft_new();
+    raft_set_configuration(r,cfg);
 
     raft_set_current_term(r,1);
 
@@ -260,14 +314,14 @@ void TestRaft_follower_rejects_appendentries_if_idx_and_term_dont_match_precedin
 
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
-    raft_recv_appendentries(r,peer,&ae);
+    raft_recv_appendentries(r,1,&ae);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
 #if 0
 void T_estRaft_follower_resends_command_if_request_from_leader_timesout(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
 
     msg_appendentries_t ae;
 
@@ -292,16 +346,21 @@ void T_estRaft_follower_resends_command_if_request_from_leader_timesout(CuTest *
 
 void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
+
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
 
     r = raft_new();
 
     /*  1 second election timeout */
     raft_set_election_timeout(r, 1000);
 
-    /* three nodes */
-    peer = raft_add_peer(r,(void*)1);
-    raft_add_peer(r,(void*)2);
+    raft_set_configuration(r,cfg);
 
     /*  1.001 seconds have passed */
     raft_periodic(r, 1001);
@@ -313,12 +372,19 @@ void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(CuTest * t
 /* Candidate 5.2 */
 void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTest * tc)
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
         .log = NULL
     };
+
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
 
     msg_requestvote_t rv;
     msg_requestvote_response_t *rvr;
@@ -326,10 +392,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTe
     sender = sender_new();
     r = raft_new();
     raft_set_external_functions(r,&funcs,sender);
-
-    /* three nodes */
-    peer = raft_add_peer(r,(void*)1);
-    raft_add_peer(r,(void*)2);
+    raft_set_configuration(r,cfg);
 
     /*  request vote */
     /*  vote indicates candidate's log is not complete compared to follower */
@@ -344,7 +407,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTe
     raft_set_current_index(r,2);
 
     /* vote not granted */
-    raft_recv_requestvote(r,peer,&rv);
+    raft_recv_requestvote(r,1,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
     CuAssertTrue(tc, 0 == rvr->vote_granted);

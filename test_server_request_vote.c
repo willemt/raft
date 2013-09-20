@@ -18,7 +18,7 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     CuTest * tc
 )
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     raft_external_functions_t funcs = {
         .send = sender_send,
@@ -27,17 +27,24 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     msg_requestvote_t rv;
     msg_requestvote_response_t *rvr;
 
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
+
     memset(&rv,0,sizeof(msg_requestvote_t));
     rv.term = 2;
 
     sender = sender_new();
 
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
 
     raft_set_current_term(r,1);
     raft_set_external_functions(r,&funcs,sender);
-    raft_recv_requestvote(r,peer,&rv);
+    raft_recv_requestvote(r,1,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
     CuAssertTrue(tc, 0 == rvr->vote_granted);
@@ -49,7 +56,7 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     CuTest * tc
 )
 {
-    void *r, *peer;
+    void *r;
     void *sender;
     void *msg;
     raft_external_functions_t funcs = {
@@ -59,18 +66,24 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     msg_requestvote_t rv;
     msg_requestvote_response_t *rvr;
 
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
     memset(&rv,0,sizeof(msg_requestvote_response_t));
     rv.term = 1;
 
     sender = sender_new();
 
     r = raft_new();
-    peer = raft_add_peer(r,(void*)1);
+    raft_set_configuration(r,cfg);
 
     raft_set_external_functions(r,&funcs,sender);
     raft_set_current_term(r,1);
-    raft_vote(r,peer);
-    raft_recv_requestvote(r,peer,&rv);
+    raft_vote(r,1);
+    raft_recv_requestvote(r,1,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
     CuAssertTrue(tc, 0 == rvr->vote_granted);

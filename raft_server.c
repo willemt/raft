@@ -77,7 +77,10 @@ typedef struct {
     /* amount of time left till timeout */
     int timeout_elapased;
 
-    hashmap_t* peers;
+    raft_peer_t* peers;
+    int npeers;
+
+//    hashmap_t* peers;
 
 //    int log_Size;
 } raft_server_private_t;
@@ -106,7 +109,7 @@ raft_server_t* raft_new()
     me = calloc(1,sizeof(raft_server_private_t));
     me->current_index = 0;
     me->timeout_elapased = 0;
-    me->peers = hashmap_new(__peer_hash, __peer_compare, 100);
+//    me->peers = hashmap_new(__peer_hash, __peer_compare, 100);
     return (void*)me;
 }
 
@@ -149,15 +152,17 @@ void raft_become_leader(raft_server_t* me_)
 void raft_become_candidate(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
-    hashmap_iterator_t iter;
+//    hashmap_iterator_t iter;
     void* p;
+    int ii;
 
     me->current_term += 1;
     me->voted_for = me;
     me->timeout_elapased = 0;
 
-    for (hashmap_iterator(me->peers, &iter);
-         (p = hashmap_iterator_next_value(me->peers, &iter));)
+//    for (hashmap_iterator(me->peers, &iter);
+//         (p = hashmap_iterator_next_value(me->peers, &iter));)
+    for (ii=0; ii<me->npeers; ii++)
     {
         msg_requestvote_t rv;
 
@@ -166,7 +171,7 @@ void raft_become_candidate(raft_server_t* me_)
 //        rv.last_log_index = me->log
         
         if (me->ext_func && me->ext_func->send)
-            me->ext_func->send(me->caller,NULL, NULL, (void*)&rv, sizeof(msg_requestvote_t));
+            me->ext_func->send(me->caller,NULL, ii, (void*)&rv, sizeof(msg_requestvote_t));
     }
 
 }
@@ -203,22 +208,22 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 
 /**
  * Invoked by leader to replicate log entries (§5.3); also used as heartbeat (§5.2). */
-int raft_recv_appendentries(raft_server_t* me_, void* peer, msg_appendentries_t* ae)
+int raft_recv_appendentries(raft_server_t* me_, int peer, msg_appendentries_t* ae)
 {
     return 0;
 }
 
-int raft_recv_appendentries_response(raft_server_t* me_, void* peer, msg_appendentries_response_t* ae)
+int raft_recv_appendentries_response(raft_server_t* me_, int peer, msg_appendentries_response_t* ae)
 {
     return 0;
 }
 
-int raft_recv_requestvote(raft_server_t* me_, void* peer, msg_requestvote_t* vr)
+int raft_recv_requestvote(raft_server_t* me_, int peer, msg_requestvote_t* vr)
 {
     return 0;
 }
 
-int raft_recv_requestvote_response(raft_server_t* me_, void* peer, msg_requestvote_response_t* r)
+int raft_recv_requestvote_response(raft_server_t* me_, int peer, msg_requestvote_response_t* r)
 {
     return 0;
 }
@@ -245,12 +250,13 @@ int raft_get_request_timeout(raft_server_t* me_)
     return 0;
 }
 
-int raft_vote(raft_server_t* me_, void* peer)
+int raft_vote(raft_server_t* me_, int peer)
 {
     return 0;
 }
 
-raft_peer_t* raft_add_peer(raft_server_t* me_, void* peer_udata)
+#if 0
+raft_peer_t* raft_add_peer(raft_server_t* me_, int peer_udata)
 {
     raft_server_private_t* me = (void*)me_;
     raft_peer_t* p;
@@ -265,10 +271,11 @@ raft_peer_t* raft_add_peer(raft_server_t* me_, void* peer_udata)
     return p;
 }
 
-int raft_remove_peer(raft_server_t* me_, void* peer)
+int raft_remove_peer(raft_server_t* me_, int peer)
 {
     return 0;
 }
+#endif
 
 int raft_get_num_peers(raft_server_t* me_)
 {
@@ -276,7 +283,7 @@ int raft_get_num_peers(raft_server_t* me_)
     return 0;
 }
 
-int raft_recv_command(raft_server_t* me_, void* peer, msg_command_t* cmd)
+int raft_recv_command(raft_server_t* me_, int peer, msg_command_t* cmd)
 {
     return 0;
 }
@@ -334,7 +341,7 @@ int raft_is_candidate(raft_server_t* me_)
     return 0;
 }
 
-int raft_send_requestvote(raft_server_t* me_, void* peer)
+int raft_send_requestvote(raft_server_t* me_, int peer)
 {
 
     return 0;
@@ -368,12 +375,22 @@ void raft_commit_command(raft_server_t* me_, int logIndex)
 
 }
 
-void raft_send_appendentries(raft_server_t* me_, void* peer)
+void raft_send_appendentries(raft_server_t* me_, int peer)
 {
 
 }
 
 void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers)
 {
+    raft_server_private_t* me = (void*)me_;
+    int npeers = 0;
 
+    while (peers->udata_address)
+    {
+        npeers++;
+        me->peers = realloc(me->peers,sizeof(raft_peer_t*) * npeers);
+        me->npeers = npeers;
+        me->peers[npeers-1] = raft_peer_new(peers);
+        peers++;
+    }
 }
