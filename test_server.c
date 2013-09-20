@@ -47,6 +47,17 @@ void TestRaft_add_peer(CuTest * tc)
     CuAssertTrue(tc, 1 == raft_get_num_peers(r));
 }
 
+void TestRaft_dont_add_duplicate_peers(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    CuAssertTrue(tc, 0 == raft_get_num_peers(r));
+    raft_add_peer(r,(void*)1);
+    CuAssertTrue(tc, NULL == raft_add_peer(r,(void*)1));
+    CuAssertTrue(tc, 1 == raft_get_num_peers(r));
+}
+
 void TestRaft_remove_peer(CuTest * tc)
 {
     void *r;

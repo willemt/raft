@@ -237,8 +237,8 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
 
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 5;
-    ae.prevLogIndex = 6;
-    ae.prevLogTerm = 5;
+    ae.prev_log_index = 6;
+    ae.prev_log_term = 5;
 
     sender = sender_new();
     r = raft_new();

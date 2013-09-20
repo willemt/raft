@@ -40,7 +40,7 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     raft_recv_requestvote(r,peer,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
-    CuAssertTrue(tc, 0 == rvr->voteGranted);
+    CuAssertTrue(tc, 0 == rvr->vote_granted);
 }
 
 // If votedFor is null or candidateId, and candidate's log is at
@@ -73,6 +73,6 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     raft_recv_requestvote(r,peer,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
-    CuAssertTrue(tc, 0 == rvr->voteGranted);
+    CuAssertTrue(tc, 0 == rvr->vote_granted);
 }
 

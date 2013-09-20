@@ -21,12 +21,13 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     msg_appendentries_t ae;
     msg_appendentries_response_t *aer;
 
-    memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 1;
-
     sender = sender_new();
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);
+
+    /* term is low */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 1;
 
     /*  higher current term */
     raft_set_current_term(r,5);
@@ -62,7 +63,7 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
 }
 
 /*  5.3 */
-void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prevLogIndex(CuTest * tc)
+void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_index(CuTest * tc)
 {
     void *r, *peer;
     void *sender;
@@ -82,7 +83,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
     /* log index that server doesn't have */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 5;
-    ae.prevLogIndex = 5;
+    ae.prev_log_index = 5;
 
     /* current term is old */
     raft_set_current_term(r,5);
@@ -105,14 +106,13 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
     r = raft_new();
     peer = raft_add_peer(r,(void*)1);
 
-
     raft_set_current_term(r,2);
 
     /* first append entry */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 1;
-    ae.prevLogIndex = 0;
-    ae.prevLogTerm = 0;
+    ae.prev_log_index = 0;
+    ae.prev_log_term = 0;
 
     /* increase log size */
     raft_append_command(r, "111", 3);
@@ -176,9 +176,9 @@ void TestRaft_follower_recv_appendentries_set_commitindex_to_prevLogIdx(CuTest *
     /* receive an appendentry with commit */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 1;
-    ae.prevLogTerm = 1;
-    ae.prevLogIndex = 4;
-    ae.leaderCommit = 5;
+    ae.prev_log_term = 1;
+    ae.prev_log_index = 4;
+    ae.leader_commit = 5;
 
     /* receipt of appendentries changes commit index */
     raft_recv_appendentries(r,peer,&ae);
@@ -204,9 +204,9 @@ void TestRaft_follower_recv_appendentries_set_commitindex_to_LeaderCommit(CuTest
     /* receive an appendentry with commit */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 1;
-    ae.prevLogTerm = 1;
-    ae.prevLogIndex = 4;
-    ae.leaderCommit = 3;
+    ae.prev_log_term = 1;
+    ae.prev_log_index = 4;
+    ae.leader_commit = 3;
 
     /* receipt of appendentries changes commit index */
     raft_recv_appendentries(r,peer,&ae);
@@ -255,8 +255,8 @@ void TestRaft_follower_rejects_appendentries_if_idx_and_term_dont_match_precedin
     /* first append entry */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 1;
-    ae.prevLogIndex = 0;
-    ae.prevLogTerm = 0;
+    ae.prev_log_index = 0;
+    ae.prev_log_term = 0;
 
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
@@ -335,9 +335,9 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTe
     /*  vote indicates candidate's log is not complete compared to follower */
     memset(&rv,0,sizeof(msg_requestvote_t));
     rv.term = 1;
-    rv.candidateID = 0;
-    rv.lastLogIndex = 1;
-    rv.lastLogTerm = 1;
+    rv.candidate_id = 0;
+    rv.last_log_index = 1;
+    rv.last_log_term = 1;
 
     /* server's term and index are more up-to-date */
     raft_set_current_term(r,1);
@@ -347,6 +347,6 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTe
     raft_recv_requestvote(r,peer,&rv);
     rvr = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rvr);
-    CuAssertTrue(tc, 0 == rvr->voteGranted);
+    CuAssertTrue(tc, 0 == rvr->vote_granted);
 }
 

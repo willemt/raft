@@ -22,12 +22,12 @@ typedef struct {
 
 int sender_send(void* caller, void* udata, void* peer, const unsigned char* data, int len)
 {
-    sender_t* me = udata;
-    void* n;
+    sender_t* me = caller;
+    unsigned char * n;
 
     n = malloc(len);
     memcpy(n,data,len);
-    llqueue_offer(me->inbox,(void*)data);
+    llqueue_offer(me->inbox,n);
     return 0;
 }
 
@@ -42,6 +42,8 @@ void* sender_new()
 
 void* sender_poll_msg(void* s)
 {
-    return NULL;
+    sender_t* me = s;
+
+    return llqueue_poll(me->inbox);
 }
 

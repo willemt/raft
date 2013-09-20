@@ -28,9 +28,9 @@ void TestRaft_follower_becoming_candidate_votes_for_self(CuTest * tc)
 
     r = raft_new();
 
-    CuAssertTrue(tc, 0 == raft_get_current_term(r));
+    CuAssertTrue(tc, NULL == raft_get_voted_for(r));
     raft_become_candidate(r);
-    CuAssertTrue(tc, 1 == raft_get_current_term(r));
+    CuAssertTrue(tc, r == raft_get_voted_for(r));
 }
 
 /* Candidate 5.2 */
@@ -39,10 +39,13 @@ void TestRaft_follower_becoming_candidate_resets_election_timeout(CuTest * tc)
     void *r;
 
     r = raft_new();
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
 
-    CuAssertTrue(tc, 0 == raft_get_current_term(r));
+    raft_periodic(r,100);
+    CuAssertTrue(tc, 100 == raft_get_timeout_elapsed(r));
+
     raft_become_candidate(r);
-    CuAssertTrue(tc, 1 == raft_get_current_term(r));
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
 }
  
 /* Candidate 5.2 */
@@ -54,18 +57,33 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(CuTe
         .send = sender_send,
         .log = NULL
     };
-
+    raft_peer_configuration_t cfg[] = {
+            /* 2 peers */
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
     msg_requestvote_t* rv;
 
     sender = sender_new();
-
     r = raft_new();
     raft_set_external_functions(r,&funcs,sender);
+    raft_set_configuration(r,cfg);
+
+    /* set term so we can check it gets included in the outbound message */
+    raft_set_current_term(r,2);
+    raft_set_current_index(r,5);
 
     /* becoming candidate triggers vote requests */
     raft_become_candidate(r);
+
+    /* 2 peers = 2 vote requests */
     rv = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rv);
+    CuAssertTrue(tc, 3 == rv->term);
+    /*  TODO: there should be more items */
+    rv = sender_poll_msg(sender);
+    CuAssertTrue(tc, NULL != rv);
+    CuAssertTrue(tc, 3 == rv->term);
 }
 
 /* Candidate 5.2 */
@@ -78,12 +96,17 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(C
         .send = sender_send,
         .log = NULL
     };
+    raft_peer_configuration_t cfg[] = {
+            /* 2 peers */
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
 
     msg_requestvote_response_t vr;
 
     memset(&vr,0,sizeof(msg_requestvote_response_t));
     vr.term = 1;
-    vr.voteGranted = 1;
+    vr.vote_granted = 1;
 
     sender = sender_new();
 
@@ -118,7 +141,7 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 
     memset(&vr,0,sizeof(msg_requestvote_response_t));
     vr.term = 1;
-    vr.voteGranted = 1;
+    vr.vote_granted = 1;
 
     sender = sender_new();
 
@@ -199,7 +222,7 @@ void TestRaft_candidate_requestvote_includes_logIndex(CuTest * tc)
 
     rv = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != rv);
-    CuAssertTrue(tc, 3 == rv->lastLogIndex);
+    CuAssertTrue(tc, 3 == rv->last_log_index);
     CuAssertTrue(tc, 5 == rv->term);
 }
 
@@ -266,8 +289,8 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
     /*  invalid leader determined by "leaders" old log */
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 1;
-    ae.prevLogIndex = 1;
-    ae.prevLogTerm = 1;
+    ae.prev_log_index = 1;
+    ae.prev_log_term = 1;
 
     /* appendentry from invalid leader doesn't make candidate become follower */
     raft_recv_appendentries(r,peer,&ae);
