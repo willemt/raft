@@ -43,10 +43,10 @@ typedef struct {
 
     /* The set of servers from which the candidate has
      * received a RequestVote response in this term. */
-    //int votesResponded;
+    int votes_responded;
 
     /* The set of servers from which the candidate has received a vote in this term. */
-    //int votesGranted;
+    int votes_granted;
 
 } candidate_t;
 

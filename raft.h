@@ -137,11 +137,11 @@ typedef void* raft_peer_t;
 
 raft_server_t* raft_new();
 
-void* raft_get_voted_for(raft_server_t* me);
+int raft_get_voted_for(raft_server_t* me);
 
 void raft_set_external_functions(raft_server_t* me, raft_external_functions_t* funcs, void* caller);
 
-void raft_election_start(void* r);
+void raft_election_start(raft_server_t* me);
 
 void raft_become_leader(raft_server_t* me);
 
@@ -216,3 +216,5 @@ int raft_peer_get_next_index(raft_peer_t* peer);
 void raft_peer_set_next_index(raft_peer_t* peer, int nextIdx);
 
 void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers);
+
+int raft_votes_is_majority(const int npeers, const int nvotes);

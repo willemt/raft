@@ -9,6 +9,16 @@
 #include "raft.h"
 #include "mock_send_functions.h"
 
+void TestRaft_leader_becomes_leader_is_leader(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+
+    raft_become_leader(r);
+    CuAssertTrue(tc, raft_is_leader(r));
+}
+
 /* 5.2 */
 void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(CuTest * tc)
 {

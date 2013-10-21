@@ -49,7 +49,7 @@ typedef struct {
 
     /* The candidate the server voted for in its current term,
      * or Nil if it hasn't voted for any.  */
-    void* voted_for;
+    int voted_for;
 
     /* the log which is replicated */
     void* log;
@@ -80,9 +80,14 @@ typedef struct {
     raft_peer_t* peers;
     int npeers;
 
+    int election_timeout;
+
 //    hashmap_t* peers;
 
 //    int log_Size;
+
+    /* who has voted for me */
+    int *votes_for_me;
 } raft_server_private_t;
 
 
@@ -107,6 +112,7 @@ raft_server_t* raft_new()
     raft_server_private_t* me;
 
     me = calloc(1,sizeof(raft_server_private_t));
+    me->voted_for = -1;
     me->current_index = 0;
     me->timeout_elapased = 0;
 //    me->peers = hashmap_new(__peer_hash, __peer_compare, 100);
@@ -118,15 +124,18 @@ void raft_free(raft_server_t* me_)
     free(me_);
 }
 
-void raft_set_state(raft_server_t* me_)
+void raft_set_state(raft_server_t* me_, int state)
 {
+    raft_server_private_t* me = (void*)me_;
 
+    me->state = state;
 }
 
 int raft_get_state(raft_server_t* me_)
 {
+    raft_server_private_t* me = (void*)me_;
 
-    return 0;
+    return me->state;
 }
 
 void raft_set_external_functions(raft_server_t* me_, raft_external_functions_t* funcs, void* caller)
@@ -137,16 +146,19 @@ void raft_set_external_functions(raft_server_t* me_, raft_external_functions_t* 
     me->ext_func = funcs;
 }
 
-void raft_election_start(void* r)
+void raft_election_start(raft_server_t* me_)
 {
-
+    raft_server_private_t* me = (void*)me_;
+    me->timeout_elapased = 0;
+    /* time to throw our hat in */
+    raft_become_candidate(me_);
 }
 
 /**
  * Candidate i transitions to leader. */
 void raft_become_leader(raft_server_t* me_)
 {
-
+    raft_set_state(me_,RAFT_STATE_LEADER);
 }
 
 void raft_become_candidate(raft_server_t* me_)
@@ -156,8 +168,9 @@ void raft_become_candidate(raft_server_t* me_)
     void* p;
     int ii;
 
+    memset(me->votes_for_me,0,sizeof(int) * me->npeers);
     me->current_term += 1;
-    me->voted_for = me;
+    me->voted_for = 0;
     me->timeout_elapased = 0;
 
 //    for (hashmap_iterator(me->peers, &iter);
@@ -202,7 +215,14 @@ int raft_get_timeout_elapsed(raft_server_t* me_)
 int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (void*)me_;
+
     me->timeout_elapased += msec_since_last_period;
+
+    if (me->election_timeout < me->timeout_elapased)
+    {
+        raft_election_start(me_);
+    }
+
     return 0;
 }
 
@@ -220,11 +240,56 @@ int raft_recv_appendentries_response(raft_server_t* me_, int peer, msg_appendent
 
 int raft_recv_requestvote(raft_server_t* me_, int peer, msg_requestvote_t* vr)
 {
+    raft_server_private_t* me = (void*)me_;
+    msg_requestvote_response_t r;
+
+    if (-1 == me->voted_for)
+    {
+        r.vote_granted = 0;
+    }
+    else
+    {
+        me->voted_for = peer;
+    }
+
+    if (me->ext_func && me->ext_func->send)
+        me->ext_func->send(me->caller, NULL, peer, (void*)&r,
+                sizeof(msg_requestvote_response_t));
+
     return 0;
 }
 
+int raft_votes_is_majority(const int npeers, const int nvotes)
+{
+    int half;
+    
+    half = npeers / 2;
+    return half + 1 <= nvotes;
+}
+
+/**
+ * @param peer The peer this response was sent by */
 int raft_recv_requestvote_response(raft_server_t* me_, int peer, msg_requestvote_response_t* r)
 {
+    raft_server_private_t* me = (void*)me_;
+
+    assert(peer < me->npeers);
+
+    if (r->term != raft_get_current_term(me_))
+        return 0;
+
+    if (1 == r->vote_granted)
+        me->votes_for_me[peer] = 1;
+
+    int votes;
+
+    votes = raft_get_nvotes_for_me(me_);
+
+    if (raft_votes_is_majority(me->npeers, votes))
+    {
+        raft_become_leader(me_);
+    }
+
     return 0;
 }
 
@@ -234,6 +299,8 @@ void raft_execute_command(raft_server_t* me_)
 
 void raft_set_election_timeout(raft_server_t* me_, int millisec)
 {
+    raft_server_private_t* me = (void*)me_;
+    me->election_timeout = millisec;
 }
 
 void raft_set_request_timeout(raft_server_t* me_, int millisec)
@@ -293,7 +360,7 @@ int raft_get_log_count(raft_server_t* me_)
     return 0;
 }
 
-void* raft_get_voted_for(raft_server_t* me_)
+int raft_get_voted_for(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
     return me->voted_for;
@@ -331,8 +398,7 @@ int raft_is_follower(raft_server_t* me_)
 
 int raft_is_leader(raft_server_t* me_)
 {
-
-    return 0;
+    return raft_get_state(me_) == RAFT_STATE_LEADER;
 }
 
 int raft_is_candidate(raft_server_t* me_)
@@ -341,8 +407,20 @@ int raft_is_candidate(raft_server_t* me_)
     return 0;
 }
 
+int raft_get_my_id(raft_server_t* me_)
+{
+    return 0;
+}
+
 int raft_send_requestvote(raft_server_t* me_, int peer)
 {
+    raft_server_private_t* me = (void*)me_;
+    msg_requestvote_t rv;
+
+    rv.term = raft_get_current_term(me_);
+    rv.last_log_index = raft_get_current_index(me_);
+    if (me->ext_func && me->ext_func->send)
+        me->ext_func->send(me->caller,NULL, peer, (void*)&rv, sizeof(msg_requestvote_t));
 
     return 0;
 }
@@ -385,6 +463,7 @@ void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers
     raft_server_private_t* me = (void*)me_;
     int npeers = 0;
 
+    /* TODO: one allocation only please */
     while (peers->udata_address)
     {
         npeers++;
@@ -393,4 +472,34 @@ void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers
         me->peers[npeers-1] = raft_peer_new(peers);
         peers++;
     }
+
+    me->votes_for_me = calloc(npeers, sizeof(int));
+}
+
+/**
+ * @return number of peers that this server has */
+int raft_get_npeers(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    return me->npeers;
+}
+
+/**
+ * @return number of votes this server has received this election */
+int raft_get_nvotes_for_me(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    int i, votes;
+
+    for (i=0, votes=0; i<me->npeers; i++)
+    {
+        if (1 == me->votes_for_me[i])
+            votes += 1;
+    }
+
+    if (raft_get_voted_for(me_) == raft_get_my_id(me_))
+        votes += 1;
+
+    return votes;
 }

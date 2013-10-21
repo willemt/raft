@@ -9,6 +9,17 @@
 
 #include "raft.h"
 
+#if 0
+void T_estRaft_server_voted_for_records_who_we_voted_for(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    raft_vote(r,2);
+    CuAssertTrue(tc, 1 == raft_get_voted_for(r));
+}
+#endif
+
 void TestRaft_server_idx_starts_at_1(CuTest * tc)
 {
     void *r;
@@ -126,5 +137,49 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitIndex(CuTes
     raft_set_lastapplied_index(r, 4);
     raft_periodic(r,1);
     CuAssertTrue(tc, 5 == raft_get_lastapplied_index(r));
+}
+
+void TestRaft_server_periodic_elapses_election_timeout(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    /* we don't want to set the timeout to zero */
+    raft_set_election_timeout(r, 1000);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
+
+    raft_periodic(r,0);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
+
+    raft_periodic(r,100);
+    CuAssertTrue(tc, 100 == raft_get_timeout_elapsed(r));
+}
+
+void TestRaft_server_election_timeout_sets_to_zero_when_elapsed_time_greater_than_timeout(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    raft_set_election_timeout(r, 1000);
+
+    /* greater than 1000 */
+    raft_periodic(r,2000);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
+}
+
+void TestRaft_server_cfg_sets_npeers(CuTest * tc)
+{
+    void *r;
+
+    /* 2 peers */
+    raft_peer_configuration_t cfg[] = {
+                {(-1),(void*)1},
+                {(-1),(void*)2},
+                {(-1),NULL}};
+
+    r = raft_new();
+    raft_set_configuration(r,cfg);
+
+    CuAssertTrue(tc, 2 == raft_get_npeers(r));
 }
 
