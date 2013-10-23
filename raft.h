@@ -14,27 +14,6 @@ typedef struct {
     void* udata_address;
 } raft_peer_configuration_t;
 
-#if 0
-typedef struct {
-    /* -1 uses implementation default */
-    int election_timeout;
-    /* -1 uses implementation default */
-    int request_timeout;
-    /* Terminated by udata_address being NULL */
-    raft_peer_configuration_t *peers;
-} raft_configuration_t;
-#endif
-
-/* messages */
-#if 0
-enum {
-    MSG_RequestVote,
-    MSG_RequestVoteResponse,
-    MSG_AppendEntries,
-    MSG_AppendEntriesResponse
-};
-#endif
-
 typedef struct {
     /* term candidate's term */
     int term;
@@ -49,11 +28,21 @@ typedef struct {
     int last_log_term;
 } msg_requestvote_t;
 
+/**
+ * every server must send commands in this format */
 typedef struct {
     unsigned int id;
     unsigned char* data;
     unsigned int len;
 } msg_command_t;
+
+typedef struct {
+    unsigned int term;
+    unsigned int id;
+    unsigned char* data;
+    unsigned int len;
+} raft_command_t;
+
 
 typedef struct {
     unsigned int id;
@@ -74,7 +63,7 @@ typedef struct {
     int prev_log_index;
     int prev_log_term;
     int n_entries;
-    void* entries;
+    msg_command_t* entries;
     int leader_commit;
 } msg_appendentries_t;
 
@@ -123,7 +112,6 @@ typedef struct {
     func_log_f log;
     func_applylog_f applylog;
 } raft_external_functions_t;
-
 
 typedef struct {
     int pass;
@@ -195,7 +183,7 @@ int raft_send_requestvote(raft_server_t* me, int peer);
 
 void raft_send_appendentries(raft_server_t* me, int peer);
 
-int raft_append_command(raft_server_t* me, unsigned char* data, int len);
+int raft_append_command(raft_server_t* me_, raft_command_t* c);
 
 void raft_commit_command(raft_server_t* me, int logIndex);
 

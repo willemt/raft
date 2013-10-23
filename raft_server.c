@@ -109,7 +109,6 @@ static long __peer_compare(
     return obj - other;
 }
 
-
 raft_server_t* raft_new()
 {
     raft_server_private_t* me;
@@ -123,6 +122,7 @@ raft_server_t* raft_new()
     raft_set_state((void*)me,RAFT_STATE_FOLLOWER);
     raft_set_request_timeout((void*)me, 500);
     raft_set_election_timeout((void*)me, 1000);
+//    me->log_map = hashmap_new(__log_hash, __log_compare, 100);
 //    me->peers = hashmap_new(__peer_hash, __peer_compare, 100);
     return (void*)me;
 }
@@ -255,27 +255,59 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
         ae->prev_log_index < raft_get_current_index(me_))
     {
         r.success = 0;
+        goto done;
     }
-    else
+
+    if (raft_is_candidate(me_))
     {
-        if (raft_is_candidate(me_))
-        {
-            raft_become_follower(me_);
-        }
-
-        if (raft_get_current_term(me_) < ae->term)
-        {
-            raft_set_current_term(me_, ae->term);
-        }
-
-        r.success = 1;
+        raft_become_follower(me_);
     }
+
+    if (raft_get_current_term(me_) < ae->term)
+    {
+        raft_set_current_term(me_, ae->term);
+    }
+
+    int i;
+    
+    for (i=0; i<ae->n_entries; i++)
+    {
+        msg_command_t* cmd;
+        raft_command_t* c;
+
+        cmd = &ae->entries[i];
+
+        c = malloc(sizeof(raft_command_t));
+        c->term = raft_get_current_term(me_);
+        c->len = cmd->len;
+        c->id = cmd->id;
+        c->data = malloc(cmd->len);
+        memcpy(c->data,cmd->data,cmd->len);
+
+        if (0 == raft_append_command(me_, c))
+        {
+            /* failure, we couldn't append it for some reason */
+            r.success = 0;
+            goto done;
+        }
+    }
+
+    r.success = 1;
+
+done:
 
     if (me->ext_func && me->ext_func->send)
         me->ext_func->send(me->caller, NULL, peer, (void*)&r,
                 sizeof(msg_appendentries_response_t));
 
     return 0;
+}
+
+raft_command_t* raft_get_command_from_index(raft_server_t* me_, int idx)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    return NULL;
 }
 
 int raft_recv_appendentries_response(raft_server_t* me_, int peer, msg_appendentries_response_t* ae)
@@ -319,7 +351,6 @@ int raft_votes_is_majority(const int npeers, const int nvotes)
         return 0;
     
     half = npeers / 2;
-    printf("%d %d %d\n", npeers, nvotes, half + 1);
     return half + 1 <= nvotes;
 }
 
@@ -417,9 +448,12 @@ int raft_recv_command(raft_server_t* me_, int peer, msg_command_t* cmd)
     return 0;
 }
 
+/**
+ * @return number of items within log */
 int raft_get_log_count(raft_server_t* me_)
 {
-    return 0;
+    raft_server_private_t* me = (void*)me_;
+    return arrayqueue_count(me->log);
 }
 
 int raft_get_voted_for(raft_server_t* me_)
@@ -485,17 +519,17 @@ int raft_send_requestvote(raft_server_t* me_, int peer)
     return 0;
 }
 
-int raft_append_command(raft_server_t* me_, unsigned char* data, int len)
+/**
+ * Appends command using the current term.
+ * Note: we make the assumption that current term is up-to-date
+ * @return 0 if unsuccessful */
+int raft_append_command(raft_server_t* me_, raft_command_t* c)
 {
     raft_server_private_t* me = (void*)me_;
 
-    char* d;
-
-    d = malloc(len);
-    memcpy(d,data,len);
-    arrayqueue_offer(me->log,d);
+    arrayqueue_offer(me->log, c);
     me->current_index += 1;
-    return 0;
+    return 1;
 }
 
 void raft_set_commit_index(raft_server_t* me_, int commit_idx)
