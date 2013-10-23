@@ -9,6 +9,16 @@
 #include "raft.h"
 #include "mock_send_functions.h"
 
+void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+
+    raft_become_candidate(r);
+    CuAssertTrue(tc, raft_is_candidate(r));
+}
+
 /* Candidate 5.2 */
 void TestRaft_follower_becoming_candidate_increments_current_term(CuTest * tc)
 {
@@ -269,12 +279,10 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(CuTest
 
     r = raft_new();
     raft_set_configuration(r,cfg);
-
     raft_set_external_functions(r,&funcs,sender);
-    raft_set_current_term(r,1);
+
     raft_set_state(r,RAFT_STATE_CANDIDATE);
-    CuAssertTrue(tc, raft_get_my_id(r) == raft_is_follower(r));
-    raft_periodic(r,1);
+    CuAssertTrue(tc, 0 == raft_is_follower(r));
 
     raft_recv_appendentries(r,1,&ae);
     CuAssertTrue(tc, 1 == raft_is_follower(r));

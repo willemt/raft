@@ -9,6 +9,17 @@
 #include "raft.h"
 #include "mock_send_functions.h"
 
+
+void TestRaft_follower_becomes_follower_is_follower(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+
+    raft_become_follower(r);
+    CuAssertTrue(tc, raft_is_follower(r));
+}
+
 /* 5.1 */
 void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(CuTest * tc)
 {
@@ -28,9 +39,10 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
                 {(-1),NULL}};
 
 
-    sender = sender_new();
     r = raft_new();
     raft_set_configuration(r,cfg);
+    sender = sender_new();
+    raft_set_external_functions(r,&funcs,sender);
 
     /* term is low */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -38,7 +50,6 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
 
     /*  higher current term */
     raft_set_current_term(r,5);
-    raft_set_external_functions(r,&funcs,sender);
     raft_recv_appendentries(r,1,&ae);
 
     /*  response is false */
@@ -47,6 +58,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     CuAssertTrue(tc, 0 == aer->success);
 }
 
+/* TODO: check if test case is needed */
 void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(CuTest * tc)
 {
     void *r;
@@ -73,11 +85,10 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
     /*  appendentry has newer term, so we change our currentterm */
     raft_recv_appendentries(r,1,&ae);
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
-
 }
 
 /*  5.3 */
-void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_index(CuTest * tc)
+void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_index_which_matches_prev_log_term(CuTest * tc)
 {
     void *r;
     void *sender;

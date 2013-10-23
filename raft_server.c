@@ -41,10 +41,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "raft.h"
 
 typedef struct {
-    /*  Persistent state: */
+    /* Persistent state: */
 
-    /*  the server's best guess of what the current term is
-     *  starts at zero */
+    /* the server's best guess of what the current term is
+     * starts at zero */
     int current_term;
 
     /* The candidate the server voted for in its current term,
@@ -54,7 +54,7 @@ typedef struct {
     /* the log which is replicated */
     void* log;
 
-    /*  Volatile state: */
+    /* Volatile state: */
 
     /* Index of highest log entry known to be committed */
     int commit_index;
@@ -173,6 +173,8 @@ void raft_become_candidate(raft_server_t* me_)
     me->voted_for = 0;
     me->timeout_elapased = 0;
 
+    raft_set_state(me_,RAFT_STATE_CANDIDATE);
+
 //    for (hashmap_iterator(me->peers, &iter);
 //         (p = hashmap_iterator_next_value(me->peers, &iter));)
     for (ii=0; ii<me->npeers; ii++)
@@ -187,6 +189,11 @@ void raft_become_candidate(raft_server_t* me_)
             me->ext_func->send(me->caller,NULL, ii, (void*)&rv, sizeof(msg_requestvote_t));
     }
 
+}
+
+void raft_become_follower(raft_server_t* me_)
+{
+    raft_set_state(me_,RAFT_STATE_FOLLOWER);
 }
 
 /**
@@ -228,8 +235,38 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 
 /**
  * Invoked by leader to replicate log entries (§5.3); also used as heartbeat (§5.2). */
-int raft_recv_appendentries(raft_server_t* me_, int peer, msg_appendentries_t* ae)
+int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentries_t* ae)
 {
+    raft_server_private_t* me = (void*)me_;
+    msg_appendentries_response_t r;
+
+    r.term = raft_get_current_term(me_);
+
+    if (
+        ae->term < raft_get_current_term(me_) ||
+        ae->prev_log_index < raft_get_current_index(me_))
+    {
+        r.success = 0;
+    }
+    else
+    {
+        if (raft_is_candidate(me_))
+        {
+            raft_become_follower(me_);
+        }
+
+        if (raft_get_current_term(me_) < ae->term)
+        {
+            raft_set_current_term(me_,ae->term);
+        }
+
+        r.success = 1;
+    }
+
+    if (me->ext_func && me->ext_func->send)
+        me->ext_func->send(me->caller, NULL, peer, (void*)&r,
+                sizeof(msg_appendentries_response_t));
+
     return 0;
 }
 
@@ -392,8 +429,7 @@ int raft_get_current_index(raft_server_t* me_)
 
 int raft_is_follower(raft_server_t* me_)
 {
-
-    return 0;
+    return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
 }
 
 int raft_is_leader(raft_server_t* me_)
@@ -403,8 +439,7 @@ int raft_is_leader(raft_server_t* me_)
 
 int raft_is_candidate(raft_server_t* me_)
 {
-
-    return 0;
+    return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
 }
 
 int raft_get_my_id(raft_server_t* me_)
