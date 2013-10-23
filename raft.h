@@ -203,9 +203,13 @@ int raft_get_timeout_elapsed(raft_server_t* me);
 
 void raft_set_commit_index(raft_server_t* me, int commit_idx);
 
-void raft_set_lastapplied_index(raft_server_t* me, int idx);
+void raft_set_last_applied_index(raft_server_t* me, int idx);
 
-int raft_get_lastapplied_index(raft_server_t* me);
+void raft_set_state(raft_server_t* me_, int state);
+
+void raft_set_request_timeout(raft_server_t* me_, int millisec);
+
+int raft_get_last_applied_index(raft_server_t* me);
 
 raft_peer_t* raft_peer_new(void* udata);
 

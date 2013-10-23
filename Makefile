@@ -2,13 +2,14 @@ CONTRIB_DIR = ..
 HASHMAP_DIR = $(CONTRIB_DIR)/CHashMapViaLinkedList
 BITSTREAM_DIR = $(CONTRIB_DIR)/CBitstream
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
+AQUEUE_DIR = $(CONTRIB_DIR)/CArrayQueue
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CC     = gcc
 #CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR)
-CCFLAGS = -g -O2 -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR)
+CCFLAGS = -g -O2 -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(AQUEUE_DIR)
 
 all: tests_main
 
@@ -36,7 +37,7 @@ main_test.c:
 	fi
 	sh make-tests.sh "test_*.c" > main_test.c
 
-tests_main: main_test.c raft_server.c raft_candidate.c raft_follower.c raft_leader.c raft_peer.c test_server.c test_server_request_vote.c test_follower.c test_candidate.c test_leader.c test_peer.c mock_send_functions.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_main: main_test.c raft_server.c raft_candidate.c raft_follower.c raft_leader.c raft_peer.c test_server.c test_server_request_vote.c test_follower.c test_candidate.c test_leader.c test_peer.c mock_send_functions.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(LLQUEUE_DIR)/linked_list_queue.c $(AQUEUE_DIR)/arrayqueue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_main
 

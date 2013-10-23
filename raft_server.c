@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assert.h>
 
 #include "linked_list_hashmap.h"
+#include "arrayqueue.h"
 #include "raft.h"
 
 typedef struct {
@@ -52,7 +53,8 @@ typedef struct {
     int voted_for;
 
     /* the log which is replicated */
-    void* log;
+    //void* log;
+    arrayqueue_t* log;
 
     /* Volatile state: */
 
@@ -60,7 +62,7 @@ typedef struct {
     int commit_index;
 
     /* Index of highest log entry applied to state machine */
-    int last_applied;
+    int last_applied_index;
 
     /*  follower/leader/candidate indicator */
     int state;
@@ -81,6 +83,7 @@ typedef struct {
     int npeers;
 
     int election_timeout;
+    int request_timeout;
 
 //    hashmap_t* peers;
 
@@ -111,10 +114,15 @@ raft_server_t* raft_new()
 {
     raft_server_private_t* me;
 
-    me = calloc(1,sizeof(raft_server_private_t));
+    if (!(me = calloc(1,sizeof(raft_server_private_t))))
+        return NULL;
     me->voted_for = -1;
     me->current_index = 0;
     me->timeout_elapased = 0;
+    me->log = arrayqueue_new();
+    raft_set_state((void*)me,RAFT_STATE_FOLLOWER);
+    raft_set_request_timeout((void*)me, 500);
+    raft_set_election_timeout((void*)me, 1000);
 //    me->peers = hashmap_new(__peer_hash, __peer_compare, 100);
     return (void*)me;
 }
@@ -257,7 +265,7 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
 
         if (raft_get_current_term(me_) < ae->term)
         {
-            raft_set_current_term(me_,ae->term);
+            raft_set_current_term(me_, ae->term);
         }
 
         r.success = 1;
@@ -280,15 +288,22 @@ int raft_recv_requestvote(raft_server_t* me_, int peer, msg_requestvote_t* vr)
     raft_server_private_t* me = (void*)me_;
     msg_requestvote_response_t r;
 
-    if (-1 == me->voted_for)
+    if (vr->term < raft_get_current_term(me_))
+    {
+        r.vote_granted = 0;
+    }
+    /* TODO: what's this for? */
+    else if (-1 == me->voted_for)
     {
         r.vote_granted = 0;
     }
     else
     {
         me->voted_for = peer;
+        r.vote_granted = 1;
     }
 
+    r.term = raft_get_current_term(me_);
     if (me->ext_func && me->ext_func->send)
         me->ext_func->send(me->caller, NULL, peer, (void*)&r,
                 sizeof(msg_requestvote_response_t));
@@ -299,8 +314,12 @@ int raft_recv_requestvote(raft_server_t* me_, int peer, msg_requestvote_t* vr)
 int raft_votes_is_majority(const int npeers, const int nvotes)
 {
     int half;
+
+    if (npeers < nvotes)
+        return 0;
     
     half = npeers / 2;
+    printf("%d %d %d\n", npeers, nvotes, half + 1);
     return half + 1 <= nvotes;
 }
 
@@ -316,15 +335,17 @@ int raft_recv_requestvote_response(raft_server_t* me_, int peer, msg_requestvote
         return 0;
 
     if (1 == r->vote_granted)
+    {
+        int votes;
+
         me->votes_for_me[peer] = 1;
 
-    int votes;
+        votes = raft_get_nvotes_for_me(me_);
 
-    votes = raft_get_nvotes_for_me(me_);
-
-    if (raft_votes_is_majority(me->npeers, votes))
-    {
-        raft_become_leader(me_);
+        if (raft_votes_is_majority(me->npeers, votes))
+        {
+            raft_become_leader(me_);
+        }
     }
 
     return 0;
@@ -342,16 +363,20 @@ void raft_set_election_timeout(raft_server_t* me_, int millisec)
 
 void raft_set_request_timeout(raft_server_t* me_, int millisec)
 {
+    raft_server_private_t* me = (void*)me_;
+    me->request_timeout = millisec;
 }
 
 int raft_get_election_timeout(raft_server_t* me_)
 {
-    return 0;
+    raft_server_private_t* me = (void*)me_;
+    return me->election_timeout;
 }
 
 int raft_get_request_timeout(raft_server_t* me_)
 {
-    return 0;
+    raft_server_private_t* me = (void*)me_;
+    return me->request_timeout;
 }
 
 int raft_vote(raft_server_t* me_, int peer)
@@ -462,6 +487,14 @@ int raft_send_requestvote(raft_server_t* me_, int peer)
 
 int raft_append_command(raft_server_t* me_, unsigned char* data, int len)
 {
+    raft_server_private_t* me = (void*)me_;
+
+    char* d;
+
+    d = malloc(len);
+    memcpy(d,data,len);
+    arrayqueue_offer(me->log,d);
+    me->current_index += 1;
     return 0;
 }
 
@@ -469,13 +502,16 @@ void raft_set_commit_index(raft_server_t* me_, int commit_idx)
 {
 }
 
-void raft_set_lastapplied_index(raft_server_t* me_, int idx)
+void raft_set_last_applied_index(raft_server_t* me_, int idx)
 {
+    raft_server_private_t* me = (void*)me_;
+    me->last_applied_index = idx;
 }
 
-int raft_get_lastapplied_index(raft_server_t* me_)
+int raft_get_last_applied_index(raft_server_t* me_)
 {
-    return 0;
+    raft_server_private_t* me = (void*)me_;
+    return me->last_applied_index;
 }
 
 int raft_get_commit_index(raft_server_t* me_)
