@@ -1177,7 +1177,6 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
     CuAssertTrue(tc, 1 == raft_is_candidate(r));
 }
 
-
 void TestRaft_leader_becomes_leader_is_leader(CuTest * tc)
 {
     void *r;
@@ -1468,4 +1467,6 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
 
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
+
+/* TODO: If a server receives a request with a stale term number, it rejects the request. */
 
