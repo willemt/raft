@@ -16,8 +16,8 @@
 #include <assert.h>
 
 #include "linked_list_hashmap.h"
-#include "arrayqueue.h"
 #include "raft.h"
+#include "raft_log.h"
 
 typedef struct {
     /* Persistent state: */
@@ -262,7 +262,7 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
         c->data = malloc(cmd->len);
         memcpy(c->data,cmd->data,cmd->len);
 
-        if (0 == raft_append_command(me_, c))
+        if (0 == raft_append_entry(me_, c))
         {
             /* failure, we couldn't append it for some reason */
             r.success = 0;
@@ -501,7 +501,7 @@ int raft_send_requestvote(raft_server_t* me_, int peer)
  * Appends command using the current term.
  * Note: we make the assumption that current term is up-to-date
  * @return 0 if unsuccessful */
-int raft_append_command(raft_server_t* me_, raft_command_t* c)
+int raft_append_entry(raft_server_t* me_, raft_command_t* c)
 {
     raft_server_private_t* me = (void*)me_;
 

@@ -130,7 +130,7 @@ void TestRaft_server_command_append_increases_logindex(CuTest* tc)
 
     r = raft_new();
     CuAssertTrue(tc, 0 == raft_get_current_index(r));
-    raft_append_command(r,&cmd);
+    raft_append_entry(r,&cmd);
     CuAssertTrue(tc, 1 == raft_get_current_index(r));
 }
 
@@ -147,7 +147,7 @@ void TestRaft_server_append_command_means_command_gets_current_term(CuTest* tc)
 
     r = raft_new();
     CuAssertTrue(tc, 0 == raft_get_current_index(r));
-    raft_append_command(r,&cmd);
+    raft_append_entry(r,&cmd);
     CuAssertTrue(tc, 1 == raft_get_current_index(r));
 }
 
@@ -164,13 +164,13 @@ void TestRaft_server_append_command_not_sucessful_if_command_with_id_already_app
 
     r = raft_new();
     CuAssertTrue(tc, 0 == raft_get_current_index(r));
-    raft_append_command(r,&cmd);
-    raft_append_command(r,&cmd);
+    raft_append_entry(r,&cmd);
+    raft_append_entry(r,&cmd);
     CuAssertTrue(tc, 1 == raft_get_current_index(r));
 
     /* different ID so we can be successful */
     cmd.id = 1;
-    raft_append_command(r,&cmd);
+    raft_append_entry(r,&cmd);
     CuAssertTrue(tc, 2 == raft_get_current_index(r));
 
 }
@@ -190,13 +190,13 @@ void TestRaft_server_command_is_retrieveable_using_index(CuTest* tc)
     cmd.id = 0;
     cmd.data = str;
     cmd.len = 3;
-    raft_append_command(r,&cmd);
+    raft_append_entry(r,&cmd);
 
     /* different ID so we can be successful */
     cmd.id = 1;
     cmd.data = str2;
     cmd.len = 3;
-    raft_append_command(r,&cmd);
+    raft_append_entry(r,&cmd);
 
     //CuAssertTrue(tc, (cmd_appended = raft_get_command_from_index(r,1)));
     //CuAssertTrue(tc, !strncmp(cmd_appended->data,str2,3));
@@ -610,7 +610,7 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
     cmd.len = 3;
     cmd.id = 0;
     cmd.term = 1;
-    raft_append_command(r, &cmd);
+    raft_append_entry(r, &cmd);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
     /* pass a appendentry that is newer  */
