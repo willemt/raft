@@ -21,33 +21,33 @@ typedef struct {
     /* candidateId candidate requesting vote */
     int candidate_id;
 
-    /* index of candidate's last log entry */
-    int last_log_index;
+    /* idx of candidate's last log entry */
+    int last_log_idx;
 
     /* term of candidate's last log entry */
     int last_log_term;
 } msg_requestvote_t;
 
 /**
- * every server must send commands in this format */
+ * every server must send entrys in this format */
 typedef struct {
     unsigned int id;
     unsigned char* data;
     unsigned int len;
-} msg_command_t;
+} msg_entry_t;
 
 typedef struct {
     unsigned int term;
     unsigned int id;
     unsigned char* data;
     unsigned int len;
-} raft_command_t;
+} raft_entry_t;
 
 
 typedef struct {
     unsigned int id;
     int was_committed;
-} msg_command_response_t;
+} msg_entry_response_t;
 
 typedef struct {
     /* currentTerm, for candidate to update itself */
@@ -60,10 +60,10 @@ typedef struct {
 typedef struct {
     int term;
     int leader_id;
-    int prev_log_index;
+    int prev_log_idx;
     int prev_log_term;
     int n_entries;
-    msg_command_t* entries;
+    msg_entry_t* entries;
     int leader_commit;
 } msg_appendentries_t;
 
@@ -72,7 +72,7 @@ typedef struct {
     int term;
 
     /* success true if follower contained entry matching
-     * prevLogIndex and prevLogTerm */
+     * prevLogidx and prevLogTerm */
     int success;
 } msg_appendentries_response_t;
 
@@ -145,7 +145,7 @@ int raft_recv_requestvote(raft_server_t* me, int peer, msg_requestvote_t* vr);
 
 int raft_recv_requestvote_response(raft_server_t* me, int peer, msg_requestvote_response_t* r);
 
-void raft_execute_command(raft_server_t* me);
+void raft_execute_entry(raft_server_t* me);
 
 void raft_set_election_timeout(raft_server_t* me, int millisec);
 
@@ -159,19 +159,19 @@ int raft_remove_peer(raft_server_t* me, int peer);
 
 int raft_get_num_peers(raft_server_t* me);
 
-int raft_recv_command(raft_server_t* me, int peer, msg_command_t* cmd);
+int raft_recv_entry(raft_server_t* me, int peer, msg_entry_t* cmd);
 
 int raft_get_log_count(raft_server_t* me);
 
 void raft_set_current_term(raft_server_t* me,int term);
 
-void raft_set_current_index(raft_server_t* me,int idx);
+void raft_set_current_idx(raft_server_t* me,int idx);
 
 int raft_get_current_term(raft_server_t* me);
 
-void raft_set_current_index(raft_server_t* me,int idx);
+void raft_set_current_idx(raft_server_t* me,int idx);
 
-int raft_get_current_index(raft_server_t* me);
+int raft_get_current_idx(raft_server_t* me);
 
 int raft_is_follower(raft_server_t* me);
 
@@ -183,30 +183,30 @@ int raft_send_requestvote(raft_server_t* me, int peer);
 
 void raft_send_appendentries(raft_server_t* me, int peer);
 
-int raft_append_command(raft_server_t* me_, raft_command_t* c);
-
-void raft_commit_command(raft_server_t* me, int logIndex);
+int raft_append_entry(raft_server_t* me_, raft_entry_t* c);
 
 int raft_get_timeout_elapsed(raft_server_t* me);
 
-void raft_set_commit_index(raft_server_t* me, int commit_idx);
+void raft_set_commit_idx(raft_server_t* me, int commit_idx);
 
-void raft_set_last_applied_index(raft_server_t* me, int idx);
+void raft_set_last_applied_idx(raft_server_t* me, int idx);
 
 void raft_set_state(raft_server_t* me_, int state);
 
 void raft_set_request_timeout(raft_server_t* me_, int millisec);
 
-int raft_get_last_applied_index(raft_server_t* me);
+int raft_get_last_applied_idx(raft_server_t* me);
 
 raft_peer_t* raft_peer_new(void* udata);
 
 int raft_peer_is_leader(raft_peer_t* peer);
 
-int raft_peer_get_next_index(raft_peer_t* peer);
+int raft_peer_get_next_idx(raft_peer_t* peer);
 
-void raft_peer_set_next_index(raft_peer_t* peer, int nextIdx);
+void raft_peer_set_next_idx(raft_peer_t* peer, int nextIdx);
 
 void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers);
 
 int raft_votes_is_majority(const int npeers, const int nvotes);
+
+void raft_apply_entry(raft_server_t* me_);

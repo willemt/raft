@@ -36,11 +36,11 @@ typedef struct {
 
     /* Volatile state: */
 
-    /* Index of highest log entry known to be committed */
-    int commit_index;
+    /* idx of highest log entry known to be committed */
+    int commit_idx;
 
-    /* Index of highest log entry applied to state machine */
-    int last_applied_index;
+    /* idx of highest log entry applied to state machine */
+    int last_applied_idx;
 
     /*  follower/leader/candidate indicator */
     int state;
@@ -52,7 +52,7 @@ typedef struct {
     void* caller;
 
     /* indicates size of log */
-    int current_index;
+    int current_idx;
 
     /* amount of time left till timeout */
     int timeout_elapased;
@@ -94,7 +94,7 @@ raft_server_t* raft_new()
     if (!(me = calloc(1,sizeof(raft_server_private_t))))
         return NULL;
     me->voted_for = -1;
-    me->current_index = 0;
+    me->current_idx = 0;
     me->timeout_elapased = 0;
     me->log = raft_log_new();
     raft_set_state((void*)me,RAFT_STATE_FOLLOWER);
@@ -167,7 +167,7 @@ void raft_become_candidate(raft_server_t* me_)
 
         rv.term = me->current_term;
         rv.candidate_id = 0;//me->current_term;
-//        rv.last_log_index = me->log
+//        rv.last_log_idx = me->log
         
         if (me->ext_func && me->ext_func->send)
             me->ext_func->send(me->caller,NULL, ii, (void*)&rv, sizeof(msg_requestvote_t));
@@ -207,6 +207,11 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (void*)me_;
 
+    if (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
+    {
+        raft_apply_entry(me_);
+    }
+
     me->timeout_elapased += msec_since_last_period;
 
     if (me->election_timeout < me->timeout_elapased)
@@ -228,7 +233,7 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
 
     if (
         ae->term < raft_get_current_term(me_) ||
-        ae->prev_log_index < raft_get_current_index(me_))
+        ae->prev_log_idx < raft_get_current_idx(me_))
     {
         r.success = 0;
         goto done;
@@ -248,12 +253,12 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
     
     for (i=0; i<ae->n_entries; i++)
     {
-        msg_command_t* cmd;
-        raft_command_t* c;
+        msg_entry_t* cmd;
+        raft_entry_t* c;
 
         cmd = &ae->entries[i];
 
-        c = malloc(sizeof(raft_command_t));
+        c = malloc(sizeof(raft_entry_t));
         c->term = raft_get_current_term(me_);
         c->len = cmd->len;
         c->id = cmd->id;
@@ -279,7 +284,7 @@ done:
     return 0;
 }
 
-raft_command_t* raft_get_command_from_index(raft_server_t* me_, int idx)
+raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx)
 {
     raft_server_private_t* me = (void*)me_;
 
@@ -358,7 +363,7 @@ int raft_recv_requestvote_response(raft_server_t* me_, int peer, msg_requestvote
     return 0;
 }
 
-void raft_execute_command(raft_server_t* me_)
+void raft_execute_entry(raft_server_t* me_)
 {
 }
 
@@ -419,7 +424,7 @@ int raft_get_num_peers(raft_server_t* me_)
     return 0;
 }
 
-int raft_recv_command(raft_server_t* me_, int peer, msg_command_t* cmd)
+int raft_recv_entry(raft_server_t* me_, int peer, msg_entry_t* cmd)
 {
     return 0;
 }
@@ -450,16 +455,16 @@ int raft_get_current_term(raft_server_t* me_)
     return me->current_term;
 }
 
-void raft_set_current_index(raft_server_t* me_, int idx)
+void raft_set_current_idx(raft_server_t* me_, int idx)
 {
     raft_server_private_t* me = (void*)me_;
-    me->current_index = idx;
+    me->current_idx = idx;
 }
 
-int raft_get_current_index(raft_server_t* me_)
+int raft_get_current_idx(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
-    return me->current_index;
+    return me->current_idx;
 }
 
 int raft_is_follower(raft_server_t* me_)
@@ -488,7 +493,7 @@ int raft_send_requestvote(raft_server_t* me_, int peer)
     msg_requestvote_t rv;
 
     rv.term = raft_get_current_term(me_);
-    rv.last_log_index = raft_get_current_index(me_);
+    rv.last_log_idx = raft_get_current_idx(me_);
     if (me->ext_func && me->ext_func->send)
         me->ext_func->send(me->caller,NULL, peer, (void*)&rv, sizeof(msg_requestvote_t));
 
@@ -496,42 +501,60 @@ int raft_send_requestvote(raft_server_t* me_, int peer)
 }
 
 /**
- * Appends command using the current term.
+ * Appends entry using the current term.
  * Note: we make the assumption that current term is up-to-date
  * @return 0 if unsuccessful */
-int raft_append_entry(raft_server_t* me_, raft_command_t* c)
+int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
 {
     raft_server_private_t* me = (void*)me_;
 
-    raft_log_append_entry(me->log,c);
-    me->current_index += 1;
-    return 1;
+    if (1 == raft_log_append_entry(me->log,c))
+    {
+        me->current_idx += 1;
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
-void raft_set_commit_index(raft_server_t* me_, int commit_idx)
-{
-}
-
-void raft_set_last_applied_index(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->last_applied_index = idx;
-}
-
-int raft_get_last_applied_index(raft_server_t* me_)
+void raft_set_commit_idx(raft_server_t* me_, int idx)
 {
     raft_server_private_t* me = (void*)me_;
-    return me->last_applied_index;
+    me->commit_idx = idx;
 }
 
-int raft_get_commit_index(raft_server_t* me_)
+void raft_set_last_applied_idx(raft_server_t* me_, int idx)
 {
-    return 0;
+    raft_server_private_t* me = (void*)me_;
+    me->last_applied_idx = idx;
 }
 
-void raft_commit_command(raft_server_t* me_, int logIndex)
+int raft_get_last_applied_idx(raft_server_t* me_)
 {
+    raft_server_private_t* me = (void*)me_;
+    return me->last_applied_idx;
+}
 
+int raft_get_commit_idx(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    return me->commit_idx;
+}
+
+/**
+ * Apply entry at lastApplied + 1 */
+void raft_apply_entry(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    if (me->last_applied_idx == raft_get_commit_idx(me_))
+        return;
+
+    me->last_applied_idx++;
+
+    // TODO: callback for state machine application goes here
 }
 
 void raft_send_appendentries(raft_server_t* me_, int peer)
