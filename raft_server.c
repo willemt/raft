@@ -32,7 +32,7 @@ typedef struct {
 
     /* the log which is replicated */
     //void* log;
-    arrayqueue_t* log;
+    raft_log_t* log;
 
     /* Volatile state: */
 
@@ -96,12 +96,10 @@ raft_server_t* raft_new()
     me->voted_for = -1;
     me->current_index = 0;
     me->timeout_elapased = 0;
-    me->log = arrayqueue_new();
+    me->log = raft_log_new();
     raft_set_state((void*)me,RAFT_STATE_FOLLOWER);
     raft_set_request_timeout((void*)me, 500);
     raft_set_election_timeout((void*)me, 1000);
-//    me->log_map = hashmap_new(__log_hash, __log_compare, 100);
-//    me->peers = hashmap_new(__peer_hash, __peer_compare, 100);
     return (void*)me;
 }
 
@@ -431,7 +429,7 @@ int raft_recv_command(raft_server_t* me_, int peer, msg_command_t* cmd)
 int raft_get_log_count(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
-    return arrayqueue_count(me->log);
+    return raft_log_count(me->log);
 }
 
 int raft_get_voted_for(raft_server_t* me_)
@@ -505,7 +503,7 @@ int raft_append_entry(raft_server_t* me_, raft_command_t* c)
 {
     raft_server_private_t* me = (void*)me_;
 
-    arrayqueue_offer(me->log, c);
+    raft_log_append_entry(me->log,c);
     me->current_index += 1;
     return 1;
 }
