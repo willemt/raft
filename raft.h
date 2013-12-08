@@ -209,6 +209,7 @@ void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers
 
 int raft_votes_is_majority(const int npeers, const int nvotes);
 
-void raft_apply_entry(raft_server_t* me_);
+int raft_apply_entry(raft_server_t* me_);
 
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);
+

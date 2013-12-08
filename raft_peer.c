@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef struct {
     void* udata;
+    int next_idx;
 } raft_peer_private_t;
 
 raft_peer_t* raft_peer_new(void* udata)
@@ -58,10 +59,12 @@ int raft_peer_is_leader(raft_peer_t* me_)
 
 int raft_peer_get_next_index(raft_peer_t* me_)
 {
-    return 0;
+    raft_peer_private_t* me = (void*)me_;
+    return me->next_idx;
 }
 
 void raft_peer_set_next_index(raft_peer_t* me_, int nextIdx)
 {
-
+    raft_peer_private_t* me = (void*)me_;
+    me->next_idx = nextIdx;
 }

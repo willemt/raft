@@ -9,3 +9,4 @@ int raft_log_count(raft_log_t* me_);
 
 raft_entry_t* raft_log_get_from_idx(raft_log_t* me_, int idx);
 
+raft_entry_t *raft_log_peektail(raft_log_t * me_);

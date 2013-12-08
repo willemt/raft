@@ -18,7 +18,6 @@
 /* for varags */
 #include <stdarg.h>
 
-#include "linked_list_hashmap.h"
 #include "raft.h"
 #include "raft_log.h"
 
@@ -109,7 +108,7 @@ raft_server_t* raft_new()
     if (!(me = calloc(1,sizeof(raft_server_private_t))))
         return NULL;
     me->voted_for = -1;
-    me->current_idx = 0;
+    me->current_idx = 1;
     me->timeout_elapased = 0;
     me->log = raft_log_new();
     raft_set_state((void*)me,RAFT_STATE_FOLLOWER);
@@ -280,7 +279,7 @@ int raft_recv_appendentries(
 #endif
 
 
-    if (-1 != ae->prev_log_idx)
+    if (0 != ae->prev_log_idx)
     {
         raft_entry_t* e;
 
@@ -299,11 +298,10 @@ int raft_recv_appendentries(
             but different terms), delete the existing entry and all that
             follow it (§5.3) */
             raft_entry_t* e2;
-            if ((e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1)))
+            if ((e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx+1)))
             {
-                raft_log_delete(me->log, ae->prev_log_idx + 1);
+                raft_log_delete(me->log, ae->prev_log_idx+1);
             }
-
         }
         else
         {
@@ -311,11 +309,21 @@ int raft_recv_appendentries(
             assert(0);
         }
     }
-    else
+
+    /* 5. If leaderCommit > commitIndex, set commitIndex =
+        min(leaderCommit, last log index) */
+    if (raft_get_commit_idx(me_) < ae->leader_commit)
     {
+        raft_entry_t* e = raft_log_peektail(me->log);
 
+        if (e)
+        {
+            raft_set_commit_idx(me_,
+                    e->id < ae->leader_commit ? e->id : ae->leader_commit);
+
+            while (1 == raft_apply_entry(me_));
+        }
     }
-
 
     if (raft_is_candidate(me_))
     {
@@ -608,17 +616,20 @@ int raft_get_commit_idx(raft_server_t* me_)
 }
 
 /**
- * Apply entry at lastApplied + 1 */
-void raft_apply_entry(raft_server_t* me_)
+ * Apply entry at lastApplied + 1
+ * @return 1 if entry committed, 0 otherwise */
+int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
 
     if (me->last_applied_idx == raft_get_commit_idx(me_))
-        return;
+        return 0;
 
     me->last_applied_idx++;
 
     // TODO: callback for state machine application goes here
+
+    return 1;
 }
 
 void raft_send_appendentries(raft_server_t* me_, int peer)

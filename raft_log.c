@@ -15,8 +15,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-//#include "linked_list_hashmap.h"
-#include "arrayqueue.h"
 #include "raft.h"
 #include "raft_log.h"
 
@@ -120,7 +118,11 @@ int raft_log_append_entry(raft_log_t* me_, raft_entry_t* c)
 raft_entry_t* raft_log_get_from_idx(raft_log_t* me_, int idx)
 {
     raft_log_private_t* me = (void*)me_;
-    int i = (me->front + idx - me->base_log_index) % me->size;
+    int i;
+
+    /* idx starts at 1 */
+    idx -= 1;
+    i = (me->front + idx - me->base_log_index) % me->size;
     return &me->entries[i];
 }
 
@@ -137,9 +139,12 @@ void raft_log_delete(raft_log_t* me_, int idx)
     raft_log_private_t* me = (void*)me_;
     int end, i;
 
+    /* idx starts at 1 */
+    idx -= 1;
+    idx -= me->base_log_index;
+
     for (end = raft_log_count(me_); idx<end; idx++)
     {
-        int idx2 = (me->front + idx - me->base_log_index) % me->size;
         me->back--;
         me->count--;
     }
@@ -164,9 +169,7 @@ void raft_log_delete(raft_log_t* me_, int idx)
 /**
  * Remove oldest entry
  * @return oldest entry */
-void *raft_log_poll(
-    raft_log_t * me_
-)
+void *raft_log_poll(raft_log_t * me_)
 {
     raft_log_private_t* me = (void*)me_;
     const void *elem;
@@ -180,11 +183,21 @@ void *raft_log_poll(
     return (void *) elem;
 }
 
+/*
+ * @return youngest entry */
+raft_entry_t *raft_log_peektail(raft_log_t * me_)
+{
+    raft_log_private_t* me = (void*)me_;
+    const void *elem;
+
+    if (0 == raft_log_count(me_))
+        return NULL;
+    return &me->entries[me->back];
+}
+
 /**
  * Empty the queue. */
-void raft_log_empty(
-    raft_log_t * me_
-)
+void raft_log_empty(raft_log_t * me_)
 {
     raft_log_private_t* me = (void*)me_;
 
