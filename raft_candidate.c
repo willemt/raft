@@ -39,16 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "raft.h"
 
-typedef struct {
-
-    /* The set of servers from which the candidate has
-     * received a RequestVote response in this term. */
-    int votes_responded;
-
-    /* The set of servers from which the candidate has received a vote in this term. */
-    int votes_granted;
-
-} candidate_t;
 
 void raft_candidate_periodic(raft_server_t* me)
 {

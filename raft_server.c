@@ -65,13 +65,38 @@ typedef struct {
     int election_timeout;
     int request_timeout;
 
-//    hashmap_t* peers;
-
-//    int log_Size;
-
     /* who has voted for me */
     int *votes_for_me;
 } raft_server_private_t;
+
+typedef struct {
+    /* Array: For each server, index of the next log entry to send to
+     * that server (initialized to leader last log index +1) */
+    int *nextIndex;
+
+    /* Array: for each server, index of highest log entry known to be
+     * replicated on server (initialized to 0, increases monotonically) */
+    int *matchIndex;
+
+#if 0
+    /* The latest entry that each follower has acknowledged is the same as
+     * the leader's. This is used to calculate commitIndex on the leader. */
+    int last_agree_index;
+#endif
+
+} leader_t;
+
+typedef struct {
+
+    /* The set of servers from which the candidate has
+     * received a RequestVote response in this term. */
+    int votes_responded;
+
+    /* The set of servers from which the candidate has received a vote in this 
+     * term. */
+    int votes_granted;
+
+} candidate_t;
 
 /* TODO: replace with better hash() */
 static unsigned long __peer_hash(
@@ -197,8 +222,7 @@ void raft_become_follower(raft_server_t* me_)
 /**
  * Convert to candidate if election timeout elapses without either
  *  Receiving valid AppendEntries RPC, or
- *  Granting vote to candidate
- */
+ *  Granting vote to candidate */
 #if 0
 int raft_election_timeout_elapsed(raft_server_t* me_)
 {
@@ -245,6 +269,7 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx)
 
 int raft_recv_appendentries_response(raft_server_t* me_, int peer, msg_appendentries_response_t* ae)
 {
+    // TODO
     return 0;
 }
 
@@ -468,36 +493,15 @@ int raft_vote(raft_server_t* me_, int peer)
     return 0;
 }
 
-#if 0
-raft_peer_t* raft_add_peer(raft_server_t* me_, int peer_udata)
-{
-    raft_server_private_t* me = (void*)me_;
-    raft_peer_t* p;
-
-    if (hashmap_get(me->peers,peer_udata))
-    {
-        return NULL;
-    }
-
-    p = raft_peer_new(peer_udata);
-    hashmap_put(me->peers, peer_udata, p);
-    return p;
-}
-
-int raft_remove_peer(raft_server_t* me_, int peer)
-{
-    return 0;
-}
-#endif
-
 int raft_get_num_peers(raft_server_t* me_)
 {
-
+    // TODO
     return 0;
 }
 
 int raft_recv_entry(raft_server_t* me_, int peer, msg_entry_t* cmd)
 {
+    // TODO
     return 0;
 }
 

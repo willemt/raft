@@ -40,22 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "raft.h"
 
 
-typedef struct {
-    /* Array: For each server, index of the next log entry to send to
-     * that server (initialized to leader last log index +1) */
-    int *nextIndex;
-
-    /* Array: for each server, index of highest log entry known to be
-     * replicated on server (initialized to 0, increases monotonically) */
-    int *matchIndex;
-
-#if 0
-    /* The latest entry that each follower has acknowledged is the same as
-     * the leader's. This is used to calculate commitIndex on the leader. */
-    int last_agree_index;
-#endif
-
-} leader_t;
 
 
 void raft_leader_periodic(raft_server_t* me)
