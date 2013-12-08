@@ -127,7 +127,7 @@ raft_server_t* raft_new();
 
 int raft_get_voted_for(raft_server_t* me);
 
-void raft_set_external_functions(raft_server_t* me, raft_external_functions_t* funcs, void* caller);
+void raft_set_callbacks(raft_server_t* me, raft_external_functions_t* funcs, void* caller);
 
 void raft_election_start(raft_server_t* me);
 
@@ -210,3 +210,5 @@ void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers
 int raft_votes_is_majority(const int npeers, const int nvotes);
 
 void raft_apply_entry(raft_server_t* me_);
+
+raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);

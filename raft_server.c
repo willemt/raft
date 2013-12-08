@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+/* for varags */
+#include <stdarg.h>
+
 #include "linked_list_hashmap.h"
 #include "raft.h"
 #include "raft_log.h"
@@ -71,7 +74,7 @@ typedef struct {
     int *votes_for_me;
 } raft_server_private_t;
 
-
+/* TODO: replace with better hash() */
 static unsigned long __peer_hash(
     const void *obj
 )
@@ -85,6 +88,18 @@ static long __peer_compare(
 )
 {
     return obj - other;
+}
+
+static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
+{
+    raft_server_private_t* me = (void*)me_;
+    char buf[1024];
+    va_list args;
+
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    printf("%s\n", buf);
+    //__FUNC_log(bto,src,buf);
 }
 
 raft_server_t* raft_new()
@@ -122,7 +137,7 @@ int raft_get_state(raft_server_t* me_)
     return me->state;
 }
 
-void raft_set_external_functions(raft_server_t* me_, raft_external_functions_t* funcs, void* caller)
+void raft_set_callbacks(raft_server_t* me_, raft_external_functions_t* funcs, void* caller)
 {
     raft_server_private_t* me = (void*)me_;
 
@@ -222,32 +237,92 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     return 0;
 }
 
+raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    return raft_log_get_from_idx(me->log, idx);
+}
+
+int raft_recv_appendentries_response(raft_server_t* me_, int peer, msg_appendentries_response_t* ae)
+{
+    return 0;
+}
+
 /**
  * Invoked by leader to replicate log entries (§5.3); also used as heartbeat (§5.2). */
-int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentries_t* ae)
+int raft_recv_appendentries(
+        raft_server_t* me_,
+        const int peer,
+        msg_appendentries_t* ae)
 {
     raft_server_private_t* me = (void*)me_;
     msg_appendentries_response_t r;
 
     r.term = raft_get_current_term(me_);
 
-    if (
-        ae->term < raft_get_current_term(me_) ||
-        ae->prev_log_idx < raft_get_current_idx(me_))
+    /* 1. Reply false if term < currentTerm (§5.1) */
+    if (ae->term < raft_get_current_term(me_))
     {
+        __log(me_, NULL, "AE term is less than current term");
         r.success = 0;
         goto done;
     }
+
+#if 0
+    if (-1 != ae->prev_log_idx &&
+         ae->prev_log_idx < raft_get_current_idx(me_))
+    {
+        __log(me_, NULL, "AE prev_idx is less than current idx");
+        r.success = 0;
+        goto done;
+    }
+#endif
+
+
+    if (-1 != ae->prev_log_idx)
+    {
+        raft_entry_t* e;
+
+        if ((e = raft_get_entry_from_idx(me_, ae->prev_log_idx)))
+        {
+            /* 2. Reply false if log doesn’t contain an entry at prevLogIndex
+               whose term matches prevLogTerm (§5.3) */
+            if (e->term != ae->prev_log_term)
+            {
+                __log(me_, NULL, "AE term doesn't match prev_idx");
+                r.success = 0;
+                goto done;
+            }
+
+            /* 3. If an existing entry conflicts with a new one (same index
+            but different terms), delete the existing entry and all that
+            follow it (§5.3) */
+            raft_entry_t* e2;
+            if ((e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1)))
+            {
+                raft_log_delete(me->log, ae->prev_log_idx + 1);
+            }
+
+        }
+        else
+        {
+            __log(me_, NULL, "AE no log at prev_idx");
+            assert(0);
+        }
+    }
+    else
+    {
+
+    }
+
 
     if (raft_is_candidate(me_))
     {
         raft_become_follower(me_);
     }
 
-    if (raft_get_current_term(me_) < ae->term)
-    {
-        raft_set_current_term(me_, ae->term);
-    }
+    raft_set_current_term(me_, ae->term);
 
     int i;
     
@@ -258,6 +333,7 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
 
         cmd = &ae->entries[i];
 
+        /* TODO: replace malloc with mempoll/arena */
         c = malloc(sizeof(raft_entry_t));
         c->term = raft_get_current_term(me_);
         c->len = cmd->len;
@@ -267,7 +343,7 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
 
         if (0 == raft_append_entry(me_, c))
         {
-            /* failure, we couldn't append it for some reason */
+            __log(me_, NULL, "AE failure; couldn't append entry");
             r.success = 0;
             goto done;
         }
@@ -276,7 +352,6 @@ int raft_recv_appendentries(raft_server_t* me_, const int peer, msg_appendentrie
     r.success = 1;
 
 done:
-
     if (me->ext_func && me->ext_func->send)
         me->ext_func->send(me->caller, NULL, peer, (void*)&r,
                 sizeof(msg_appendentries_response_t));
@@ -284,17 +359,6 @@ done:
     return 0;
 }
 
-raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-
-    return NULL;
-}
-
-int raft_recv_appendentries_response(raft_server_t* me_, int peer, msg_appendentries_response_t* ae)
-{
-    return 0;
-}
 
 int raft_recv_requestvote(raft_server_t* me_, int peer, msg_requestvote_t* vr)
 {

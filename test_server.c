@@ -215,9 +215,8 @@ void TestRaft_server_entry_is_retrieveable_using_idx(CuTest* tc)
     ety.len = 3;
     raft_append_entry(r,&ety);
 
-//    ety_appended = raft_log_get_from_idx(r, int idx)
-    //CuAssertTrue(tc, (ety_appended = raft_get_entry_from_idx(r,1)));
-    //CuAssertTrue(tc, !strncmp(ety_appended->data,str2,3));
+    CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r,1)));
+    CuAssertTrue(tc, !strncmp(ety_appended->data,str2,3));
 }
 
 // If commitidx > lastApplied: increment lastApplied, apply
@@ -414,7 +413,7 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     r = raft_new();
     raft_set_configuration(r,cfg);
     sender = sender_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     raft_set_current_term(r,1);
 
@@ -456,7 +455,7 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     r = raft_new();
     raft_set_configuration(r,cfg);
 
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_current_term(r,1);
     raft_vote(r,1);
     raft_recv_requestvote(r,1,&rv);
@@ -497,7 +496,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     r = raft_new();
     raft_set_configuration(r,cfg);
     sender = sender_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     /* term is low */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -517,8 +516,14 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
 void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(CuTest * tc)
 {
     void *r;
+    void *sender;
     msg_appendentries_t ae;
     msg_appendentries_response_t *aer;
+
+    raft_external_functions_t funcs = {
+        .send = sender_send,
+        .log = NULL
+    };
 
     /* 2 peers */
     raft_peer_configuration_t cfg[] = {
@@ -526,19 +531,26 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
                 {(-1),(void*)2},
                 {(-1),NULL}};
 
-
-    /*  newer term */
-    memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 2;
-
     r = raft_new();
     raft_set_configuration(r,cfg);
+    sender = sender_new();
+    raft_set_callbacks(r,&funcs,sender);
 
     /*  older currentterm */
     raft_set_current_term(r,1);
 
+    /*  newer term for appendentry */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    /* no prev log idx */
+    ae.prev_log_idx = -1;
+    ae.term = 2;
+
     /*  appendentry has newer term, so we change our currentterm */
     raft_recv_appendentries(r,1,&ae);
+    aer = sender_poll_msg(sender);
+    CuAssertTrue(tc, NULL != aer);
+    CuAssertTrue(tc, 1 == aer->success);
+    /* term has been updated */
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
 }
 
@@ -554,10 +566,6 @@ void TestRaft_follower_doesnt_log_after_appendentry_if_no_entries_are_specified(
                 {(-1),(void*)2},
                 {(-1),NULL}};
 
-
-    /* appendentry */
-    memset(&ae,0,sizeof(msg_appendentries_t));
-
     r = raft_new();
     raft_set_configuration(r,cfg);
 
@@ -566,15 +574,31 @@ void TestRaft_follower_doesnt_log_after_appendentry_if_no_entries_are_specified(
     /*  log size s */
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
+    /* receive an appendentry with commit */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_term = 1;
+    ae.prev_log_idx = 4;
+    ae.leader_commit = 5;
+    ae.n_entries = 0;
+
     raft_recv_appendentries(r,1,&ae);
-    CuAssertTrue(tc, 1 == raft_get_log_count(r));
+    CuAssertTrue(tc, 0 == raft_get_log_count(r));
 }
 
 void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
 {
     void *r;
-
+    void *sender;
     msg_appendentries_t ae;
+    msg_entry_t ety;
+    msg_appendentries_response_t *aer;
+    char *str = "aaa";
+
+    raft_external_functions_t funcs = {
+        .send = sender_send,
+        .log = NULL
+    };
 
     /* 2 peers */
     raft_peer_configuration_t cfg[] = {
@@ -583,18 +607,35 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
                 {(-1),NULL}};
 
 
-    /* appendentry */
-    memset(&ae,0,sizeof(msg_appendentries_t));
-
     r = raft_new();
     raft_set_configuration(r,cfg);
+    sender = sender_new();
+    raft_set_callbacks(r,&funcs,sender);
 
     raft_set_state(r,RAFT_STATE_FOLLOWER);
 
     /*  log size s */
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
+    /* receive an appendentry with commit */
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_term = 1;
+    /* first appendentries msg */
+    ae.prev_log_idx = -1;
+    ae.leader_commit = 5;
+    /* include one entry */
+    memset(&ety,0,sizeof(msg_entry_t));
+    ety.data = str;
+    ety.len = 3;
+    ety.id = 1;
+    ae.entries = &ety;
+    ae.n_entries = 1;
+
     raft_recv_appendentries(r,1,&ae);
+    aer = sender_poll_msg(sender);
+    CuAssertTrue(tc, NULL != aer);
+    CuAssertTrue(tc, 1 == aer->success);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
@@ -604,6 +645,8 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
     void *r;
     void *sender;
     void *msg;
+    msg_entry_t ety;
+    char *str = "aaa";
     raft_external_functions_t funcs = {
         .send = sender_send,
         .log = NULL
@@ -620,15 +663,25 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
     sender = sender_new();
     r = raft_new();
     raft_set_configuration(r,cfg);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
+
+    raft_set_current_term(r,2);
+    raft_set_commit_idx(r,1);
+    raft_set_last_applied_idx(r, 1);
 
     /* log idx that server doesn't have */
     memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 5;
-    ae.prev_log_idx = 5;
-
-    /* current term is old */
-    raft_set_current_term(r,5);
+    ae.term = 2;
+    ae.prev_log_idx = 1;
+    /* prev_log_term is less than current term (ie. 2) */
+    ae.prev_log_term = 1;
+    /* include one entry */
+    memset(&ety,0,sizeof(msg_entry_t));
+    ety.data = str;
+    ety.len = 3;
+    ety.id = 1;
+    ae.entries = &ety;
+    ae.n_entries = 1;
 
     /* trigger reply */
     raft_recv_appendentries(r,1,&ae);
@@ -642,47 +695,81 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
 /* 5.3 */
 void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries(CuTest * tc)
 {
+    printf("X\n");
     void *r;
+    void *sender;
     msg_appendentries_t ae;
+    msg_appendentries_response_t *aer;
+    raft_entry_t *ety_appended;
+
+    raft_external_functions_t funcs = {
+        .send = sender_send,
+        .log = NULL
+    };
+
     /* 2 peers */
     raft_peer_configuration_t cfg[] = {
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
 
-
     r = raft_new();
     raft_set_configuration(r,cfg);
+    sender = sender_new();
+    raft_set_callbacks(r,&funcs,sender);
 
-    raft_set_current_term(r,2);
-
-    /* first append entry */
-    memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 1;
-    ae.prev_log_idx = 0;
-    ae.prev_log_term = 0;
+    raft_set_current_term(r,1);
 
     raft_entry_t ety;
-    char *str = "111";
 
     /* increase log size */
-    ety.data = str;
+    char *str1 = "111";
+    ety.data = str1;
     ety.len = 3;
     ety.id = 1;
     ety.term = 1;
     raft_append_entry(r, &ety);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
+    /* this log will be overwritten by the appendentries below */
+    char *str2 = "222";
+    ety.data = str2;
+    ety.len = 3;
+    ety.id = 2;
+    ety.term = 1;
+    raft_append_entry(r, &ety);
+    CuAssertTrue(tc, 2 == raft_get_log_count(r));
+    CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r,1)));
+    CuAssertTrue(tc, !strncmp(ety_appended->data,str2,3));
+
     /* pass a appendentry that is newer  */
+    msg_entry_t mety;
+
     memset(&ae,0,sizeof(msg_appendentries_t));
     ae.term = 2;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include one entry */
+    memset(&ety,0,sizeof(msg_entry_t));
+    char *str3 = "333";
+    mety.data = str3;
+    mety.len = 3;
+    mety.id = 3;
+    ae.entries = &mety;
+    ae.n_entries = 1;
 
     raft_recv_appendentries(r,1,&ae);
-    CuAssertTrue(tc, 0 == raft_get_log_count(r));
+    aer = sender_poll_msg(sender);
+    CuAssertTrue(tc, NULL != aer);
+    CuAssertTrue(tc, 1 == aer->success);
+    CuAssertTrue(tc, 2 == raft_get_log_count(r));
+    CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r,1)));
+    CuAssertTrue(tc, !strncmp(ety_appended->data,str2,3));
 }
 
 void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuTest * tc)
 {
+    printf("Y\n");
     void *r;
     void *sender;
     raft_external_functions_t funcs = {
@@ -708,7 +795,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
     raft_set_configuration(r,cfg);
 
     raft_set_current_term(r,1);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_recv_appendentries(r,1,&ae);
 
     CuAssertTrue(tc, 0);
@@ -739,7 +826,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(CuTest * t
     sender = sender_new();
     r = raft_new();
     raft_set_configuration(r,cfg);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     /* receive an appendentry with commit */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -774,7 +861,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(CuTest *
     sender = sender_new();
     r = raft_new();
     raft_set_configuration(r,cfg);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     /* receive an appendentry with commit */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -892,7 +979,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTe
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /*  request vote */
@@ -984,7 +1071,7 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(CuTe
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /* set term so we can check it gets included in the outbound message */
@@ -1030,7 +1117,7 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(C
 
     r = raft_new();
     raft_set_configuration(r,cfg);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_election_timeout(r,1000);
 
     /* server wants to be leader, so becomes candidate */
@@ -1072,7 +1159,7 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
     r = raft_new();
     raft_set_configuration(r,cfg);
     CuAssertTrue(tc, 5 == raft_get_npeers(r));
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_become_candidate(r);
     CuAssertTrue(tc, 1 == raft_get_current_term(r));
 
@@ -1116,7 +1203,7 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
     sender = sender_new();
     r = raft_new();
     raft_set_configuration(r,cfg);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     raft_vote(r,1);
 
@@ -1149,7 +1236,7 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     raft_set_configuration(r,cfg);
     raft_set_state(r,RAFT_STATE_CANDIDATE);
 
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_current_term(r,5);
     raft_set_current_idx(r,3);
     raft_send_requestvote(r,1);
@@ -1185,7 +1272,7 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(CuTest
 
     r = raft_new();
     raft_set_configuration(r,cfg);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     raft_set_state(r,RAFT_STATE_CANDIDATE);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
@@ -1215,7 +1302,7 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /* server's log is newer */
@@ -1267,7 +1354,7 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(CuTest *
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /* candidate to leader */
@@ -1300,7 +1387,7 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /* I am the leader */
@@ -1346,7 +1433,7 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(Cu
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /* i'm leader */
@@ -1379,7 +1466,7 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
 
     sender = sender_new();
     r = raft_new();
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_set_configuration(r,cfg);
 
     /* i'm leader */
@@ -1477,7 +1564,7 @@ void TestRaft_leader_increase_commitno_when_majority_have_entry_and_atleast_one_
     raft_set_current_term(r,5);
     raft_set_current_idx(r,5);
     raft_set_commit_idx(r,4);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
 
     raft_send_appendentries(r, 1);
     raft_send_appendentries(r, 2);
@@ -1522,7 +1609,7 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
     raft_set_state(r,RAFT_STATE_LEADER);
     raft_set_current_term(r,5);
     raft_set_current_idx(r,5);
-    raft_set_external_functions(r,&funcs,sender);
+    raft_set_callbacks(r,&funcs,sender);
     raft_recv_appendentries(r,1,&ae);
 
     CuAssertTrue(tc, 1 == raft_is_follower(r));

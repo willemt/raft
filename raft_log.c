@@ -15,15 +15,28 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "linked_list_hashmap.h"
+//#include "linked_list_hashmap.h"
 #include "arrayqueue.h"
 #include "raft.h"
 #include "raft_log.h"
 
+#define INITIAL_CAPACITY 10
+#define in(x) ((raft_log_private_t*)x)
 
-typedef struct {
-    arrayqueue_t* log_qu;
-    hashmap_t* log_map;
+typedef struct
+{
+    /* size of array */
+    int size;              
+
+    /* the amount of elements in the array */
+    int count;             
+
+    /* position of the queue */
+    int front, back;       
+
+    int base_log_index;
+
+    raft_entry_t* entries;
 } raft_log_private_t;
 
 static unsigned long __entry_hash(
@@ -41,13 +54,43 @@ static long __entry_compare(
     return obj - other;
 }
 
+static void __ensurecapacity(
+    raft_log_private_t * me
+)
+{
+    int i, j;
+    raft_entry_t *temp;
+
+    if (me->count < me->size)
+        return;
+
+    temp = calloc(1,sizeof(raft_entry_t) * me->size * 2);
+
+    for (i = 0, j = me->front; i < me->count; i++, j++)
+    {
+        if (j == me->size)
+            j = 0;
+        memcpy(&temp[i], &me->entries[j], sizeof(raft_entry_t));
+    }
+
+    me->size *= 2;
+    me->entries = temp;
+    me->front = 0;
+    me->back = me->count;
+
+    /* clean up old entries */
+    free(me->entries);
+}
+
 raft_log_t* raft_log_new()
 {
     raft_log_private_t* me;
 
     me = calloc(1,sizeof(raft_log_private_t));
-    me->log_qu = arrayqueue_new();
-    me->log_map = hashmap_new(__entry_hash, __entry_compare, 100);
+    me->size = INITIAL_CAPACITY;
+    me->count = 0;
+    me->back = in(me)->front = 0;
+    me->entries = calloc(1,sizeof(raft_entry_t) * me->size);
     return (void*)me;
 }
 
@@ -63,24 +106,98 @@ int raft_log_append_entry(raft_log_t* me_, raft_entry_t* c)
     if (0 == c->id)
         return 0;
 
-    if (hashmap_get(me->log_map, (void*)c->id))
-        return 0;
+    __ensurecapacity(me);
 
-    arrayqueue_offer(me->log_qu, c);
-    hashmap_put(me->log_map, (void*)c->id, c);
-    assert(arrayqueue_count(me->log_qu) == hashmap_count(me->log_map));
+//    if (hashmap_get(me->log_map, (void*)c->id+1))
+//        return 0;
+
+    memcpy(&me->entries[me->back],c,sizeof(raft_entry_t));
+    me->count++;
+    me->back++;
     return 1;
 }
 
-raft_entry_t* raft_log_get_from_index(raft_log_t* me_, int idx)
+raft_entry_t* raft_log_get_from_idx(raft_log_t* me_, int idx)
 {
     raft_log_private_t* me = (void*)me_;
-
-    return hashmap_get(me->log_map, (void*)idx);
+    int i = (me->front + idx - me->base_log_index) % me->size;
+    return &me->entries[i];
 }
 
 int raft_log_count(raft_log_t* me_)
 {
     raft_log_private_t* me = (void*)me_;
-    return arrayqueue_count(me->log_qu);
+    return me->count;
 }
+
+/**
+ * Delete all logs from this log onwards */
+void raft_log_delete(raft_log_t* me_, int idx)
+{
+    raft_log_private_t* me = (void*)me_;
+    int end, i;
+
+    for (end = raft_log_count(me_); idx<end; idx++)
+    {
+        int idx2 = (me->front + idx - me->base_log_index) % me->size;
+        me->back--;
+        me->count--;
+    }
+
+#if 0
+    const void *elem;
+
+    if (arrayqueue_is_empty(me))
+        return NULL;
+
+//    __checkwrapping(me);
+    in(me)->back--;
+    in(me)->count--;
+    if (-1 == in(me)->back)
+        in(me)->back = in(me)->size;
+    elem = me->entries[in(me)->back];
+
+    return (void *) elem;
+#endif
+}
+
+/**
+ * Remove oldest entry
+ * @return oldest entry */
+void *raft_log_poll(
+    raft_log_t * me_
+)
+{
+    raft_log_private_t* me = (void*)me_;
+    const void *elem;
+
+    if (0 == raft_log_count(me_))
+        return NULL;
+    elem = &me->entries[me->front];
+    me->front++;
+    me->count--;
+    me->base_log_index++;
+    return (void *) elem;
+}
+
+/**
+ * Empty the queue. */
+void raft_log_empty(
+    raft_log_t * me_
+)
+{
+    raft_log_private_t* me = (void*)me_;
+
+    me->front = 0;
+    me->back = 0;
+    me->count = 0;
+}
+
+void raft_log_free(raft_log_t * me_)
+{
+    raft_log_private_t* me = (void*)me_;
+
+    free(me->entries);
+    free(me);
+}
+
