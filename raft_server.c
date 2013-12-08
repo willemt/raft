@@ -122,7 +122,7 @@ static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
-    printf("%s\n", buf);
+    //printf("%s\n", buf);
     //__FUNC_log(bto,src,buf);
 }
 

@@ -189,10 +189,15 @@ raft_entry_t *raft_log_peektail(raft_log_t * me_)
 {
     raft_log_private_t* me = (void*)me_;
     const void *elem;
+    int i;
 
     if (0 == raft_log_count(me_))
         return NULL;
-    return &me->entries[me->back];
+
+    if (0 == me->back)
+        return &me->entries[me->size-1];
+    else
+        return &me->entries[me->back-1];
 }
 
 /**
