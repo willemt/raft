@@ -219,3 +219,7 @@ void log_free(log_t * me_)
     free(me);
 }
 
+void log_mark_peer_has_committed(log_t* me_, int idx)
+{
+
+}

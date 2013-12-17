@@ -41,6 +41,8 @@ typedef struct {
     unsigned int id;
     unsigned char* data;
     unsigned int len;
+    /* number of peers that have this entry */
+    unsigned int npeers;
 } raft_entry_t;
 
 typedef struct {
@@ -74,11 +76,13 @@ typedef struct {
      * prevLogidx and prevLogTerm */
     int success;
 
-    /* NON-RAFT field */
-    /* Having the following field allows us to do less book keeping in
-     * regards to full fledged RPC. This is the highest log IDX we've
-     * received and appended to our log */
+    /* Non Raft fields */
+    /* Having the following fields allows us to do less book keeping in
+     * regards to full fledged RPC */
+    /* This is the highest log IDX we've received and appended to our log */
     int current_idx;
+    /* The first idx that we received within the append entries message */
+    int first_idx;
 } msg_appendentries_response_t;
 
 typedef int (

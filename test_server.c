@@ -1645,7 +1645,7 @@ void T_estRaft_leader_doesnt_append_entry_if_unique_id_is_duplicate(CuTest * tc)
 }
 #endif
 
-void TestRaft_leader_increase_commitno_when_majority_have_entry_and_atleast_one_newer_entry(CuTest * tc)
+void TestRaft_leader_increase_appliedno_when_majority_have_entry_and_atleast_one_newer_entry(CuTest * tc)
 {
     void *r;
     void *sender;
@@ -1668,10 +1668,11 @@ void TestRaft_leader_increase_commitno_when_majority_have_entry_and_atleast_one_
     /* I'm the leader */
     raft_set_state(r,RAFT_STATE_LEADER);
 
-    /* the commit idx will became 5 */
+    /* the last applied idx will became 5 */
     raft_set_current_term(r,5);
     raft_set_current_idx(r,5);
-    raft_set_commit_idx(r,4);
+    raft_set_commit_idx(r,5);
+    raft_set_last_applied_idx(r,4);
     raft_set_callbacks(r,&funcs,sender);
 
     /* server will be waiting for response */
@@ -1682,11 +1683,14 @@ void TestRaft_leader_increase_commitno_when_majority_have_entry_and_atleast_one_
     memset(&aer,0,sizeof(msg_appendentries_response_t));
     aer.term = 5;
     aer.success = 1;
+    aer.current_idx = 5;
+    aer.first_idx = 4;
 
     /* announce to leader that the majority have appended this log */
     raft_recv_appendentries_response(r,1,&aer);
     raft_recv_appendentries_response(r,2,&aer);
-    CuAssertTrue(tc, 5 == raft_get_commit_idx(r));
+    printf("last applied idx: %d\n", raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 5 == raft_get_last_applied_idx(r));
 }
 
 void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(CuTest * tc)
@@ -1726,3 +1730,7 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
 
 /* TODO: If a server receives a request with a stale term number, it rejects the request. */
 
+
+#if 0
+void T_estRaft_leader_sends_appendentries_when_receive_entry_msg(CuTest * tc)
+#endif
