@@ -73,6 +73,12 @@ typedef struct {
     /* success true if follower contained entry matching
      * prevLogidx and prevLogTerm */
     int success;
+
+    /* NON-RAFT field */
+    /* Having the following field allows us to do less book keeping in
+     * regards to full fledged RPC. This is the highest log IDX we've
+     * received and appended to our log */
+    int current_idx;
 } msg_appendentries_response_t;
 
 typedef int (
@@ -112,14 +118,7 @@ typedef struct {
     func_applylog_f applylog;
 } raft_external_functions_t;
 
-typedef struct {
-    int pass;
-//    recv_appendentries_f recv_appendentries,
-//    recv_requestvote_f recv_requestvote,
-} raft_functions_t;
-
 typedef void* raft_server_t;
-
 typedef void* raft_peer_t;
 
 raft_server_t* raft_new();

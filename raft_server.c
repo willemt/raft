@@ -131,6 +131,38 @@ void raft_free(raft_server_t* me_)
     free(me_);
 }
 
+void raft_set_election_timeout(raft_server_t* me_, int millisec)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->election_timeout = millisec;
+}
+
+void raft_set_request_timeout(raft_server_t* me_, int millisec)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->request_timeout = millisec;
+}
+
+int raft_get_election_timeout(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->election_timeout;
+}
+
+int raft_get_request_timeout(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->request_timeout;
+}
+
+int raft_vote(raft_server_t* me_, int peer)
+{
+    return 0;
+}
+
+int raft_get_num_peers(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->npeers;
+}
+
 void raft_set_state(raft_server_t* me_, int state)
 {
     raft_server_private_t* me = (void*)me_;
@@ -142,10 +174,26 @@ int raft_get_state(raft_server_t* me_)
     return ((raft_server_private_t*)me_)->state;
 }
 
+raft_peer_t* raft_get_peer(raft_server_t *me_, int peerid)
+{
+    return ((raft_server_private_t*)me_)->peers[peerid];
+}
+
+/**
+ * @return number of peers that this server has */
+int raft_get_npeers(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->npeers;
+}
+
+int raft_get_timeout_elapsed(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->timeout_elapased;
+}
+
 void raft_set_callbacks(raft_server_t* me_, raft_external_functions_t* funcs, void* cb_ctx)
 {
     raft_server_private_t* me = (void*)me_;
-
     me->cb_ctx = cb_ctx;
     me->cb = funcs;
 }
@@ -201,27 +249,6 @@ void raft_become_candidate(raft_server_t* me_)
 void raft_become_follower(raft_server_t* me_)
 {
     raft_set_state(me_,RAFT_STATE_FOLLOWER);
-}
-
-/**
- * Convert to candidate if election timeout elapses without either
- *  Receiving valid AppendEntries RPC, or
- *  Granting vote to candidate */
-#if 0
-int raft_election_timeout_elapsed(raft_server_t* me_)
-{
-    raft_server_t* me_ = me_;
-
-    if (nvalid_AEs_since_election == 0 || votes_granted_to_candidate_since_election == 0)
-    {
-        raft_become_candidate(me);
-    }
-}
-#endif
-
-int raft_get_timeout_elapsed(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->timeout_elapased;
 }
 
 int raft_periodic(raft_server_t* me_, int msec_since_last_period)
@@ -326,16 +353,14 @@ int raft_recv_appendentries(
 
         if ((e = log_peektail(me->log)))
         {
-            raft_set_commit_idx(me_,
-                    e->id < ae->leader_commit ? e->id : ae->leader_commit);
+            raft_set_commit_idx(me_, e->id < ae->leader_commit ?
+                    e->id : ae->leader_commit);
             while (1 == raft_apply_entry(me_));
         }
     }
 
     if (raft_is_candidate(me_))
-    {
         raft_become_follower(me_);
-    }
 
     raft_set_current_term(me_, ae->term);
 
@@ -365,12 +390,12 @@ int raft_recv_appendentries(
     }
 
     r.success = 1;
+    r.current_idx = raft_get_current_idx(me_);
 
 done:
     if (me->cb && me->cb->send)
         me->cb->send(me->cb_ctx, NULL, peer, (void*)&r,
                 sizeof(msg_appendentries_response_t));
-
     return 0;
 }
 
@@ -428,50 +453,12 @@ int raft_recv_requestvote_response(raft_server_t* me_, int peer, msg_requestvote
         int votes;
 
         me->votes_for_me[peer] = 1;
-
         votes = raft_get_nvotes_for_me(me_);
-
         if (raft_votes_is_majority(me->npeers, votes))
             raft_become_leader(me_);
     }
 
     return 0;
-}
-
-void raft_execute_entry(raft_server_t* me_)
-{
-}
-
-void raft_set_election_timeout(raft_server_t* me_, int millisec)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->election_timeout = millisec;
-}
-
-void raft_set_request_timeout(raft_server_t* me_, int millisec)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->request_timeout = millisec;
-}
-
-int raft_get_election_timeout(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->election_timeout;
-}
-
-int raft_get_request_timeout(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->request_timeout;
-}
-
-int raft_vote(raft_server_t* me_, int peer)
-{
-    return 0;
-}
-
-int raft_get_num_peers(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->npeers;
 }
 
 int raft_send_entry_response(raft_server_t* me_, int peerid, int etyid, int was_committed)
@@ -643,7 +630,7 @@ void raft_send_appendentries(raft_server_t* me_, int peer)
     ae.term = raft_get_current_term(me_);
     ae.leader_id = raft_get_my_id(me_);
     ae.prev_log_term = raft_peer_get_next_idx(p);
-    ae.prev_log_idx = 
+//    ae.prev_log_idx = 
     me->cb->send(me->cb_ctx, NULL, peer,
             (void*)&ae, sizeof(msg_appendentries_t));
 }
@@ -679,17 +666,5 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
         votes += 1;
 
     return votes;
-}
-
-raft_peer_t* raft_get_peer(raft_server_t *me_, int peerid)
-{
-    return ((raft_server_private_t*)me_)->peers[peerid];
-}
-
-/**
- * @return number of peers that this server has */
-int raft_get_npeers(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->npeers;
 }
 
