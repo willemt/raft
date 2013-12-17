@@ -19,7 +19,7 @@
 #include "raft_log.h"
 
 #define INITIAL_CAPACITY 10
-#define in(x) ((raft_log_private_t*)x)
+#define in(x) ((log_private_t*)x)
 
 typedef struct
 {
@@ -35,7 +35,7 @@ typedef struct
     int base_log_index;
 
     raft_entry_t* entries;
-} raft_log_private_t;
+} log_private_t;
 
 static unsigned long __entry_hash(
     const void *obj
@@ -53,7 +53,7 @@ static long __entry_compare(
 }
 
 static void __ensurecapacity(
-    raft_log_private_t * me
+    log_private_t * me
 )
 {
     int i, j;
@@ -80,11 +80,11 @@ static void __ensurecapacity(
     free(me->entries);
 }
 
-raft_log_t* raft_log_new()
+log_t* log_new()
 {
-    raft_log_private_t* me;
+    log_private_t* me;
 
-    me = calloc(1,sizeof(raft_log_private_t));
+    me = calloc(1,sizeof(log_private_t));
     me->size = INITIAL_CAPACITY;
     me->count = 0;
     me->back = in(me)->front = 0;
@@ -97,9 +97,9 @@ raft_log_t* raft_log_new()
  * Don't add entry if we've already added this entry (based off ID)
  * Don't add entries with ID=0 
  * @return 0 if unsucessful; 1 otherwise */
-int raft_log_append_entry(raft_log_t* me_, raft_entry_t* c)
+int log_append_entry(log_t* me_, raft_entry_t* c)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
 
     if (0 == c->id)
         return 0;
@@ -115,9 +115,9 @@ int raft_log_append_entry(raft_log_t* me_, raft_entry_t* c)
     return 1;
 }
 
-raft_entry_t* raft_log_get_from_idx(raft_log_t* me_, int idx)
+raft_entry_t* log_get_from_idx(log_t* me_, int idx)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
     int i;
 
     /* idx starts at 1 */
@@ -126,24 +126,24 @@ raft_entry_t* raft_log_get_from_idx(raft_log_t* me_, int idx)
     return &me->entries[i];
 }
 
-int raft_log_count(raft_log_t* me_)
+int log_count(log_t* me_)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
     return me->count;
 }
 
 /**
  * Delete all logs from this log onwards */
-void raft_log_delete(raft_log_t* me_, int idx)
+void log_delete(log_t* me_, int idx)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
     int end, i;
 
     /* idx starts at 1 */
     idx -= 1;
     idx -= me->base_log_index;
 
-    for (end = raft_log_count(me_); idx<end; idx++)
+    for (end = log_count(me_); idx<end; idx++)
     {
         me->back--;
         me->count--;
@@ -169,12 +169,12 @@ void raft_log_delete(raft_log_t* me_, int idx)
 /**
  * Remove oldest entry
  * @return oldest entry */
-void *raft_log_poll(raft_log_t * me_)
+void *log_poll(log_t * me_)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
     const void *elem;
 
-    if (0 == raft_log_count(me_))
+    if (0 == log_count(me_))
         return NULL;
     elem = &me->entries[me->front];
     me->front++;
@@ -185,13 +185,13 @@ void *raft_log_poll(raft_log_t * me_)
 
 /*
  * @return youngest entry */
-raft_entry_t *raft_log_peektail(raft_log_t * me_)
+raft_entry_t *log_peektail(log_t * me_)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
     const void *elem;
     int i;
 
-    if (0 == raft_log_count(me_))
+    if (0 == log_count(me_))
         return NULL;
 
     if (0 == me->back)
@@ -202,18 +202,18 @@ raft_entry_t *raft_log_peektail(raft_log_t * me_)
 
 /**
  * Empty the queue. */
-void raft_log_empty(raft_log_t * me_)
+void log_empty(log_t * me_)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
 
     me->front = 0;
     me->back = 0;
     me->count = 0;
 }
 
-void raft_log_free(raft_log_t * me_)
+void log_free(log_t * me_)
 {
-    raft_log_private_t* me = (void*)me_;
+    log_private_t* me = (void*)me_;
 
     free(me->entries);
     free(me);

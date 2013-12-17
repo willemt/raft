@@ -57,13 +57,13 @@ int raft_peer_is_leader(raft_peer_t* me_)
     return 0;
 }
 
-int raft_peer_get_next_index(raft_peer_t* me_)
+int raft_peer_get_next_idx(raft_peer_t* me_)
 {
     raft_peer_private_t* me = (void*)me_;
     return me->next_idx;
 }
 
-void raft_peer_set_next_index(raft_peer_t* me_, int nextIdx)
+void raft_peer_set_next_idx(raft_peer_t* me_, int nextIdx)
 {
     raft_peer_private_t* me = (void*)me_;
     me->next_idx = nextIdx;

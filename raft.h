@@ -43,7 +43,6 @@ typedef struct {
     unsigned int len;
 } raft_entry_t;
 
-
 typedef struct {
     unsigned int id;
     int was_committed;
@@ -213,3 +212,4 @@ int raft_apply_entry(raft_server_t* me_);
 
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);
 
+raft_peer_t* raft_get_peer(raft_server_t *me_, int peerid);
