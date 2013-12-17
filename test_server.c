@@ -219,7 +219,6 @@ void TestRaft_server_entry_is_retrieveable_using_idx(CuTest* tc)
     raft_append_entry(r,&e2);
 
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r,2)));
-    printf("retrieved: %.s %d\n", 3, (char*)ety_appended->data, ety_appended->id);
     CuAssertTrue(tc, !strncmp(ety_appended->data,str2,3));
 }
 
