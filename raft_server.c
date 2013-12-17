@@ -295,6 +295,7 @@ void raft_become_leader(raft_server_t* me_)
     int i;
 
     raft_set_state(me_,RAFT_STATE_LEADER);
+
     for (i=0; i<me->npeers; i++)
     {
         raft_peer_t* p = raft_get_peer(me_, i);
@@ -338,15 +339,21 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (void*)me_;
 
-    if (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
+    switch (me->state)
     {
-        if (0 == raft_apply_entry(me_))
-            return 0;
-    }
+    case RAFT_STATE_FOLLOWER:
 
-    me->timeout_elapased += msec_since_last_period;
-    if (me->election_timeout < me->timeout_elapased)
-        raft_election_start(me_);
+        if (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
+        {
+            if (0 == raft_apply_entry(me_))
+                return 0;
+        }
+
+        me->timeout_elapased += msec_since_last_period;
+        if (me->election_timeout < me->timeout_elapased)
+            raft_election_start(me_);
+        break;
+    }
 
     return 1;
 }
@@ -367,7 +374,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
     p = raft_get_peer(me_, peer);
 
-    if (aer->success)
+    if (1 == aer->success)
     {
         int i;
 
@@ -378,7 +385,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         {
             raft_entry_t* e;
 
-            e = log_get_from_idx(me->log, me->commit_idx);
+            e = log_get_from_idx(me->log, me->last_applied_idx + 1);
 
             /* majority has this */
             if (e && me->npeers / 2 <= e->npeers)
@@ -393,8 +400,10 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     }
     else
     {
-        // TODO does this have coverage?
+        /* If AppendEntries fails because of log inconsistency:
+           decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_peer_get_next_idx(p));
+        // TODO does this have test coverage?
         // TODO can jump back to where peer is different instead of iterating
         raft_peer_set_next_idx(p, raft_peer_get_next_idx(p)-1);
         raft_send_appendentries(me_, peer);
@@ -461,7 +470,7 @@ int raft_recv_appendentries(
         else
         {
             __log(me_, NULL, "AE no log at prev_idx");
-            assert(0);
+            //assert(0);
         }
     }
 
@@ -648,7 +657,7 @@ int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
 }
 
 /**
- * Apply entry at lastApplied + 1
+ * Apply entry at lastApplied + 1. Entry becomes 'committed'.
  * @return 1 if entry committed, 0 otherwise */
 int raft_apply_entry(raft_server_t* me_)
 {
@@ -682,13 +691,16 @@ void raft_send_appendentries(raft_server_t* me_, int peer)
             (void*)&ae, sizeof(msg_appendentries_t));
 }
 
+/**
+ * Set configuration
+ * @param peers Array of peers, end of array is marked by NULL entry */
 void raft_set_configuration(raft_server_t* me_,
         raft_peer_configuration_t* peers)
 {
     raft_server_private_t* me = (void*)me_;
     int npeers;
 
-    /* TODO: one allocation only please */
+    /* TODO: one memory allocation only please */
     for (npeers=0; peers->udata_address; peers++)
     {
         npeers++;

@@ -32,7 +32,8 @@ typedef struct
     /* position of the queue */
     int front, back;       
 
-    int base_log_index;
+    /* we compact the log, and thus need to increment the base idx */
+    int base_log_idx;
 
     raft_entry_t* entries;
 } log_private_t;
@@ -120,9 +121,12 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx)
     log_private_t* me = (void*)me_;
     int i;
 
+    if (me->base_log_idx + me->count < idx || idx < me->base_log_idx)
+        return NULL;
+
     /* idx starts at 1 */
     idx -= 1;
-    i = (me->front + idx - me->base_log_index) % me->size;
+    i = (me->front + idx - me->base_log_idx) % me->size;
     return &me->entries[i];
 }
 
@@ -141,7 +145,7 @@ void log_delete(log_t* me_, int idx)
 
     /* idx starts at 1 */
     idx -= 1;
-    idx -= me->base_log_index;
+    idx -= me->base_log_idx;
 
     for (end = log_count(me_); idx<end; idx++)
     {
@@ -179,7 +183,7 @@ void *log_poll(log_t * me_)
     elem = &me->entries[me->front];
     me->front++;
     me->count--;
-    me->base_log_index++;
+    me->base_log_idx++;
     return (void *) elem;
 }
 

@@ -1645,7 +1645,7 @@ void T_estRaft_leader_doesnt_append_entry_if_unique_id_is_duplicate(CuTest * tc)
 }
 #endif
 
-void TestRaft_leader_increase_appliedno_when_majority_have_entry_and_atleast_one_newer_entry(CuTest * tc)
+void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry(CuTest * tc)
 {
     void *r;
     void *sender;
@@ -1660,37 +1660,66 @@ void TestRaft_leader_increase_appliedno_when_majority_have_entry_and_atleast_one
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
-
     sender = sender_new();
     r = raft_new();
     raft_set_configuration(r,cfg);
+    raft_set_callbacks(r,&funcs,sender);
 
     /* I'm the leader */
     raft_set_state(r,RAFT_STATE_LEADER);
+    raft_set_current_term(r,1);
+    raft_set_current_idx(r,0);
+    raft_set_commit_idx(r,0);
+    /* the last applied idx will became 1, and then 2 */
+    raft_set_last_applied_idx(r,0);
 
-    /* the last applied idx will became 5 */
-    raft_set_current_term(r,5);
-    raft_set_current_idx(r,5);
-    raft_set_commit_idx(r,5);
-    raft_set_last_applied_idx(r,4);
-    raft_set_callbacks(r,&funcs,sender);
+    /* append entries */
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 1;
+    ety.data = "aaaa";
+    ety.len = 4;
+    raft_append_entry(r, &ety);
+    ety.id = 2;
+    raft_append_entry(r, &ety);
 
-    /* server will be waiting for response */
+    memset(&aer,0,sizeof(msg_appendentries_response_t));
+
+    /* FIRST entry log application */
+    /* send appendentries -
+     * server will be waiting for response */
     raft_send_appendentries(r, 1);
     raft_send_appendentries(r, 2);
+    /* receive mock success responses */
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 1;
+    aer.first_idx = 1;
+    //raft_recv_appendentries_response(r,1,&aer);
+    //raft_recv_appendentries_response(r,2,&aer);
+    /* leader will now have majority followers who have appended this log */
+    printf("last applied idx: %d\n", raft_get_last_applied_idx(r));
+    printf("commit idx: %d\n", raft_get_commit_idx(r));
+    CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+    CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 
-    /* respond that we have the appendentries */
-    memset(&aer,0,sizeof(msg_appendentries_response_t));
+    /* SECOND entry log application */
+    /* send appendentries -
+     * server will be waiting for response */
+    raft_send_appendentries(r, 1);
+    raft_send_appendentries(r, 2);
+    /* receive mock success responses */
     aer.term = 5;
     aer.success = 1;
-    aer.current_idx = 5;
-    aer.first_idx = 4;
-
-    /* announce to leader that the majority have appended this log */
+    aer.current_idx = 2;
+    aer.first_idx = 2;
     raft_recv_appendentries_response(r,1,&aer);
     raft_recv_appendentries_response(r,2,&aer);
+    /* leader will now have majority followers who have appended this log */
     printf("last applied idx: %d\n", raft_get_last_applied_idx(r));
-    CuAssertTrue(tc, 5 == raft_get_last_applied_idx(r));
+    printf("commit idx: %d\n", raft_get_commit_idx(r));
+    CuAssertTrue(tc, 2 == raft_get_commit_idx(r));
+    CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
 }
 
 void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(CuTest * tc)
