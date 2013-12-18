@@ -222,17 +222,54 @@ void TestRaft_server_entry_is_retrieveable_using_idx(CuTest* tc)
     CuAssertTrue(tc, !strncmp(ety_appended->data,str2,3));
 }
 
+void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
+{
+    void *r;
+    raft_entry_t ety;
+    raft_entry_t *ety_appended;
+    char *str = "aaa";
+
+    r = raft_new();
+    raft_set_commit_idx(r,0);
+    raft_set_last_applied_idx(r, 0);
+
+    raft_apply_entry(r);
+    CuAssertTrue(tc, 0 == raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
+
+    ety.term = 1;
+    ety.id = 1;
+    ety.data = str;
+    ety.len = 3;
+    raft_append_entry(r,&ety);
+    raft_apply_entry(r);
+    CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+}
+
 // If commitidx > lastApplied: increment lastApplied, apply
 // log[lastApplied] to state machine (§5.3)
 void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(CuTest* tc)
 {
     void *r;
+    raft_entry_t ety;
 
     r = raft_new();
-    raft_set_commit_idx(r,5);
-    raft_set_last_applied_idx(r, 4);
+    /* must be follower */
+    raft_set_state(r,RAFT_STATE_FOLLOWER);
+    raft_set_commit_idx(r,1);
+    raft_set_last_applied_idx(r, 0);
+
+    /* need at least one entry */
+    ety.term = 1;
+    ety.id = 1;
+    ety.data = "aaa";
+    ety.len = 3;
+    raft_append_entry(r,&ety);
+
+    /* let time lapse */
     raft_periodic(r,1);
-    CuAssertTrue(tc, 5 == raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 }
 
 void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest* tc)
@@ -245,18 +282,21 @@ void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest* tc)
     ety.term = 1;
 
     r = raft_new();
-    raft_set_commit_idx(r,5);
-    raft_set_last_applied_idx(r, 4);
+    raft_set_commit_idx(r,1);
+    raft_set_last_applied_idx(r, 0);
 
     ety.id = 1;
     ety.data = str;
     ety.len = 3;
     raft_append_entry(r,&ety);
     raft_apply_entry(r);
-    CuAssertTrue(tc, 5 == raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 }
 
-void TestRaft_server_apply_entry_wont_apply_if_lastapplied_equalto_commit_index(CuTest* tc)
+#if 0
+/* Not incorrect assertion.
+ * The leader will always have its commit idx = last applied idx */
+void T_estRaft_server_apply_entry_wont_apply_if_lastapplied_equalto_commit_index(CuTest* tc)
 {
     void *r;
     raft_entry_t ety;
@@ -276,6 +316,7 @@ void TestRaft_server_apply_entry_wont_apply_if_lastapplied_equalto_commit_index(
     raft_apply_entry(r);
     CuAssertTrue(tc, 5 == raft_get_last_applied_idx(r));
 }
+#endif
 
 void TestRaft_server_periodic_elapses_election_timeout(CuTest * tc)
 {
@@ -686,9 +727,11 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
     raft_set_configuration(r,cfg);
     raft_set_callbacks(r,&funcs,sender);
 
-    raft_set_current_term(r,2);
-    raft_set_commit_idx(r,1);
+    /* term is different from appendentries */
+    raft_set_current_term(r, 2);
+    raft_set_commit_idx(r, 1);
     raft_set_last_applied_idx(r, 1);
+    // TODO at log manually?
 
     /* log idx that server doesn't have */
     memset(&ae,0,sizeof(msg_appendentries_t));
@@ -1545,7 +1588,7 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(Cu
     raft_peer_set_next_idx(p, 4);
 
     /* receive appendentries messages */
-    raft_send_appendentries(r,1);
+    raft_send_appendentries(r,0);
     ae = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != ae);
 }
@@ -1578,7 +1621,7 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
     raft_set_state(r,RAFT_STATE_LEADER);
 
     /* receive appendentries messages */
-    raft_send_appendentries(r,1);
+    raft_send_appendentries(r,0);
     ae = sender_poll_msg(sender);
     CuAssertTrue(tc, NULL != ae);
 }
@@ -1673,7 +1716,7 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     /* the last applied idx will became 1, and then 2 */
     raft_set_last_applied_idx(r,0);
 
-    /* append entries */
+    /* append entries - we need two */
     raft_entry_t ety;
     ety.term = 1;
     ety.id = 1;
@@ -1688,15 +1731,15 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     /* FIRST entry log application */
     /* send appendentries -
      * server will be waiting for response */
+    raft_send_appendentries(r, 0);
     raft_send_appendentries(r, 1);
-    raft_send_appendentries(r, 2);
     /* receive mock success responses */
     aer.term = 1;
     aer.success = 1;
     aer.current_idx = 1;
     aer.first_idx = 1;
-    //raft_recv_appendentries_response(r,1,&aer);
-    //raft_recv_appendentries_response(r,2,&aer);
+    raft_recv_appendentries_response(r,1,&aer);
+    raft_recv_appendentries_response(r,2,&aer);
     /* leader will now have majority followers who have appended this log */
     printf("last applied idx: %d\n", raft_get_last_applied_idx(r));
     printf("commit idx: %d\n", raft_get_commit_idx(r));
@@ -1706,8 +1749,8 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     /* SECOND entry log application */
     /* send appendentries -
      * server will be waiting for response */
+    raft_send_appendentries(r, 0);
     raft_send_appendentries(r, 1);
-    raft_send_appendentries(r, 2);
     /* receive mock success responses */
     aer.term = 5;
     aer.success = 1;

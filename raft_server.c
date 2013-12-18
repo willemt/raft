@@ -106,7 +106,7 @@ static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
-    //printf("%s\n", buf);
+    printf("%s\n", buf);
     //__FUNC_log(bto,src,buf);
 }
 
@@ -179,7 +179,11 @@ int raft_get_state(raft_server_t* me_)
 
 raft_peer_t* raft_get_peer(raft_server_t *me_, int peerid)
 {
-    return ((raft_server_private_t*)me_)->peers[peerid];
+    raft_server_private_t* me = (void*)me_;
+
+    if (peerid < 0 || me->npeers <= peerid)
+        return NULL;
+    return me->peers[peerid];
 }
 
 /**
@@ -342,18 +346,17 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     switch (me->state)
     {
     case RAFT_STATE_FOLLOWER:
-
-        if (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
+        if (me->last_applied_idx < me->commit_idx)
         {
-            if (0 == raft_apply_entry(me_))
-                return 0;
+//            if (0 == raft_apply_entry(me_))
+//                return 0;
         }
-
-        me->timeout_elapased += msec_since_last_period;
-        if (me->election_timeout < me->timeout_elapased)
-            raft_election_start(me_);
         break;
     }
+
+    me->timeout_elapased += msec_since_last_period;
+    if (me->election_timeout < me->timeout_elapased)
+        raft_election_start(me_);
 
     return 1;
 }
@@ -387,10 +390,14 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
             e = log_get_from_idx(me->log, me->last_applied_idx + 1);
 
+            if (e)
+                printf("comparing %d to %d\n", me->npeers / 2, e->npeers);
+
             /* majority has this */
             if (e && me->npeers / 2 <= e->npeers)
             {
-                raft_apply_entry(me_);
+                printf("applying entry\n");
+                if (0 == raft_apply_entry(me_)) break;
             }
             else
             {
@@ -470,6 +477,8 @@ int raft_recv_appendentries(
         else
         {
             __log(me_, NULL, "AE no log at prev_idx");
+            r.success = 0;
+            goto done;
             //assert(0);
         }
     }
@@ -663,10 +672,12 @@ int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
 
-    if (me->last_applied_idx == raft_get_commit_idx(me_))
+    if (!log_get_from_idx(me->log, me->commit_idx+1))
         return 0;
 
     me->last_applied_idx++;
+    if (me->commit_idx < me->last_applied_idx)
+        me->commit_idx = me->last_applied_idx;
 
     // TODO: callback for state machine application goes here
 
