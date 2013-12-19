@@ -106,7 +106,7 @@ static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
-    printf("%s\n", buf);
+    //printf("%s\n", buf);
     //__FUNC_log(bto,src,buf);
 }
 
@@ -348,8 +348,8 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     case RAFT_STATE_FOLLOWER:
         if (me->last_applied_idx < me->commit_idx)
         {
-//            if (0 == raft_apply_entry(me_))
-//                return 0;
+            if (0 == raft_apply_entry(me_))
+                return 0;
         }
         break;
     }
@@ -381,7 +381,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     {
         int i;
 
-        for (i=aer->first_idx; i<aer->current_idx; i++)
+        for (i=aer->first_idx; i<=aer->current_idx; i++)
             log_mark_peer_has_committed(me->log, i);
 
         while (1)
@@ -390,13 +390,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
             e = log_get_from_idx(me->log, me->last_applied_idx + 1);
 
-            if (e)
-                printf("comparing %d to %d\n", me->npeers / 2, e->npeers);
-
             /* majority has this */
             if (e && me->npeers / 2 <= e->npeers)
             {
-                printf("applying entry\n");
                 if (0 == raft_apply_entry(me_)) break;
             }
             else
@@ -429,10 +425,14 @@ int raft_recv_appendentries(
     raft_server_private_t* me = (void*)me_;
     msg_appendentries_response_t r;
 
-    r.term = raft_get_current_term(me_);
+    r.term = me->current_term;
+
+    /* we've found a leader who is legitimate */
+    if (raft_is_leader(me_) && me->current_term <= ae->term)
+        raft_become_follower(me_);
 
     /* 1. Reply false if term < currentTerm (§5.1) */
-    if (ae->term < raft_get_current_term(me_))
+    if (ae->term < me->current_term)
     {
         __log(me_, NULL, "AE term is less than current term");
         r.success = 0;
@@ -672,7 +672,7 @@ int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
 
-    if (!log_get_from_idx(me->log, me->commit_idx+1))
+    if (!log_get_from_idx(me->log, me->last_applied_idx+1))
         return 0;
 
     me->last_applied_idx++;

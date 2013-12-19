@@ -257,7 +257,8 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(CuTest*
     r = raft_new();
     /* must be follower */
     raft_set_state(r,RAFT_STATE_FOLLOWER);
-    raft_set_commit_idx(r,1);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 1);
     raft_set_last_applied_idx(r, 0);
 
     /* need at least one entry */
@@ -269,6 +270,7 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(CuTest*
 
     /* let time lapse */
     raft_periodic(r,1);
+    CuAssertTrue(tc, 0 != raft_get_last_applied_idx(r));
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 }
 
@@ -925,7 +927,6 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(CuTest * t
     CuAssertTrue(tc, NULL != aer);
     CuAssertTrue(tc, 1 == aer->success);
     /* set to 4 because commitIDX is lower */
-    printf("%d\n", raft_get_commit_idx(r));
     CuAssertTrue(tc, 4 == raft_get_commit_idx(r));
 }
 
@@ -1711,7 +1712,6 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     /* I'm the leader */
     raft_set_state(r,RAFT_STATE_LEADER);
     raft_set_current_term(r,1);
-    raft_set_current_idx(r,0);
     raft_set_commit_idx(r,0);
     /* the last applied idx will became 1, and then 2 */
     raft_set_last_applied_idx(r,0);
@@ -1741,8 +1741,8 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     raft_recv_appendentries_response(r,1,&aer);
     raft_recv_appendentries_response(r,2,&aer);
     /* leader will now have majority followers who have appended this log */
-    printf("last applied idx: %d\n", raft_get_last_applied_idx(r));
-    printf("commit idx: %d\n", raft_get_commit_idx(r));
+    CuAssertTrue(tc, 0 != raft_get_commit_idx(r));
+    CuAssertTrue(tc, 2 != raft_get_commit_idx(r));
     CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 
@@ -1759,8 +1759,6 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     raft_recv_appendentries_response(r,1,&aer);
     raft_recv_appendentries_response(r,2,&aer);
     /* leader will now have majority followers who have appended this log */
-    printf("last applied idx: %d\n", raft_get_last_applied_idx(r));
-    printf("commit idx: %d\n", raft_get_commit_idx(r));
     CuAssertTrue(tc, 2 == raft_get_commit_idx(r));
     CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
 }
@@ -1782,10 +1780,6 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
 
     msg_appendentries_t ae;
 
-    memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 5;
-    ae.prev_log_idx = 6;
-    ae.prev_log_term = 5;
 
     sender = sender_new();
     r = raft_new();
@@ -1795,13 +1789,17 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
     raft_set_current_term(r,5);
     raft_set_current_idx(r,5);
     raft_set_callbacks(r,&funcs,sender);
+
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 5;
+    ae.prev_log_idx = 6;
+    ae.prev_log_term = 5;
     raft_recv_appendentries(r,1,&ae);
 
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
 
 /* TODO: If a server receives a request with a stale term number, it rejects the request. */
-
 
 #if 0
 void T_estRaft_leader_sends_appendentries_when_receive_entry_msg(CuTest * tc)
