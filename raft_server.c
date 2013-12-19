@@ -88,7 +88,7 @@ typedef struct {
     int request_timeout;
 
     /* callbacks */
-    raft_external_functions_t *cb;
+    raft_external_functions_t cb;
     void* cb_ctx;
 
     union {
@@ -276,11 +276,13 @@ int raft_get_commit_idx(raft_server_t* me_)
     return ((raft_server_private_t*)me_)->commit_idx;
 }
 
-void raft_set_callbacks(raft_server_t* me_, raft_external_functions_t* funcs, void* cb_ctx)
+void raft_set_callbacks(raft_server_t* me_,
+        raft_external_functions_t* funcs, void* cb_ctx)
 {
     raft_server_private_t* me = (void*)me_;
+
+    memcpy(&me->cb, funcs, sizeof(raft_external_functions_t));
     me->cb_ctx = cb_ctx;
-    me->cb = funcs;
 }
 
 void raft_election_start(raft_server_t* me_)
@@ -327,8 +329,8 @@ void raft_become_candidate(raft_server_t* me_)
         rv.term = me->current_term;
         rv.candidate_id = 0;//me->current_term;
 //        rv.last_log_idx = me->log
-        if (me->cb && me->cb->send)
-            me->cb->send(me->cb_ctx,NULL, i, (void*)&rv, sizeof(msg_requestvote_t));
+        if (me->cb.send)
+            me->cb.send(me->cb_ctx,NULL, i, (void*)&rv, sizeof(msg_requestvote_t));
     }
 }
 
@@ -532,8 +534,8 @@ int raft_recv_appendentries(
     r.first_idx = ae->prev_log_idx + 1;
 
 done:
-    if (me->cb && me->cb->send)
-        me->cb->send(me->cb_ctx, NULL, peer, (void*)&r,
+    if (me->cb.send)
+        me->cb.send(me->cb_ctx, NULL, peer, (void*)&r,
                 sizeof(msg_appendentries_response_t));
     return 1;
 }
@@ -559,8 +561,8 @@ int raft_recv_requestvote(raft_server_t* me_, int peer, msg_requestvote_t* vr)
     }
 
     r.term = raft_get_current_term(me_);
-    if (me->cb && me->cb->send)
-        me->cb->send(me->cb_ctx, NULL, peer, (void*)&r,
+    if (me->cb.send)
+        me->cb.send(me->cb_ctx, NULL, peer, (void*)&r,
                 sizeof(msg_requestvote_response_t));
 
     return 0;
@@ -608,8 +610,8 @@ int raft_send_entry_response(raft_server_t* me_,
 
     res.id = etyid;
     res.was_committed = was_committed;
-    if (me->cb && me->cb->send)
-        me->cb->send(me->cb_ctx, NULL, peerid,
+    if (me->cb.send)
+        me->cb.send(me->cb_ctx, NULL, peerid,
                 (void*)&res, sizeof(msg_entry_response_t));
     return 0;
 }
@@ -644,8 +646,8 @@ int raft_send_requestvote(raft_server_t* me_, int peer)
 
     rv.term = raft_get_current_term(me_);
     rv.last_log_idx = raft_get_current_idx(me_);
-    if (me->cb && me->cb->send)
-        me->cb->send(me->cb_ctx,NULL, peer, (void*)&rv, sizeof(msg_requestvote_t));
+    if (me->cb.send)
+        me->cb.send(me->cb_ctx,NULL, peer, (void*)&rv, sizeof(msg_requestvote_t));
     return 1;
 }
 
@@ -688,7 +690,7 @@ void raft_send_appendentries(raft_server_t* me_, int peer)
 {
     raft_server_private_t* me = (void*)me_;
 
-    if (!(me->cb && me->cb->send))
+    if (!(me->cb.send))
         return;
 
     msg_appendentries_t ae;
@@ -698,7 +700,7 @@ void raft_send_appendentries(raft_server_t* me_, int peer)
     ae.leader_id = raft_get_my_id(me_);
     ae.prev_log_term = raft_peer_get_next_idx(p);
 //    ae.prev_log_idx = 
-    me->cb->send(me->cb_ctx, NULL, peer,
+    me->cb.send(me->cb_ctx, NULL, peer,
             (void*)&ae, sizeof(msg_appendentries_t));
 }
 
