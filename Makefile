@@ -36,7 +36,7 @@ main_test.c:
 	fi
 	sh make-tests.sh "test_*.c" > main_test.c
 
-tests_main: main_test.c raft_server.c raft_log.c raft_peer.c test_server.c test_server_request_vote.c test_peer.c test_log.c mock_send_functions.c CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_main: main_test.c raft_server.c raft_log.c raft_node.c test_server.c test_server_request_vote.c test_node.c test_log.c test_scenario.c mock_send_functions.c CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_main
 

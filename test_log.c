@@ -59,7 +59,7 @@ void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
     CuAssertTrue(tc, NULL == log_get_from_idx(l,2));
 }
 
-void TestLog_mark_peer_has_committed_adds_peers(CuTest * tc)
+void TestLog_mark_node_has_committed_adds_nodes(CuTest * tc)
 {
     void *l;
     raft_entry_t e1, e2, e3;
@@ -67,11 +67,11 @@ void TestLog_mark_peer_has_committed_adds_peers(CuTest * tc)
     l = log_new();
     e1.id = 1;
     log_append_entry(l, &e1);
-    CuAssertTrue(tc, 0 == log_get_from_idx(l,1)->npeers);
-    log_mark_peer_has_committed(l, 1);
-    CuAssertTrue(tc, 1 == log_get_from_idx(l,1)->npeers);
-    log_mark_peer_has_committed(l, 1);
-    CuAssertTrue(tc, 2 == log_get_from_idx(l,1)->npeers);
+    CuAssertTrue(tc, 0 == log_get_from_idx(l,1)->nnodes);
+    log_mark_node_has_committed(l, 1);
+    CuAssertTrue(tc, 1 == log_get_from_idx(l,1)->nnodes);
+    log_mark_node_has_committed(l, 1);
+    CuAssertTrue(tc, 2 == log_get_from_idx(l,1)->nnodes);
 }
 
 void TestLog_delete(CuTest * tc)

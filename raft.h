@@ -7,12 +7,12 @@ enum {
 };
 
 typedef struct {
-    /* So that we can tell which peers were removed/added */
+    /* So that we can tell which nodes were removed/added */
     int old_id;
     /* User data pointer for addressing.
      * ie. This is most likely a (IP,Port) tuple */
     void* udata_address;
-} raft_peer_configuration_t;
+} raft_node_configuration_t;
 
 typedef struct {
     /* term candidate's term */
@@ -41,8 +41,8 @@ typedef struct {
     unsigned int id;
     unsigned char* data;
     unsigned int len;
-    /* number of peers that have this entry */
-    unsigned int npeers;
+    /* number of nodes that have this entry */
+    unsigned int nnodes;
 } raft_entry_t;
 
 typedef struct {
@@ -85,12 +85,22 @@ typedef struct {
     int first_idx;
 } msg_appendentries_response_t;
 
+enum {
+    RAFT_MSG_REQUESTVOTE,
+    RAFT_MSG_REQUESTVOTE_RESPONSE,
+    RAFT_MSG_APPENDENTRIES,
+    RAFT_MSG_APPENDENTRIES_RESPONSE,
+    RAFT_MSG_ENTRY,
+    RAFT_MSG_ENTRY_RESPONSE,
+};
+
 typedef int (
     *func_send_f
 )   (
     void *caller,
     void *udata,
-    int peer,
+    int node,
+    int type,
     const unsigned char *send_data,
     const int len
 );
@@ -120,16 +130,16 @@ typedef struct {
     func_send_f send;
     func_log_f log;
     func_applylog_f applylog;
-} raft_external_functions_t;
+} raft_cbs_t;
 
 typedef void* raft_server_t;
-typedef void* raft_peer_t;
+typedef void* raft_node_t;
 
 raft_server_t* raft_new();
 
 int raft_get_voted_for(raft_server_t* me);
 
-void raft_set_callbacks(raft_server_t* me, raft_external_functions_t* funcs, void* caller);
+void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* caller);
 
 void raft_election_start(raft_server_t* me);
 
@@ -141,11 +151,11 @@ int raft_receive_append_entries(raft_server_t* me, msg_appendentries_t* ae);
 
 int raft_periodic(raft_server_t* me, int msec_since_last_period);
 
-int raft_recv_appendentries(raft_server_t* me, int peer, msg_appendentries_t* ae);
+int raft_recv_appendentries(raft_server_t* me, int node, msg_appendentries_t* ae);
 
-int raft_recv_requestvote(raft_server_t* me, int peer, msg_requestvote_t* vr);
+int raft_recv_requestvote(raft_server_t* me, int node, msg_requestvote_t* vr);
 
-int raft_recv_requestvote_response(raft_server_t* me, int peer, msg_requestvote_response_t* r);
+int raft_recv_requestvote_response(raft_server_t* me, int node, msg_requestvote_response_t* r);
 
 void raft_execute_entry(raft_server_t* me);
 
@@ -153,15 +163,15 @@ void raft_set_election_timeout(raft_server_t* me, int millisec);
 
 int raft_get_election_timeout(raft_server_t* me);
 
-int raft_vote(raft_server_t* me, int peer);
+void raft_vote(raft_server_t* me, int node);
 
-raft_peer_t* raft_add_peer(raft_server_t* me, int peer_udata);
+raft_node_t* raft_add_node(raft_server_t* me, int node_udata);
 
-int raft_remove_peer(raft_server_t* me, int peer);
+int raft_remove_node(raft_server_t* me, int node);
 
-int raft_get_num_peers(raft_server_t* me);
+int raft_get_num_nodes(raft_server_t* me);
 
-int raft_recv_entry(raft_server_t* me, int peer, msg_entry_t* cmd);
+int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* cmd);
 
 int raft_get_log_count(raft_server_t* me);
 
@@ -181,9 +191,9 @@ int raft_is_leader(raft_server_t* me);
 
 int raft_is_candidate(raft_server_t* me);
 
-int raft_send_requestvote(raft_server_t* me, int peer);
+int raft_send_requestvote(raft_server_t* me, int node);
 
-void raft_send_appendentries(raft_server_t* me, int peer);
+void raft_send_appendentries(raft_server_t* me, int node);
 
 int raft_append_entry(raft_server_t* me_, raft_entry_t* c);
 
@@ -199,20 +209,23 @@ void raft_set_request_timeout(raft_server_t* me_, int millisec);
 
 int raft_get_last_applied_idx(raft_server_t* me);
 
-raft_peer_t* raft_peer_new(void* udata);
+raft_node_t* raft_node_new(void* udata);
 
-int raft_peer_is_leader(raft_peer_t* peer);
+int raft_node_is_leader(raft_node_t* node);
 
-int raft_peer_get_next_idx(raft_peer_t* peer);
+int raft_node_get_next_idx(raft_node_t* node);
 
-void raft_peer_set_next_idx(raft_peer_t* peer, int nextIdx);
+void raft_node_set_next_idx(raft_node_t* node, int nextIdx);
 
-void raft_set_configuration(raft_server_t* me_, raft_peer_configuration_t* peers);
+void raft_set_configuration(raft_server_t* me_,
+        raft_node_configuration_t* nodes, int me_idx);
 
-int raft_votes_is_majority(const int npeers, const int nvotes);
+int raft_votes_is_majority(const int nnodes, const int nvotes);
 
 int raft_apply_entry(raft_server_t* me_);
 
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);
 
-raft_peer_t* raft_get_peer(raft_server_t *me_, int peerid);
+raft_node_t* raft_get_node(raft_server_t *me_, int nodeid);
+
+int raft_get_nodeid(raft_server_t* me_);
