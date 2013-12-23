@@ -195,6 +195,8 @@ int raft_send_requestvote(raft_server_t* me, int node);
 
 void raft_send_appendentries(raft_server_t* me, int node);
 
+void raft_send_appendentries_all(raft_server_t* me_);
+
 int raft_append_entry(raft_server_t* me_, raft_entry_t* c);
 
 int raft_get_timeout_elapsed(raft_server_t* me);
@@ -229,3 +231,4 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);
 raft_node_t* raft_get_node(raft_server_t *me_, int nodeid);
 
 int raft_get_nodeid(raft_server_t* me_);
+

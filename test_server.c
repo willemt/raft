@@ -123,12 +123,12 @@ void TestRaft_server_starts_with_election_timeout_of_1000ms(CuTest * tc)
     CuAssertTrue(tc, 1000 == raft_get_election_timeout(r));
 }
 
-void TestRaft_server_starts_with_request_timeout_of_500ms(CuTest * tc)
+void TestRaft_server_starts_with_request_timeout_of_200ms(CuTest * tc)
 {
     void *r;
 
     r = raft_new();
-    CuAssertTrue(tc, 500 == raft_get_request_timeout(r));
+    CuAssertTrue(tc, 200 == raft_get_request_timeout(r));
 }
 
 void TestRaft_server_entry_append_cant_append_if_id_is_zero(CuTest* tc)

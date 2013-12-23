@@ -121,7 +121,7 @@ CuTest* CuTestNew(const char* name, TestFunction function)
 
 void CuTestRun(CuTest* tc)
 {
-#if 1 /* debugging */
+#if 0 /* debugging */
     printf(" running %s\n", tc->name);
 #endif
 	jmp_buf buf;

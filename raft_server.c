@@ -108,7 +108,7 @@ static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
-    printf("%d: %s\n", me->nodeid, buf);
+    //printf("%d: %s\n", me->nodeid, buf);
     //__FUNC_log(bto,src,buf);
 }
 
@@ -125,8 +125,8 @@ raft_server_t* raft_new()
     me->timeout_elapsed = 0;
     me->log = log_new();
     raft_set_state((void*)me,RAFT_STATE_FOLLOWER);
-    raft_set_request_timeout((void*)me, 500);
-    raft_set_election_timeout((void*)me, 1000);
+    me->request_timeout = 200;
+    me->election_timeout = 1000;
     return (void*)me;
 }
 
@@ -355,6 +355,8 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (void*)me_;
 
+    __log(me_, NULL, "periodic elapsed time: %d", me->timeout_elapsed);
+
     switch (me->state)
     {
     case RAFT_STATE_FOLLOWER:
@@ -366,9 +368,18 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         break;
     }
 
-    if (me->state != RAFT_STATE_LEADER)
+    me->timeout_elapsed += msec_since_last_period;
+
+    if (me->state == RAFT_STATE_LEADER)
     {
-        me->timeout_elapsed += msec_since_last_period;
+        if (me->request_timeout <= me->timeout_elapsed)
+        {
+            raft_send_appendentries_all(me_);
+            me->timeout_elapsed = 0;
+        }
+    }
+    else
+    {
         if (me->election_timeout <= me->timeout_elapsed)
         {
             raft_election_start(me_);
@@ -753,6 +764,18 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     ae.n_entries = 0;
     me->cb.send(me->cb_ctx, me, node, RAFT_MSG_APPENDENTRIES,
             (void*)&ae, sizeof(msg_appendentries_t));
+}
+
+void raft_send_appendentries_all(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    int i;
+
+    for (i=0; i<me->nnodes; i++)
+    {
+        if (me->nodeid == i) continue;
+        raft_send_appendentries(me_, i);
+    }
 }
 
 /**
