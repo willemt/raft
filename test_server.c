@@ -10,19 +10,16 @@
 #include "raft.h"
 #include "mock_send_functions.h"
 
-// TODO: appendentries receipt resets elapsed time timeout
 // TODO: leader doesn't timeout and cause election
 
-#if 0
-void T_estRaft_server_voted_for_records_who_we_voted_for(CuTest * tc)
+void TestRaft_server_voted_for_records_who_we_voted_for(CuTest * tc)
 {
     void *r;
 
     r = raft_new();
     raft_vote(r,2);
-    CuAssertTrue(tc, 1 == raft_get_voted_for(r));
+    CuAssertTrue(tc, 2 == raft_get_voted_for(r));
 }
-#endif
 
 void TestRaft_server_idx_starts_at_1(CuTest * tc)
 {
@@ -1190,6 +1187,22 @@ void TestRaft_follower_becoming_candidate_resets_election_timeout(CuTest * tc)
     raft_become_candidate(r);
     /* time is selected randomly */
     CuAssertTrue(tc, raft_get_timeout_elapsed(r) < 900);
+}
+
+void TestRaft_follower_receiving_appendentries_resets_election_timeout(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    raft_set_election_timeout(r, 1000);
+
+    raft_periodic(r, 900);
+
+    msg_appendentries_t ae;
+    memset(&ae,0,sizeof(msg_appendentries_t));
+    ae.term = 1;
+    raft_recv_appendentries(r,1,&ae);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
 }
  
 /* Candidate 5.2 */
