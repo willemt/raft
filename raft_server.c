@@ -130,6 +130,15 @@ raft_server_t* raft_new()
     return (void*)me;
 }
 
+void raft_set_callbacks(raft_server_t* me_,
+        raft_cbs_t* funcs, void* cb_ctx)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
+    me->cb_ctx = cb_ctx;
+}
+
 void raft_free(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
@@ -773,15 +782,6 @@ int raft_get_last_applied_idx(raft_server_t* me_)
 int raft_get_commit_idx(raft_server_t* me_)
 {
     return ((raft_server_private_t*)me_)->commit_idx;
-}
-
-void raft_set_callbacks(raft_server_t* me_,
-        raft_cbs_t* funcs, void* cb_ctx)
-{
-    raft_server_private_t* me = (void*)me_;
-
-    memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
-    me->cb_ctx = cb_ctx;
 }
 
 /*--------------------------------------------------------------79-characters-*/

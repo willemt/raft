@@ -360,7 +360,7 @@ void TestRaft_server_election_timeout_sets_to_zero_when_elapsed_time_greater_tha
     CuAssertTrue(tc, raft_get_timeout_elapsed(r) < 1000);
 }
 
-void TestRaft_server_cfg_sets_nnodes(CuTest * tc)
+void TestRaft_server_cfg_sets_num_nodes(CuTest * tc)
 {
     void *r;
 
@@ -373,7 +373,7 @@ void TestRaft_server_cfg_sets_nnodes(CuTest * tc)
     r = raft_new();
     raft_set_configuration(r,cfg,0);
 
-    CuAssertTrue(tc, 2 == raft_get_nnodes(r));
+    CuAssertTrue(tc, 2 == raft_get_num_nodes(r));
 }
 
 void TestRaft_server_cant_get_node_we_dont_have(CuTest * tc)
@@ -1311,7 +1311,7 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 
     r = raft_new();
     raft_set_configuration(r,cfg,0);
-    CuAssertTrue(tc, 5 == raft_get_nnodes(r));
+    CuAssertTrue(tc, 5 == raft_get_num_nodes(r));
     raft_set_callbacks(r,&funcs,sender);
 
     /* vote for self */
@@ -1528,7 +1528,7 @@ void TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog
     raft_become_leader(r);
 
     int i;
-    for (i=0; i<raft_get_nnodes(r); i++)
+    for (i=0; i<raft_get_num_nodes(r); i++)
     {
         if (i==0) continue;
         raft_node_t* p = raft_get_node(r,i);
