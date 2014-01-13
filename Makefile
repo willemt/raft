@@ -11,22 +11,12 @@ CCFLAGS = -g -O2 -Werror -Werror=return-type -Werror=uninitialized -Wcast-align 
 
 all: tests_main
 
-chashmap:
-	mkdir -p $(HASHMAP_DIR)/.git
-	git --git-dir=$(HASHMAP_DIR)/.git init 
-	pushd $(HASHMAP_DIR); git pull git@github.com:willemt/CHashMapViaLinkedList.git; popd
-
-cbitstream:
-	mkdir -p $(BITSTREAM_DIR)/.git
-	git --git-dir=$(BITSTREAM_DIR)/.git init 
-	pushd $(BITSTREAM_DIR); git pull git@github.com:willemt/CBitstream.git; popd
-
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
 	git --git-dir=$(LLQUEUE_DIR)/.git init 
 	pushd $(LLQUEUE_DIR); git pull git@github.com:willemt/CLinkedListQueue.git; popd
 
-download-contrib: chashmap cbitstream clinkedlistqueue
+download-contrib: cbitstream
 
 main_test.c:
 	if test -d $(HASHMAP_DIR); \
@@ -40,4 +30,4 @@ tests_main: main_test.c raft_server.c raft_log.c raft_node.c test_server.c test_
 	./tests_main
 
 clean:
-	rm -f main_test.c *.o tests
+	rm -f main_test.c *.o $(GCOV_OUTPUT)
