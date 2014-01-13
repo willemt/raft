@@ -11,8 +11,8 @@ How does it work?
 See raft.h for full documentation.
 
 Networking is out of scope for this project. The implementor will need to do all the plumbing. *Currently*, this is done by:
-1) Implementing all the callbacks within raft_cbs_t.
-2) Calling raft_recv_.* functions with msg_.* message structs
+- Implementing all the callbacks within raft_cbs_t; and
+- Calling raft_recv_.* functions with msg_.* message structs
 
 Dependencies
 ------------
