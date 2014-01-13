@@ -137,162 +137,6 @@ void raft_free(raft_server_t* me_)
     free(me_);
 }
 
-void raft_set_election_timeout(raft_server_t* me_, int millisec)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->election_timeout = millisec;
-}
-
-void raft_set_request_timeout(raft_server_t* me_, int millisec)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->request_timeout = millisec;
-}
-
-int raft_get_nodeid(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nodeid;
-}
-
-int raft_get_election_timeout(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->election_timeout;
-}
-
-int raft_get_request_timeout(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->request_timeout;
-}
-
-void raft_vote(raft_server_t* me_, int node)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->voted_for = node;
-}
-
-int raft_get_num_nodes(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nnodes;
-}
-
-void raft_set_state(raft_server_t* me_, int state)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->state = state;
-}
-
-int raft_get_state(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->state;
-}
-
-raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
-{
-    raft_server_private_t* me = (void*)me_;
-
-    if (nodeid < 0 || me->nnodes <= nodeid)
-        return NULL;
-    return me->nodes[nodeid];
-}
-
-/**
- * @return number of nodes that this server has */
-int raft_get_nnodes(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nnodes;
-}
-
-int raft_get_timeout_elapsed(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->timeout_elapsed;
-}
-
-/**
- * @return number of items within log */
-int raft_get_log_count(raft_server_t* me_)
-{
-    raft_server_private_t* me = (void*)me_;
-    return log_count(me->log);
-}
-
-int raft_get_voted_for(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->voted_for;
-}
-
-void raft_set_current_term(raft_server_t* me_, int term)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->current_term = term;
-}
-
-int raft_get_current_term(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->current_term;
-}
-
-void raft_set_current_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->current_idx = idx;
-}
-
-int raft_get_current_idx(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->current_idx;
-}
-
-int raft_is_follower(raft_server_t* me_)
-{
-    return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
-}
-
-int raft_is_leader(raft_server_t* me_)
-{
-    return raft_get_state(me_) == RAFT_STATE_LEADER;
-}
-
-int raft_is_candidate(raft_server_t* me_)
-{
-    return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
-}
-
-int raft_get_my_id(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nodeid;
-}
-
-void raft_set_commit_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->commit_idx = idx;
-}
-
-void raft_set_last_applied_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->last_applied_idx = idx;
-}
-
-int raft_get_last_applied_idx(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->last_applied_idx;
-}
-
-int raft_get_commit_idx(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->commit_idx;
-}
-
-void raft_set_callbacks(raft_server_t* me_,
-        raft_cbs_t* funcs, void* cb_ctx)
-{
-    raft_server_private_t* me = (void*)me_;
-
-    memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
-    me->cb_ctx = cb_ctx;
-}
-
 void raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
@@ -349,8 +193,6 @@ void raft_become_follower(raft_server_t* me_)
     me->voted_for = -1;
 }
 
-/**
- * @return 0 on error */
 int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (void*)me_;
@@ -395,8 +237,6 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int etyidx)
     return log_get_from_idx(me->log, etyidx);
 }
 
-/**
- * @return 0 on error */
 int raft_recv_appendentries_response(raft_server_t* me_,
         int node, msg_appendentries_response_t* aer)
 {
@@ -445,8 +285,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     return 1;
 }
 
-/**
- * @return 0 on error */
 int raft_recv_appendentries(
         raft_server_t* me_,
         const int node,
@@ -617,8 +455,6 @@ int raft_votes_is_majority(const int nnodes, const int nvotes)
     return half + 1 <= nvotes;
 }
 
-/**
- * @param node The node this response was sent by */
 int raft_recv_requestvote_response(raft_server_t* me_, int node,
         msg_requestvote_response_t* r)
 {
@@ -664,10 +500,6 @@ int raft_send_entry_response(raft_server_t* me_,
     return 0;
 }
 
-/**
- * Receive an ENTRY message.
- * Append entry to log
- * Send APPENDENTRIES to followers */
 int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* cmd)
 {
     raft_server_private_t* me = (void*)me_;
@@ -690,8 +522,6 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* cmd)
     return 0;
 }
 
-/**
- * @return 0 on error */
 int raft_send_requestvote(raft_server_t* me_, int node)
 {
     raft_server_private_t* me = (void*)me_;
@@ -707,10 +537,6 @@ int raft_send_requestvote(raft_server_t* me_, int node)
     return 1;
 }
 
-/**
- * Appends entry using the current term.
- * Note: we make the assumption that current term is up-to-date
- * @return 0 if unsuccessful */
 int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
 {
     raft_server_private_t* me = (void*)me_;
@@ -723,9 +549,6 @@ int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
     return 0;
 }
 
-/**
- * Apply entry at lastApplied + 1. Entry becomes 'committed'.
- * @return 1 if entry committed, 0 otherwise */
 int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
@@ -778,10 +601,6 @@ void raft_send_appendentries_all(raft_server_t* me_)
     }
 }
 
-/**
- * Set configuration
- * @param nodes Array of nodes, end of array is marked by NULL entry
- * @param me_idx Which node is myself */
 void raft_set_configuration(raft_server_t* me_,
         raft_node_configuration_t* nodes, int me_idx)
 {
@@ -800,8 +619,6 @@ void raft_set_configuration(raft_server_t* me_,
     me->nodeid = me_idx;
 }
 
-/**
- * @return number of votes this server has received this election */
 int raft_get_nvotes_for_me(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
@@ -818,6 +635,153 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
         votes += 1;
 
     return votes;
+}
+
+void raft_set_election_timeout(raft_server_t* me_, int millisec)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->election_timeout = millisec;
+}
+
+void raft_set_request_timeout(raft_server_t* me_, int millisec)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->request_timeout = millisec;
+}
+
+int raft_get_nodeid(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->nodeid;
+}
+
+int raft_get_election_timeout(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->election_timeout;
+}
+
+int raft_get_request_timeout(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->request_timeout;
+}
+
+void raft_vote(raft_server_t* me_, int node)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->voted_for = node;
+}
+
+int raft_get_num_nodes(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->nnodes;
+}
+
+void raft_set_state(raft_server_t* me_, int state)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->state = state;
+}
+
+int raft_get_state(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->state;
+}
+
+raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    if (nodeid < 0 || me->nnodes <= nodeid)
+        return NULL;
+    return me->nodes[nodeid];
+}
+
+int raft_get_timeout_elapsed(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->timeout_elapsed;
+}
+
+int raft_get_log_count(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    return log_count(me->log);
+}
+
+int raft_get_voted_for(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->voted_for;
+}
+
+void raft_set_current_term(raft_server_t* me_, int term)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->current_term = term;
+}
+
+int raft_get_current_term(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->current_term;
+}
+
+void raft_set_current_idx(raft_server_t* me_, int idx)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->current_idx = idx;
+}
+
+int raft_get_current_idx(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->current_idx;
+}
+
+int raft_is_follower(raft_server_t* me_)
+{
+    return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
+}
+
+int raft_is_leader(raft_server_t* me_)
+{
+    return raft_get_state(me_) == RAFT_STATE_LEADER;
+}
+
+int raft_is_candidate(raft_server_t* me_)
+{
+    return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
+}
+
+int raft_get_my_id(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->nodeid;
+}
+
+void raft_set_commit_idx(raft_server_t* me_, int idx)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->commit_idx = idx;
+}
+
+void raft_set_last_applied_idx(raft_server_t* me_, int idx)
+{
+    raft_server_private_t* me = (void*)me_;
+    me->last_applied_idx = idx;
+}
+
+int raft_get_last_applied_idx(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->last_applied_idx;
+}
+
+int raft_get_commit_idx(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->commit_idx;
+}
+
+void raft_set_callbacks(raft_server_t* me_,
+        raft_cbs_t* funcs, void* cb_ctx)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
+    me->cb_ctx = cb_ctx;
 }
 
 /*--------------------------------------------------------------79-characters-*/
