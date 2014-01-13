@@ -47,3 +47,9 @@ void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
     raft_node_private_t* me = (void*)me_;
     me->next_idx = nextIdx;
 }
+
+void* raft_node_get_udata(raft_node_t* me_)
+{
+    raft_node_private_t* me = (void*)me_;
+    return me->udata;
+}

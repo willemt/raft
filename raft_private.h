@@ -8,7 +8,13 @@
  * @version 0.1
  */
 
-/* These are here for testing purposes */
+enum {
+    RAFT_STATE_NONE,
+    RAFT_STATE_FOLLOWER,
+    RAFT_STATE_CANDIDATE,
+    RAFT_STATE_LEADER
+};
+
 
 void raft_election_start(raft_server_t* me);
 
