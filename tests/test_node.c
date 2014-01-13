@@ -8,6 +8,7 @@
 #include "CuTest.h"
 
 #include "raft.h"
+#include "raft_private.h"
 
 void TestRaft_node_set_nextIdx(CuTest * tc)
 {

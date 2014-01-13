@@ -8,6 +8,7 @@
 #include "CuTest.h"
 
 #include "raft.h"
+#include "raft_private.h"
 #include "mock_send_functions.h"
 
 // TODO: leader doesn't timeout and cause election

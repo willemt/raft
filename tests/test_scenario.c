@@ -8,6 +8,7 @@
 #include "CuTest.h"
 
 #include "raft.h"
+#include "raft_private.h"
 #include "mock_send_functions.h"
 
 void TestRaft_scenario_leader_appears(CuTest * tc)
