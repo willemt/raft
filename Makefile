@@ -1,11 +1,12 @@
-CONTRIB_DIR = ..
+CONTRIB_DIR = .
+TEST_DIR = ./tests
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CC     = gcc
-CCFLAGS = -g -O2 -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR)
+CCFLAGS = -g -O2 -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -I.
 
 all: tests_main
 
@@ -16,16 +17,16 @@ clinkedlistqueue:
 
 download-contrib: clinkedlistqueue
 
-main_test.c:
+$(TEST_DIR)/main_test.c:
 	if test -d $(LLQUEUE_DIR); \
 	then echo have contribs; \
 	else make download-contrib; \
 	fi
-	sh make-tests.sh "test_*.c" > main_test.c
+	cd $(TEST_DIR) && sh make-tests.sh "test_*.c" > main_test.c && cd ..
 
-tests_main: main_test.c raft_server.c raft_log.c raft_node.c test_server.c test_server_request_vote.c test_node.c test_log.c test_scenario.c mock_send_functions.c CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_main: raft_server.c raft_log.c raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_server_request_vote.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_main
 
 clean:
-	rm -f main_test.c *.o $(GCOV_OUTPUT)
+	rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT)

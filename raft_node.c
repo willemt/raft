@@ -5,7 +5,7 @@
  * found in the LICENSE file. 
  *
  * @file
- * @brief Implementation of a Raft server
+ * @brief Representation of a peer
  * @author Willem Thiart himself@willemthiart.com
  * @version 0.1
  */
@@ -32,6 +32,7 @@ raft_node_t* raft_node_new(void* udata)
 
 int raft_node_is_leader(raft_node_t* me_)
 {
+    // TODO
     return 0;
 }
 
