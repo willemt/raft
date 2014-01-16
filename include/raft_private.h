@@ -15,6 +15,53 @@ enum {
     RAFT_STATE_LEADER
 };
 
+typedef struct {
+    /* Persistent state: */
+
+    /* the server's best guess of what the current term is
+     * starts at zero */
+    int current_term;
+
+    /* The candidate the server voted for in its current term,
+     * or Nil if it hasn't voted for any.  */
+    int voted_for;
+
+    /* the log which is replicated */
+    log_t* log;
+
+    /* Volatile state: */
+
+    /* idx of highest log entry known to be committed */
+    int commit_idx;
+
+    /* idx of highest log entry applied to state machine */
+    int last_applied_idx;
+
+    /* follower/leader/candidate indicator */
+    int state;
+
+    /* most recently append idx, also indicates size of log */
+    int current_idx;
+
+    /* amount of time left till timeout */
+    int timeout_elapsed;
+
+    /* who has voted for me. This is an array with N = 'num_nodes' elements */
+    int *votes_for_me;
+
+    raft_node_t* nodes;
+    int num_nodes;
+
+    int election_timeout;
+    int request_timeout;
+
+    /* callbacks */
+    raft_cbs_t cb;
+    void* cb_ctx;
+
+    /* my node ID */
+    int nodeid;
+} raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);
 

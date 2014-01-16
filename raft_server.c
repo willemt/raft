@@ -19,57 +19,8 @@
 #include <stdarg.h>
 
 #include "raft.h"
-#include "raft_private.h"
 #include "raft_log.h"
-
-typedef struct {
-    /* Persistent state: */
-
-    /* the server's best guess of what the current term is
-     * starts at zero */
-    int current_term;
-
-    /* The candidate the server voted for in its current term,
-     * or Nil if it hasn't voted for any.  */
-    int voted_for;
-
-    /* the log which is replicated */
-    log_t* log;
-
-    /* Volatile state: */
-
-    /* idx of highest log entry known to be committed */
-    int commit_idx;
-
-    /* idx of highest log entry applied to state machine */
-    int last_applied_idx;
-
-    /* follower/leader/candidate indicator */
-    int state;
-
-    /* most recently append idx, also indicates size of log */
-    int current_idx;
-
-    /* amount of time left till timeout */
-    int timeout_elapsed;
-
-    /* who has voted for me. This is an array with N = 'num_nodes' elements */
-    int *votes_for_me;
-
-    raft_node_t* nodes;
-    int num_nodes;
-
-    int election_timeout;
-    int request_timeout;
-
-    /* callbacks */
-    raft_cbs_t cb;
-    void* cb_ctx;
-
-    /* my node ID */
-    int nodeid;
-
-} raft_server_private_t;
+#include "raft_private.h"
 
 static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 {
@@ -79,8 +30,10 @@ static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
-    //printf("%d: %s\n", me->nodeid, buf);
-    //__FUNC_log(bto,src,buf);
+#if 0 /* debugging */
+    printf("%d: %s\n", me->nodeid, buf);
+    __FUNC_log(bto,src,buf);
+#endif
 }
 
 raft_server_t* raft_new()
@@ -113,6 +66,7 @@ void raft_set_callbacks(raft_server_t* me_,
 void raft_free(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
+
     log_free(me->log);
     free(me_);
 }
@@ -133,6 +87,7 @@ void raft_become_leader(raft_server_t* me_)
     int i;
 
     __log(me_, NULL, "becoming leader");
+
     raft_set_state(me_,RAFT_STATE_LEADER);
     me->voted_for = -1;
     for (i=0; i<me->num_nodes; i++)
@@ -150,11 +105,15 @@ void raft_become_candidate(raft_server_t* me_)
     int i;
 
     __log(me_, NULL, "becoming candidate");
+
     memset(me->votes_for_me, 0, sizeof(int) * me->num_nodes);
     me->current_term += 1;
     raft_vote(me_, me->nodeid);
     raft_set_state(me_, RAFT_STATE_CANDIDATE);
+
+    /* we need a random factor here to prevent simultaneous candidates */
     me->timeout_elapsed = rand() % 500;
+
     /* request votes from nodes */
     for (i=0; i<me->num_nodes; i++)
     {
@@ -168,6 +127,7 @@ void raft_become_follower(raft_server_t* me_)
     raft_server_private_t* me = (void*)me_;
 
     __log(me_, NULL, "becoming follower");
+
     raft_set_state(me_, RAFT_STATE_FOLLOWER);
     me->voted_for = -1;
 }
@@ -622,38 +582,6 @@ void raft_vote(raft_server_t* me_, int node)
     me->voted_for = node;
 }
 
-void raft_set_election_timeout(raft_server_t* me_, int millisec)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->election_timeout = millisec;
-}
-
-void raft_set_request_timeout(raft_server_t* me_, int millisec)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->request_timeout = millisec;
-}
-
-int raft_get_nodeid(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nodeid;
-}
-
-int raft_get_election_timeout(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->election_timeout;
-}
-
-int raft_get_request_timeout(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->request_timeout;
-}
-
-int raft_get_num_nodes(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->num_nodes;
-}
-
 raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
 {
     raft_server_private_t* me = (void*)me_;
@@ -661,44 +589,6 @@ raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
     if (nodeid < 0 || me->num_nodes <= nodeid)
         return NULL;
     return me->nodes[nodeid];
-}
-
-int raft_get_timeout_elapsed(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->timeout_elapsed;
-}
-
-int raft_get_log_count(raft_server_t* me_)
-{
-    raft_server_private_t* me = (void*)me_;
-    return log_count(me->log);
-}
-
-int raft_get_voted_for(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->voted_for;
-}
-
-void raft_set_current_term(raft_server_t* me_, int term)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->current_term = term;
-}
-
-int raft_get_current_term(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->current_term;
-}
-
-void raft_set_current_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->current_idx = idx;
-}
-
-int raft_get_current_idx(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->current_idx;
 }
 
 int raft_is_follower(raft_server_t* me_)
@@ -714,44 +604,6 @@ int raft_is_leader(raft_server_t* me_)
 int raft_is_candidate(raft_server_t* me_)
 {
     return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
-}
-
-int raft_get_my_id(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nodeid;
-}
-
-void raft_set_commit_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->commit_idx = idx;
-}
-
-void raft_set_last_applied_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->last_applied_idx = idx;
-}
-
-int raft_get_last_applied_idx(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->last_applied_idx;
-}
-
-int raft_get_commit_idx(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->commit_idx;
-}
-
-void raft_set_state(raft_server_t* me_, int state)
-{
-    raft_server_private_t* me = (void*)me_;
-    me->state = state;
-}
-
-int raft_get_state(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->state;
 }
 
 /*--------------------------------------------------------------79-characters-*/
