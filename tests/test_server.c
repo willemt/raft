@@ -68,41 +68,6 @@ void TestRaft_election_start_increments_term(CuTest * tc)
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
 }
 
-#if 0
-void T_estRaft_add_node(CuTest * tc)
-{
-    void *r;
-
-    r = raft_new();
-    CuAssertTrue(tc, 0 == raft_get_num_nodes(r));
-    raft_add_node(r,(void*)1);
-    CuAssertTrue(tc, 1 == raft_get_num_nodes(r));
-}
-
-void T_estRaft_dont_add_duplicate_nodes(CuTest * tc)
-{
-    void *r;
-
-    r = raft_new();
-    CuAssertTrue(tc, 0 == raft_get_num_nodes(r));
-    raft_add_node(r,(void*)1);
-    CuAssertTrue(tc, NULL == raft_add_node(r,(void*)1));
-    CuAssertTrue(tc, 1 == raft_get_num_nodes(r));
-}
-
-void T_estRaft_remove_node(CuTest * tc)
-{
-    void *r;
-    void *node;
-
-    r = raft_new();
-    node = raft_add_node(r,(void*)1);
-    CuAssertTrue(tc, 1 == raft_get_num_nodes(r));
-    raft_remove_node(r,node);
-    CuAssertTrue(tc, 0 == raft_get_num_nodes(r));
-}
-#endif
-
 void TestRaft_set_state(CuTest * tc)
 {
     void *r;
@@ -266,8 +231,8 @@ void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
     CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
 }
 
-// If commitidx > lastApplied: increment lastApplied, apply
-// log[lastApplied] to state machine (§5.3)
+/* If commitidx > lastApplied: increment lastApplied, apply log[lastApplied]
+ * to state machine (§5.3) */
 void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(CuTest* tc)
 {
     void *r;
@@ -313,31 +278,6 @@ void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest* tc)
     raft_apply_entry(r);
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 }
-
-#if 0
-/* Not incorrect assertion.
- * The leader will always have its commit idx = last applied idx */
-void T_estRaft_server_apply_entry_wont_apply_if_lastapplied_equalto_commit_index(CuTest* tc)
-{
-    void *r;
-    raft_entry_t ety;
-    raft_entry_t *ety_appended;
-    char *str = "aaa";
-
-    ety.term = 1;
-
-    r = raft_new();
-    raft_set_commit_idx(r,5);
-    raft_set_last_applied_idx(r, 5);
-
-    ety.id = 1;
-    ety.data = str;
-    ety.len = 3;
-    raft_append_entry(r,&ety);
-    raft_apply_entry(r);
-    CuAssertTrue(tc, 5 == raft_get_last_applied_idx(r));
-}
-#endif
 
 void TestRaft_server_periodic_elapses_election_timeout(CuTest * tc)
 {
@@ -402,8 +342,8 @@ void TestRaft_server_cant_get_node_we_dont_have(CuTest * tc)
     CuAssertTrue(tc, NULL == raft_get_node(r,2));
 }
 
-/* If term > currentTerm, set currentTerm to term (step down if candidate or leader) */
-//void TestRaft_when_recv_requestvote_step_down_if_term_is_greater(CuTest * tc)
+/* If term > currentTerm, set currentTerm to term (step down if candidate or
+ * leader) */
 void TestRaft_votes_are_majority_is_true(
     CuTest * tc
 )
@@ -474,7 +414,7 @@ void TestRaft_server_increase_votes_for_me_when_receive_request_vote_response(
     CuAssertTrue(tc, 1 == raft_get_nvotes_for_me(r));
 }
 
-// Reply false if term < currentTerm (§5.1)
+/* Reply false if term < currentTerm (§5.1) */
 void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term(
     CuTest * tc
 )
@@ -510,8 +450,8 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     CuAssertTrue(tc, 0 == rvr->vote_granted);
 }
 
-// If votedFor is null or candidateId, and candidate's log is at
-// least as up-to-date as local log, grant vote (§5.2, §5.4)
+/* If votedFor is null or candidateId, and candidate's log is at
+ * least as up-to-date as local log, grant vote (§5.2, §5.4) */
 void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     CuTest * tc
 )
@@ -704,7 +644,6 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
-
 
     r = raft_new();
     raft_set_configuration(r,cfg,0);
@@ -910,8 +849,8 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
     CuAssertTrue(tc, 2 == raft_get_log_count(r));
 }
 
-//If leaderCommit > commitidx, set commitidx =
-//min(leaderCommit, last log idx)
+/* If leaderCommit > commitidx, set commitidx =
+ *  min(leaderCommit, last log idx) */
 void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(CuTest * tc)
 {
     void *r;
@@ -1018,64 +957,6 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(CuTest *
     CuAssertTrue(tc, 3 == raft_get_commit_idx(r));
 }
 
-#if 0
-void T_estRaft_follower_rejects_appendentries_if_idx_and_term_dont_match_preceding_ones(CuTest * tc)
-{
-    void *r;
-
-    msg_appendentries_t ae;
-
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-                {(-1),(void*)1},
-                {(-1),(void*)2},
-                {(-1),NULL}};
-
-
-    r = raft_new();
-    raft_set_configuration(r,cfg,0);
-
-    raft_set_current_term(r,1);
-
-    /* first append entry */
-    memset(&ae,0,sizeof(msg_appendentries_t));
-    ae.term = 1;
-    ae.prev_log_idx = 0;
-    ae.prev_log_term = 0;
-
-    CuAssertTrue(tc, 0 == raft_get_log_count(r));
-
-    raft_recv_appendentries(r,1,&ae);
-    CuAssertTrue(tc, 1 == raft_get_log_count(r));
-}
-#endif
-
-#if 0
-void T_estRaft_follower_resends_entry_if_request_from_leader_timesout(CuTest * tc)
-{
-    void *r;
-
-    msg_appendentries_t ae;
-
-    /* appendentry */
-    memset(&ae,0,sizeof(msg_appendentries_t));
-
-    r = raft_new();
-
-    /* three nodes */
-    node = raft_add_node(r,(void*)1);
-    raft_add_node(r,(void*)2);
-
-    raft_set_state(r,RAFT_STATE_FOLLOWER);
-
-    /*  log size s */
-    CuAssertTrue(tc, 0 == raft_get_log_count(r));
-
-    raft_recv_appendentries(r,node,&ae);
-    CuAssertTrue(tc, 1 == raft_get_log_count(r));
-}
-#endif
-
 void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(CuTest * tc)
 {
     void *r;
@@ -1085,7 +966,6 @@ void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(CuTest * t
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
-
 
     r = raft_new();
 
@@ -1460,7 +1340,6 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
                 {(-1),(void*)2},
                 {(-1),NULL}};
 
-
     msg_appendentries_t ae;
 
     sender = sender_new(NULL);
@@ -1580,8 +1459,7 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(CuTest *
 }
 
 /* 5.2
- * Note: commit means it's been appended to the log, not applied to the FSM 
- **/
+ * Note: commit means it's been appended to the log, not applied to the FSM */
 void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
 {
     void *r, *sender;
@@ -1695,11 +1573,9 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
 }
 
 /*
-If there exists an N such that N > commitidx, a majority
-of matchidx[i] = N, and log[N].term == currentTerm:
-set commitidx = N (§5.2, §5.4).
-*/
-
+ * If there exists an N such that N > commitidx, a majority
+ * of matchidx[i] = N, and log[N].term == currentTerm:
+ * set commitidx = N (§5.2, §5.4).  */
 void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
 {
     void *r;
@@ -1847,7 +1723,6 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
 
     msg_appendentries_t ae;
 
-
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_configuration(r,cfg,0);
@@ -1867,7 +1742,6 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
 }
 
 /* TODO: If a server receives a request with a stale term number, it rejects the request. */
-
 #if 0
 void T_estRaft_leader_sends_appendentries_when_receive_entry_msg(CuTest * tc)
 #endif
