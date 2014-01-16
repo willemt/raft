@@ -151,12 +151,15 @@ typedef struct {
     /* length of entry data */
     unsigned int len;
     /* number of nodes that have this entry */
-    unsigned int nnodes;
+    unsigned int num_nodes;
 } raft_entry_t;
 
 /**
  * Initialise a new raft server
- * Election timeout defaults to 1000 milliseconds */
+ *
+ * Request timeout defaults to 200 milliseconds
+ * Election timeout defaults to 1000 milliseconds
+ * @return newly initialised raft server */
 raft_server_t* raft_new();
 
 /**

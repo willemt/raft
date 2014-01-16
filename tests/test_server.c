@@ -30,12 +30,19 @@ void TestRaft_server_idx_starts_at_1(CuTest * tc)
     CuAssertTrue(tc, 1 == raft_get_current_idx(r));
 }
 
+void TestRaft_server_currentterm_defaults_to_0(CuTest * tc)
+{
+    void *r;
+
+    r = raft_new();
+    CuAssertTrue(tc, 0 == raft_get_current_term(r));
+}
+
 void TestRaft_server_set_currentterm_sets_term(CuTest * tc)
 {
     void *r;
 
     r = raft_new();
-    CuAssertTrue(tc, 1 == raft_get_current_term(r));
     raft_set_current_term(r,5);
     CuAssertTrue(tc, 5 == raft_get_current_term(r));
 }
@@ -1155,9 +1162,9 @@ void TestRaft_follower_becoming_candidate_increments_current_term(CuTest * tc)
 
     r = raft_new();
 
-    CuAssertTrue(tc, 1 == raft_get_current_term(r));
+    CuAssertTrue(tc, 0 == raft_get_current_term(r));
     raft_become_candidate(r);
-    CuAssertTrue(tc, 2 == raft_get_current_term(r));
+    CuAssertTrue(tc, 1 == raft_get_current_term(r));
 }
 
 /* Candidate 5.2 */

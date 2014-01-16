@@ -23,32 +23,6 @@
 #include "raft_log.h"
 
 typedef struct {
-    /* Array: For each server, index of the next log entry to send to
-     * that server (initialized to leader last log index +1) */
-    int next_index;
-
-    /* Array: for each server, index of highest log entry known to be
-     * replicated on server (initialized to 0, increases monotonically) */
-    int match_index;
-
-    /* The latest entry that each follower has acknowledged is the same as
-     * the leader's. This is used to calculate commitIndex on the leader. */
-    int last_agree_index;
-} leader_t;
-
-typedef struct {
-
-    /* The set of servers from which the candidate has
-     * received a RequestVote response in this term. */
-    int votes_responded;
-
-    /* The set of servers from which the candidate has received a vote in this 
-     * term. */
-    int votes_granted;
-
-} candidate_t;
-
-typedef struct {
     /* Persistent state: */
 
     /* the server's best guess of what the current term is
@@ -79,11 +53,11 @@ typedef struct {
     /* amount of time left till timeout */
     int timeout_elapsed;
 
-    /* who has voted for me. This is an array with N = 'nnodes' elements */
+    /* who has voted for me. This is an array with N = 'num_nodes' elements */
     int *votes_for_me;
 
     raft_node_t* nodes;
-    int nnodes;
+    int num_nodes;
 
     int election_timeout;
     int request_timeout;
@@ -94,11 +68,6 @@ typedef struct {
 
     /* my node ID */
     int nodeid;
-
-    union {
-        leader_t leader;
-        candidate_t candidate;
-    };
 
 } raft_server_private_t;
 
@@ -121,14 +90,14 @@ raft_server_t* raft_new()
     if (!(me = calloc(1, sizeof(raft_server_private_t))))
         return NULL;
 
-    me->current_term = 1;
+    me->current_term = 0;
     me->voted_for = -1;
     me->current_idx = 1;
     me->timeout_elapsed = 0;
-    me->log = log_new();
-    raft_set_state((void*)me, RAFT_STATE_FOLLOWER);
     me->request_timeout = 200;
     me->election_timeout = 1000;
+    me->log = log_new();
+    raft_set_state((void*)me, RAFT_STATE_FOLLOWER);
     return (void*)me;
 }
 
@@ -166,7 +135,7 @@ void raft_become_leader(raft_server_t* me_)
     __log(me_, NULL, "becoming leader");
     raft_set_state(me_,RAFT_STATE_LEADER);
     me->voted_for = -1;
-    for (i=0; i<me->nnodes; i++)
+    for (i=0; i<me->num_nodes; i++)
     {
         if (me->nodeid == i) continue;
         raft_node_t* p = raft_get_node(me_, i);
@@ -181,13 +150,13 @@ void raft_become_candidate(raft_server_t* me_)
     int i;
 
     __log(me_, NULL, "becoming candidate");
-    memset(me->votes_for_me, 0, sizeof(int) * me->nnodes);
+    memset(me->votes_for_me, 0, sizeof(int) * me->num_nodes);
     me->current_term += 1;
     raft_vote(me_, me->nodeid);
     raft_set_state(me_, RAFT_STATE_CANDIDATE);
     me->timeout_elapsed = rand() % 500;
     /* request votes from nodes */
-    for (i=0; i<me->nnodes; i++)
+    for (i=0; i<me->num_nodes; i++)
     {
         if (me->nodeid == i) continue;
         raft_send_requestvote(me_, i);
@@ -271,7 +240,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
             e = log_get_from_idx(me->log, me->last_applied_idx + 1);
 
             /* majority has this */
-            if (e && me->nnodes / 2 <= e->nnodes)
+            if (e && me->num_nodes / 2 <= e->num_nodes)
             {
                 if (0 == raft_apply_entry(me_)) break;
             }
@@ -455,13 +424,13 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr)
     return 0;
 }
 
-int raft_votes_is_majority(const int nnodes, const int nvotes)
+int raft_votes_is_majority(const int num_nodes, const int nvotes)
 {
     int half;
 
-    if (nnodes < nvotes)
+    if (num_nodes < nvotes)
         return 0;
-    half = nnodes / 2;
+    half = num_nodes / 2;
     return half + 1 <= nvotes;
 }
 
@@ -476,7 +445,7 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
     if (raft_is_leader(me_))
         return 0;
 
-    assert(node < me->nnodes);
+    assert(node < me->num_nodes);
 
 //    if (r->term != raft_get_current_term(me_))
 //        return 0;
@@ -487,7 +456,7 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
 
         me->votes_for_me[node] = 1;
         votes = raft_get_nvotes_for_me(me_);
-        if (raft_votes_is_majority(me->nnodes, votes))
+        if (raft_votes_is_majority(me->num_nodes, votes))
             raft_become_leader(me_);
     }
 
@@ -524,7 +493,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e)
     ety.len = e->len;
     res = raft_append_entry(me_, &ety);
     raft_send_entry_response(me_, node, e->id, res);
-    for (i=0; i<me->nnodes; i++)
+    for (i=0; i<me->num_nodes; i++)
     {
         if (me->nodeid == i) continue;
         raft_send_appendentries(me_,i);
@@ -604,7 +573,7 @@ void raft_send_appendentries_all(raft_server_t* me_)
     raft_server_private_t* me = (void*)me_;
     int i;
 
-    for (i=0; i<me->nnodes; i++)
+    for (i=0; i<me->num_nodes; i++)
     {
         if (me->nodeid == i) continue;
         raft_send_appendentries(me_, i);
@@ -615,17 +584,17 @@ void raft_set_configuration(raft_server_t* me_,
         raft_node_configuration_t* nodes, int my_idx)
 {
     raft_server_private_t* me = (void*)me_;
-    int nnodes;
+    int num_nodes;
 
     /* TODO: one memory allocation only please */
-    for (nnodes=0; nodes->udata_address; nodes++)
+    for (num_nodes=0; nodes->udata_address; nodes++)
     {
-        nnodes++;
-        me->nodes = realloc(me->nodes,sizeof(raft_node_t*) * nnodes);
-        me->nnodes = nnodes;
-        me->nodes[nnodes-1] = raft_node_new(nodes->udata_address);
+        num_nodes++;
+        me->nodes = realloc(me->nodes,sizeof(raft_node_t*) * num_nodes);
+        me->num_nodes = num_nodes;
+        me->nodes[num_nodes-1] = raft_node_new(nodes->udata_address);
     }
-    me->votes_for_me = calloc(nnodes, sizeof(int));
+    me->votes_for_me = calloc(num_nodes, sizeof(int));
     me->nodeid = my_idx;
 }
 
@@ -634,7 +603,7 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
     raft_server_private_t* me = (void*)me_;
     int i, votes;
 
-    for (i=0, votes=0; i<me->nnodes; i++)
+    for (i=0, votes=0; i<me->num_nodes; i++)
     {
         if (me->nodeid == i) continue;
         if (1 == me->votes_for_me[i])
@@ -682,14 +651,14 @@ int raft_get_request_timeout(raft_server_t* me_)
 
 int raft_get_num_nodes(raft_server_t* me_)
 {
-    return ((raft_server_private_t*)me_)->nnodes;
+    return ((raft_server_private_t*)me_)->num_nodes;
 }
 
 raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
 {
     raft_server_private_t* me = (void*)me_;
 
-    if (nodeid < 0 || me->nnodes <= nodeid)
+    if (nodeid < 0 || me->num_nodes <= nodeid)
         return NULL;
     return me->nodes[nodeid];
 }
