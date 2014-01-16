@@ -1271,7 +1271,7 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(C
     msg_requestvote_response_t vr;
 
     memset(&vr,0,sizeof(msg_requestvote_response_t));
-    vr.term = 1;
+    vr.term = 0;
     vr.vote_granted = 1;
 
     sender = sender_new(NULL);
@@ -1283,11 +1283,11 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(C
 
     /* server wants to be leader, so becomes candidate */
     raft_become_candidate(r);
-    CuAssertTrue(tc, 2 == raft_get_current_term(r));
+    CuAssertTrue(tc, 1 == raft_get_current_term(r));
 
     /* clock over (ie. 1000 + 1), causing new election */
     raft_periodic(r,1001);
-    CuAssertTrue(tc, 3 == raft_get_current_term(r));
+    CuAssertTrue(tc, 2 == raft_get_current_term(r));
 
     /*  receiving this vote gives the server majority */
 //    raft_recv_requestvote_response(r,1,&vr);
@@ -1324,12 +1324,12 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 
     /* vote for self */
     raft_become_candidate(r);
-    CuAssertTrue(tc, 2 == raft_get_current_term(r));
+    CuAssertTrue(tc, 1 == raft_get_current_term(r));
     CuAssertTrue(tc, 1 == raft_get_nvotes_for_me(r));
 
     /* a vote for us */
     memset(&vr,0,sizeof(msg_requestvote_response_t));
-    vr.term = 2;
+    vr.term = 1;
     vr.vote_granted = 1;
     /* get one vote */
     raft_recv_requestvote_response(r,1,&vr);
