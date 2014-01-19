@@ -155,16 +155,16 @@ typedef struct {
 } raft_entry_t;
 
 /**
- * Initialise a new raft server
+ * Initialise a new Raft server
  *
  * Request timeout defaults to 200 milliseconds
  * Election timeout defaults to 1000 milliseconds
  *
- * @return newly initialised raft server */
+ * @return newly initialised Raft server */
 raft_server_t* raft_new();
 
 /**
- * De-Initialise raft server
+ * De-Initialise Raft server
  * Free all memory */
 void raft_free(raft_server_t* me_);
 
@@ -176,29 +176,32 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* cb_ctx);
 
 /**
  * Set configuration
- * @param nodes Array of nodes, end of array is marked by NULL entry
- * @param my_idx Which node is myself */
+ * @param nodes Array of nodes. End of array is marked by NULL entry
+ * @param my_idx Index of the node that refers to this Raft server */
 void raft_set_configuration(raft_server_t* me_,
         raft_node_configuration_t* nodes, int my_idx);
 
 /**
  * Set election timeout
- * @param millisec Election timeout in milliseconds */
-void raft_set_election_timeout(raft_server_t* me, int millisec);
+ * The amount of time that needs to elapse before we assume the leader is down
+ * @param msec Election timeout in milliseconds */
+void raft_set_election_timeout(raft_server_t* me, int msec);
 
 /**
  * Set request timeout in milliseconds
- * @param millisec Request timeout in milliseconds */
-void raft_set_request_timeout(raft_server_t* me_, int millisec);
+ * The amount of time before we resend an appendentries message
+ * @param msec Request timeout in milliseconds */
+void raft_set_request_timeout(raft_server_t* me_, int msec);
 
 /**
- * Run actions that are dependent on time passing
+ * Process events that are dependent on time passing
+ * @param msec_elapsed Time in milliseconds since the last raft_periodic() call
  * @return 0 on error */
-int raft_periodic(raft_server_t* me, int msec_since_last_period);
+int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /**
  * Receive an appendentries message
- * @param node Who sent us the response
+ * @param node Index of the node who sent us this message 
  * @param ae The appendentries message 
  * @return 0 on error */
 int raft_recv_appendentries(raft_server_t* me, int node,
@@ -206,14 +209,14 @@ int raft_recv_appendentries(raft_server_t* me, int node,
 
 /**
  * Receive a response from an appendentries message we sent
- * @param node Who sent us the response
- * @param r The appendentries response 
+ * @param node Index of the node who sent us this message 
+ * @param r The appendentries response message
  * @return 0 on error */
 int raft_recv_appendentries_response(raft_server_t* me_,
         int node, msg_appendentries_response_t* r);
 /**
  * Receive a requestvote message
- * @param node Who sent us the message
+ * @param node Index of the node who sent us this message 
  * @param vr The requestvote message
  * @return 0 on error */
 int raft_recv_requestvote(raft_server_t* me, int node,
@@ -221,8 +224,8 @@ int raft_recv_requestvote(raft_server_t* me, int node,
 
 /**
  * Receive a response from a requestvote message we sent
- * @param node Who sent us the response
- * @param r The requestvote response 
+ * @param node Index of the node who sent us this message 
+ * @param r The requestvote response message
  * @param node The node this response was sent by */
 int raft_recv_requestvote_response(raft_server_t* me, int node,
         msg_requestvote_response_t* r);
@@ -231,7 +234,7 @@ int raft_recv_requestvote_response(raft_server_t* me, int node,
  * Receive an entry message from client.
  * Append the entry to the log
  * Send appendentries to followers 
- * @param node The node this response was sent by
+ * @param node Index of the node who sent us this message 
  * @param e The entry message */
 int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e);
 
@@ -294,8 +297,7 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);
 
 /**
  * @param node The node's index
- * @return node pointed to by node index
- */
+ * @return node pointed to by node index */
 raft_node_t* raft_get_node(raft_server_t *me_, int node);
 
 /**
