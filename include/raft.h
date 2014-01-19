@@ -159,17 +159,19 @@ typedef struct {
  *
  * Request timeout defaults to 200 milliseconds
  * Election timeout defaults to 1000 milliseconds
+ *
  * @return newly initialised raft server */
 raft_server_t* raft_new();
 
 /**
- * De-Initialise raft server */
+ * De-Initialise raft server
+ * Free all memory */
 void raft_free(raft_server_t* me_);
 
 /**
  * Set callbacks
  * @param funcs Callbacks
- * @param cb_ctx The context that we include with all callbacks */
+ * @param cb_ctx The context that we include when making a callback */
 void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* cb_ctx);
 
 /**
