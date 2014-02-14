@@ -3,6 +3,9 @@ CRaft
 .. image:: https://travis-ci.org/willemt/CRaft.png
    :target: https://travis-ci.org/willemt/CRaft
 
+.. image:: https://coveralls.io/repos/willemt/CRaft.png?branch=master
+  :target: https://coveralls.io/r/willemt/CRaft?branch=master
+
 What?
 -----
 C implementation of the Raft Consensus protocol, BSD licensed
