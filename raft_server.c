@@ -213,7 +213,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     else
     {
         /* If AppendEntries fails because of log inconsistency:
-           decrement nextIndex and retry (§5.3) */
+           decrement nextIndex and retry (Â§5.3) */
         assert(0 <= raft_node_get_next_idx(p));
         // TODO does this have test coverage?
         // TODO can jump back to where node is different instead of iterating
@@ -242,7 +242,7 @@ int raft_recv_appendentries(
     if (raft_is_leader(me_) && me->current_term <= ae->term)
         raft_become_follower(me_);
 
-    /* 1. Reply false if term < currentTerm (§5.1) */
+    /* 1. Reply false if term < currentTerm (Â§5.1) */
     if (ae->term < me->current_term)
     {
         __log(me_, NULL, "AE term is less than current term");
@@ -267,8 +267,8 @@ int raft_recv_appendentries(
 
         if ((e = raft_get_entry_from_idx(me_, ae->prev_log_idx)))
         {
-            /* 2. Reply false if log doesn’t contain an entry at prevLogIndex
-               whose term matches prevLogTerm (§5.3) */
+            /* 2. Reply false if log doesnÂ’t contain an entry at prevLogIndex
+               whose term matches prevLogTerm (Â§5.3) */
             if (e->term != ae->prev_log_term)
             {
                 __log(me_, NULL, "AE term doesn't match prev_idx");
@@ -278,7 +278,7 @@ int raft_recv_appendentries(
 
             /* 3. If an existing entry conflicts with a new one (same index
             but different terms), delete the existing entry and all that
-            follow it (§5.3) */
+            follow it (Â§5.3) */
             raft_entry_t* e2;
             if ((e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx+1)))
             {
