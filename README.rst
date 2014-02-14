@@ -3,8 +3,8 @@ CRaft
 .. image:: https://travis-ci.org/willemt/CRaft.png
    :target: https://travis-ci.org/willemt/CRaft
 
-.. image:: https://coveralls.io/repos/willemt/CRaft.png?branch=master
-  :target: https://coveralls.io/r/willemt/CRaft?branch=master
+.. image:: https://coveralls.io/repos/willemt/CRaft/badge.png
+  :target: https://coveralls.io/r/willemt/CRaft
 
 What?
 -----
