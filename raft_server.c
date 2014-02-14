@@ -114,7 +114,6 @@ void raft_become_candidate(raft_server_t* me_)
     /* we need a random factor here to prevent simultaneous candidates */
     me->timeout_elapsed = rand() % 500;
 
-    /* request votes from nodes */
     for (i=0; i<me->num_nodes; i++)
     {
         if (me->nodeid == i) continue;
