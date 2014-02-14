@@ -40,6 +40,8 @@ void senders_new()
     __nsenders = 0;
 }
 
+
+#if 0
 int sender_send(raft_server_t* raft,
         void* udata,
         int peer,
@@ -64,6 +66,69 @@ int sender_send(raft_server_t* raft,
     }
 
     return 0;
+}
+#endif
+
+int __append_msg(
+    sender_t* me,
+    void* data,
+    int type,
+    int len,
+    int peer,
+    raft_server_t* raft
+)
+{
+    msg_t* m;
+    m = malloc(sizeof(msg_t));
+    m->type = type;
+    m->len = len;
+    m->data = malloc(len);
+    m->sender = raft_get_nodeid(raft);
+    memcpy(m->data,data,len);
+    llqueue_offer(me->outbox,m);
+
+    if (__nsenders > peer)
+    {
+        llqueue_offer(__senders[peer]->inbox, m);
+    }
+
+    return 1;
+}
+
+int sender_requestvote(raft_server_t* raft,
+        void* udata, int peer, msg_requestvote_t* msg)
+{
+    return __append_msg(udata,msg,RAFT_MSG_REQUESTVOTE,sizeof(*msg),peer,raft);
+}
+
+int sender_requestvote_response(raft_server_t* raft,
+        void* udata, int peer, msg_requestvote_response_t* msg)
+{
+    return __append_msg(udata,msg,RAFT_MSG_REQUESTVOTE_RESPONSE,sizeof(*msg),peer,raft);
+}
+
+int sender_appendentries(raft_server_t* raft,
+        void* udata, int peer, msg_appendentries_t* msg)
+{
+    return __append_msg(udata,msg,RAFT_MSG_APPENDENTRIES,sizeof(*msg),peer,raft);
+}
+
+int sender_appendentries_response(raft_server_t* raft,
+        void* udata, int peer, msg_appendentries_response_t* msg)
+{
+    return __append_msg(udata,msg,RAFT_MSG_APPENDENTRIES_RESPONSE,sizeof(*msg),peer,raft);
+}
+
+int sender_entries(raft_server_t* raft,
+        void* udata, int peer, msg_entry_t* msg)
+{
+    return __append_msg(udata,msg,RAFT_MSG_ENTRY,sizeof(*msg),peer,raft);
+}
+
+int sender_entries_response(raft_server_t* raft,
+        void* udata, int peer, msg_entry_response_t* msg)
+{
+    return __append_msg(udata,msg,RAFT_MSG_ENTRY_RESPONSE,sizeof(*msg),peer,raft);
 }
 
 void* sender_new(void* address)

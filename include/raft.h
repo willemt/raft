@@ -105,14 +105,7 @@ typedef enum {
     RAFT_MSG_ENTRY_RESPONSE,
 } raft_message_type_e;
 
-/**
- * @param raft The Raft server making this callback
- * @param udata User data that is passed from Raft server
- * @param node The peer's ID that we are sending this message to
- * @param msg_type ID of the message type
- * @param send_data Data to be sent
- * @param len Length in bytes of data to be sent
- * @return 0 on error */
+
 typedef int (
     *func_send_f
 )   (
@@ -122,6 +115,90 @@ typedef int (
     raft_message_type_e msg_type,
     const unsigned char *send_data,
     const int len
+);
+
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @return 0 on error */
+typedef int (
+    *func_send_requestvote_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    int node,
+    msg_requestvote_t* msg
+);
+
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @return 0 on error */
+typedef int (
+    *func_send_requestvote_response_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    int node,
+    msg_requestvote_response_t* msg
+);
+
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @return 0 on error */
+typedef int (
+    *func_send_appendentries_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    int node,
+    msg_appendentries_t* msg
+);
+
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @return 0 on error */
+typedef int (
+    *func_send_appendentries_response_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    int node,
+    msg_appendentries_response_t* msg
+);
+
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @return 0 on error */
+typedef int (
+    *func_send_entries_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    int node,
+    msg_entry_t* msg
+);
+
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @return 0 on error */
+typedef int (
+    *func_send_entries_response_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    int node,
+    msg_entry_response_t* msg
 );
 
 #ifndef HAVE_FUNC_LOG
@@ -153,11 +230,15 @@ typedef int (
 );
 
 typedef struct {
-    func_send_f send;
+    func_send_requestvote_f send_requestvote;
+    func_send_requestvote_response_f send_requestvote_response;
+    func_send_appendentries_f send_appendentries;
+    func_send_appendentries_response_f send_appendentries_response;
+    func_send_entries_f send_entries;
+    func_send_entries_response_f send_entries_response;
     func_log_f log;
     func_applylog_f applylog;
 } raft_cbs_t;
-
 
 typedef struct {
     /* entry's term */

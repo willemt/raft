@@ -343,9 +343,8 @@ int raft_recv_appendentries(
     r.first_idx = ae->prev_log_idx + 1;
 
 done:
-    if (me->cb.send)
-        me->cb.send(me_, me->udata, node, RAFT_MSG_APPENDENTRIES_RESPONSE,
-                (void*)&r, sizeof(msg_appendentries_response_t));
+    if (me->cb.send_appendentries_response)
+        me->cb.send_appendentries_response(me_, me->udata, node, &r);
     return 1;
 }
 
@@ -377,9 +376,8 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr)
             node, r.vote_granted == 1 ? "granted" : "not granted");
 
     r.term = raft_get_current_term(me_);
-    if (me->cb.send)
-        me->cb.send(me_, me->udata, node, RAFT_MSG_REQUESTVOTE_RESPONSE,
-                (void*)&r, sizeof(msg_requestvote_response_t));
+    if (me->cb.send_requestvote_response)
+        me->cb.send_requestvote_response(me_, me->udata, node, &r);
 
     return 0;
 }
@@ -433,9 +431,8 @@ int raft_send_entry_response(raft_server_t* me_,
 
     res.id = etyid;
     res.was_committed = was_committed;
-    if (me->cb.send)
-        me->cb.send(me_, me->udata, node, RAFT_MSG_ENTRY_RESPONSE,
-                (void*)&res, sizeof(msg_entry_response_t));
+    if (me->cb.send_entries_response)
+        me->cb.send_entries_response(me_, me->udata, node, &res);
     return 0;
 }
 
@@ -470,9 +467,8 @@ int raft_send_requestvote(raft_server_t* me_, int node)
 
     rv.term = me->current_term;
     rv.last_log_idx = raft_get_current_idx(me_);
-    if (me->cb.send)
-        me->cb.send(me_, me->udata, node, RAFT_MSG_REQUESTVOTE,
-                (void*)&rv, sizeof(msg_requestvote_t));
+    if (me->cb.send_requestvote)
+        me->cb.send_requestvote(me_, me->udata, node, &rv);
     return 1;
 }
 
@@ -512,7 +508,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 
     __log(me_, NULL, "sending appendentries to: %d", node);
 
-    if (!(me->cb.send))
+    if (!(me->cb.send_appendentries))
         return;
 
     msg_appendentries_t ae;
@@ -524,8 +520,8 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     // TODO:
     ae.prev_log_idx = 0;
     ae.n_entries = 0;
-    me->cb.send(me_, me->udata, node, RAFT_MSG_APPENDENTRIES,
-            (void*)&ae, sizeof(msg_appendentries_t));
+    if (me->cb.send_appendentries)
+        me->cb.send_appendentries(me_, me->udata, node, &ae);
 }
 
 void raft_send_appendentries_all(raft_server_t* me_)

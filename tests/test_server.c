@@ -423,7 +423,7 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_requestvote_response = sender_requestvote_response,
         .log = NULL
     };
     msg_requestvote_t rv;
@@ -461,7 +461,7 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     void *sender;
     void *msg;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_requestvote_response = sender_requestvote_response,
         .log = NULL
     };
     msg_requestvote_t rv;
@@ -520,7 +520,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
     msg_appendentries_t ae;
@@ -561,7 +561,7 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
     msg_appendentries_response_t *aer;
 
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
 
@@ -636,7 +636,7 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
     char *str = "aaa";
 
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
 
@@ -687,7 +687,7 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
     msg_entry_t ety;
     char *str = "aaa";
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
     /* 2 nodes */
@@ -743,7 +743,7 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
     raft_entry_t *ety_appended;
 
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
 
@@ -812,7 +812,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(CuT
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
 
@@ -857,7 +857,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(CuTest * t
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
 
@@ -910,7 +910,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(CuTest *
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
 
@@ -988,7 +988,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(CuTe
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_requestvote_response = sender_requestvote_response,
         .log = NULL
     };
 
@@ -1100,7 +1100,7 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(CuTe
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_requestvote = sender_requestvote,
         .log = NULL
     };
     raft_node_configuration_t cfg[] = {
@@ -1139,7 +1139,6 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(C
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
         .log = NULL
     };
 
@@ -1181,7 +1180,6 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
         .log = NULL
     };
 
@@ -1230,7 +1228,7 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
     void *sender;
     void *msg;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_requestvote_response = sender_requestvote_response,
         .log = NULL
     };
 
@@ -1264,7 +1262,7 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_requestvote = sender_requestvote,
         .log = NULL
     };
     msg_requestvote_t* rv;
@@ -1298,7 +1296,6 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(CuTest
     void *sender;
     void *msg;
     raft_cbs_t funcs = {
-        .send = sender_send,
         .log = NULL
     };
 
@@ -1331,7 +1328,6 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
         .log = NULL
     };
 
@@ -1393,7 +1389,6 @@ void TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
         .log = NULL
     };
 
@@ -1431,7 +1426,7 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(CuTest *
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries = sender_appendentries,
         .log = NULL
     };
 
@@ -1466,7 +1461,7 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
     void *r, *sender;
     msg_entry_response_t *cr;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_entries_response = sender_entries_response,
         .log = NULL
     };
 
@@ -1509,7 +1504,7 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(Cu
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries = sender_appendentries,
         .log = NULL
     };
 
@@ -1518,7 +1513,6 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(Cu
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
-
 
     msg_appendentries_t* ae;
 
@@ -1546,7 +1540,7 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries = sender_appendentries,
         .log = NULL
     };
 
@@ -1555,7 +1549,6 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
-
 
     msg_appendentries_t* ae;
 
@@ -1586,7 +1579,6 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
                 {(-1),(void*)1},
                 {(-1),(void*)2},
                 {(-1),NULL}};
-
 
     msg_entry_t ety;
     ety.id = 1;
@@ -1638,7 +1630,8 @@ void TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_on
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
+        .send_appendentries = sender_appendentries,
+        .send_appendentries_response = sender_appendentries_response,
         .log = NULL
     };
     msg_appendentries_response_t aer;
@@ -1712,7 +1705,6 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(C
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send = sender_send,
         .log = NULL
     };
 
