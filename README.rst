@@ -1,6 +1,7 @@
-
 CRaft
 =====
+.. image:: https://travis-ci.org/willemt/CRaft.png
+   :target: https://travis-ci.org/willemt/CRaft
 
 What?
 -----
