@@ -1,3 +1,7 @@
+
+#ifndef RAFT_H_
+#define RAFT_H_
+
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
@@ -324,3 +328,4 @@ int raft_get_nvotes_for_me(raft_server_t* me_);
  * @return node ID of who I voted for */
 int raft_get_voted_for(raft_server_t* me);
 
+#endif /* RAFT_H_ */

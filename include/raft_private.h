@@ -1,3 +1,7 @@
+
+#ifndef RAFT_PRIVATE_H_
+#define RAFT_PRIVATE_H_
+
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
@@ -106,3 +110,4 @@ void raft_node_set_next_idx(raft_node_t* node, int nextIdx);
 
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
+#endif /* RAFT_PRIVATE_H_ */
