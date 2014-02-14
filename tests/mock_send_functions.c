@@ -40,17 +40,21 @@ void senders_new()
     __nsenders = 0;
 }
 
-int sender_send(void* caller, void* udata, int peer, int type,
-        const unsigned char* data, int len)
+int sender_send(raft_server_t* raft,
+        void* udata,
+        int peer,
+        raft_message_type_e type,
+        const unsigned char* data,
+        int len)
 {
-    sender_t* me = caller;
+    sender_t* me = udata;
     msg_t* m;
 
     m = malloc(sizeof(msg_t));
     m->type = type;
     m->len = len;
     m->data = malloc(len);
-    m->sender = raft_get_nodeid(udata);
+    m->sender = raft_get_nodeid(raft);
     memcpy(m->data,data,len);
     llqueue_offer(me->outbox,m);
 

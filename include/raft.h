@@ -89,22 +89,33 @@ typedef struct {
     int first_idx;
 } msg_appendentries_response_t;
 
-enum {
+typedef void* raft_server_t;
+typedef void* raft_node_t;
+
+typedef enum {
     RAFT_MSG_REQUESTVOTE,
     RAFT_MSG_REQUESTVOTE_RESPONSE,
     RAFT_MSG_APPENDENTRIES,
     RAFT_MSG_APPENDENTRIES_RESPONSE,
     RAFT_MSG_ENTRY,
     RAFT_MSG_ENTRY_RESPONSE,
-};
+} raft_message_type_e;
 
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param node The peer's ID that we are sending this message to
+ * @param msg_type ID of the message type
+ * @param send_data Data to be sent
+ * @param len Length in bytes of data to be sent
+ * @return 0 on error */
 typedef int (
     *func_send_f
 )   (
-    void *cb_ctx,
+    raft_server_t* raft,
     void *udata,
     int node,
-    int msg_type,
+    raft_message_type_e msg_type,
     const unsigned char *send_data,
     const int len
 );
@@ -114,19 +125,24 @@ typedef int (
 typedef void (
     *func_log_f
 )    (
-    void *cb_ctx,
-    void *src,
+    raft_server_t* raft,
+    void *udata,
     const char *buf,
     ...
 );
 #endif
 
 /**
- * Apply this log to the state macine */
+ * Apply this log to the state machine
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param data Data to be applied to the log
+ * @param len Length in bytes of data to be applied
+ * @return 0 on error */
 typedef int (
     *func_applylog_f
 )   (
-    void *cb_ctx,
+    raft_server_t* raft,
     void *udata,
     const unsigned char *data,
     const int len
@@ -138,8 +154,6 @@ typedef struct {
     func_applylog_f applylog;
 } raft_cbs_t;
 
-typedef void* raft_server_t;
-typedef void* raft_node_t;
 
 typedef struct {
     /* entry's term */
@@ -169,10 +183,12 @@ raft_server_t* raft_new();
 void raft_free(raft_server_t* me_);
 
 /**
- * Set callbacks
+ * Set callbacks.
+ * Callbacks need to be set by the user for CRaft to work.
+ *
  * @param funcs Callbacks
- * @param cb_ctx The context that we include when making a callback */
-void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* cb_ctx);
+ * @param udata The context that we include when making a callback */
+void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* udata);
 
 /**
  * Set configuration
@@ -195,7 +211,7 @@ void raft_set_request_timeout(raft_server_t* me_, int msec);
 
 /**
  * Process events that are dependent on time passing
- * @param msec_elapsed Time in milliseconds since the last raft_periodic() call
+ * @param msec_elapsed Time in milliseconds since the last call
  * @return 0 on error */
 int raft_periodic(raft_server_t* me, int msec_elapsed);
 

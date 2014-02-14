@@ -57,7 +57,7 @@ typedef struct {
 
     /* callbacks */
     raft_cbs_t cb;
-    void* cb_ctx;
+    void* udata;
 
     /* my node ID */
     int nodeid;

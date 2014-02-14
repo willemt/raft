@@ -1,6 +1,10 @@
 
-int sender_send(void* caller, void* udata, int peer, int type,
-        const unsigned char* data, const int len);
+int sender_send(raft_server_t* raft,
+        void* udata,
+        int peer,
+        raft_message_type_e type,
+        const unsigned char* data,
+        const int len);
 
 void* sender_new(void* address);
 
