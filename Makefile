@@ -13,7 +13,7 @@ all: tests_main
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
 	git --git-dir=$(LLQUEUE_DIR)/.git init 
-	pushd $(LLQUEUE_DIR); git pull git@github.com:willemt/CLinkedListQueue.git; popd
+	pushd $(LLQUEUE_DIR); git pull http://github.com/willemt/CLinkedListQueue; popd
 
 download-contrib: clinkedlistqueue
 
