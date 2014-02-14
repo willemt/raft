@@ -27,7 +27,7 @@ $(TEST_DIR)/main_test.c:
 tests_main: raft_server.c raft_server_properties.c raft_log.c raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_main
-	gcov $(TEST_DIR)/main_test.c raft_server.c
+	gcov raft_server.c
 
 clean:
 	rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT)

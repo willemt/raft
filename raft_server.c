@@ -22,6 +22,7 @@
 #include "raft_log.h"
 #include "raft_private.h"
 
+
 static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
 {
     raft_server_private_t* me = (void*)me_;
