@@ -4,4 +4,4 @@ before_install:
 script:
   - make
 after_success:
-  - coveralls --verbose
+  - coveralls --verbose --no-gcov
