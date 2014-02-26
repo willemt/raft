@@ -23,7 +23,7 @@ cat $FILES | grep '^void Test' |
         -e 's/$/(CuTest*);/' \
         -e 's/^/extern /'
 
-echo -n \
+echo \
 '
 
 void RunAllTests(void) 
