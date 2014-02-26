@@ -1,10 +1,11 @@
-
 #ifndef RAFT_LOG_H_
 #define RAFT_LOG_H_
 
 typedef void* log_t;
 
 log_t* log_new();
+
+void log_free(log_t* me_);
 
 /**
  * Add entry to log.
@@ -13,6 +14,8 @@ log_t* log_new();
  * @return 0 if unsucessful; 1 otherwise */
 int log_append_entry(log_t* me_, raft_entry_t* c);
 
+/**
+ * @return number of entries held within log */
 int log_count(log_t* me_);
 
 /**
@@ -30,10 +33,12 @@ void *log_poll(log_t * me_);
 
 raft_entry_t* log_get_from_idx(log_t* me_, int idx);
 
-/*
+/**
  * @return youngest entry */
 raft_entry_t *log_peektail(log_t * me_);
 
-void log_mark_peer_has_committed(log_t* me_, int idx);
+void log_mark_node_has_committed(log_t* me_, int idx);
+
+void log_delete(log_t* me_, int idx);
 
 #endif /* RAFT_LOG_H_ */
