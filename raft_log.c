@@ -5,7 +5,7 @@
  * found in the LICENSE file. 
  *
  * @file
- * @brief ADT for managing Raft log entries (aka entrys)
+ * @brief ADT for managing Raft log entries (aka entries)
  * @author Willem Thiart himself@willemthiart.com
  * @version 0.1
  */
@@ -78,11 +78,6 @@ log_t* log_new()
     return (void*)me;
 }
 
-/**
- * Add entry to log.
- * Don't add entry if we've already added this entry (based off ID)
- * Don't add entries with ID=0 
- * @return 0 if unsucessful; 1 otherwise */
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
     log_private_t* me = (void*)me_;
@@ -122,8 +117,6 @@ int log_count(log_t* me_)
     return me->count;
 }
 
-/**
- * Delete all logs from this log onwards */
 void log_delete(log_t* me_, int idx)
 {
     log_private_t* me = (void*)me_;
@@ -156,9 +149,6 @@ void log_delete(log_t* me_, int idx)
 #endif
 }
 
-/**
- * Remove oldest entry
- * @return oldest entry */
 void *log_poll(log_t * me_)
 {
     log_private_t* me = (void*)me_;
@@ -173,8 +163,6 @@ void *log_poll(log_t * me_)
     return (void *) elem;
 }
 
-/*
- * @return youngest entry */
 raft_entry_t *log_peektail(log_t * me_)
 {
     log_private_t* me = (void*)me_;
@@ -190,8 +178,6 @@ raft_entry_t *log_peektail(log_t * me_)
         return &me->entries[me->back-1];
 }
 
-/**
- * Empty the queue. */
 void log_empty(log_t * me_)
 {
     log_private_t* me = (void*)me_;
