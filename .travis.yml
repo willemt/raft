@@ -2,6 +2,6 @@ language: c
 before_install:
   - sudo pip install cpp-coveralls --use-mirrors
 script:
-  - make
+  - make tests
 after_success:
   - coveralls --verbose --no-gcov
