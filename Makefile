@@ -5,8 +5,8 @@ LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
-CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -Wno-pointer-sign \
-	  -Wno-implicit-function-declaration -fno-omit-frame-pointer -fno-common -fsigned-char \
+CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
+	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
 	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -Iinclude -fPIC -g -O2
 
 UNAME := $(shell uname)
