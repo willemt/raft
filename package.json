@@ -1,7 +1,7 @@
 {
   "name": "CRaft-1",
   "version": "0.1.0",
-  "repo": "willemt/CRaft",
+  "repo": "willemt/raft",
   "description": "C implementation of the Raft Consensus protocol, BSD licensed",
   "keywords": ["raft", "consensus", "protocol"],
   "src": [
