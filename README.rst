@@ -1,10 +1,10 @@
 CRaft
 =====
-.. image:: https://travis-ci.org/willemt/CRaft.png
-   :target: https://travis-ci.org/willemt/CRaft
+.. image:: https://travis-ci.org/willemt/raft.png
+   :target: https://travis-ci.org/willemt/raft
 
-.. image:: https://coveralls.io/repos/willemt/CRaft/badge.png
-  :target: https://coveralls.io/r/willemt/CRaft
+.. image:: https://coveralls.io/repos/willemt/raft/badge.png
+  :target: https://coveralls.io/r/willemt/raft
 
 What?
 -----
