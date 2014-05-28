@@ -73,6 +73,8 @@ void raft_become_leader(raft_server_t* me);
 
 void raft_become_candidate(raft_server_t* me);
 
+void raft_become_follower(raft_server_t* me);
+
 void raft_vote(raft_server_t* me, int node);
 
 void raft_set_current_term(raft_server_t* me,int term);

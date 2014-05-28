@@ -380,6 +380,10 @@ int raft_is_candidate(raft_server_t* me);
 int raft_get_timeout_elapsed(raft_server_t* me);
 
 /**
+ * @return request timeout in milliseconds */
+int raft_get_request_timeout(raft_server_t* me_);
+
+/**
  * @return index of last applied entry */
 int raft_get_last_applied_idx(raft_server_t* me);
 

@@ -8,10 +8,10 @@
     "include/raft.h",
     "include/raft_log.h",
     "include/raft_private.h",
-    "raft_log.c",
-    "raft_node.c",
-    "raft_server.c",
-    "raft_server_properties.c"
+    "src/raft_log.c",
+    "src/raft_node.c",
+    "src/raft_server.c",
+    "src/raft_server_properties.c"
   ]
 }
 
