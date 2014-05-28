@@ -27,7 +27,7 @@ There are no dependencies, however https://github.com/willemt/CLinkedListQueue i
 
 Building
 --------
-$make
+$make tests
 
 Todo
 ----
