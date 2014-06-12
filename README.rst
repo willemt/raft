@@ -1,5 +1,3 @@
-CRaft
-=====
 .. image:: https://travis-ci.org/willemt/raft.png
    :target: https://travis-ci.org/willemt/raft
 
@@ -23,7 +21,7 @@ Networking is out of scope for this project. The implementor will need to do all
 
 Dependencies
 ------------
-There are no dependencies, however https://github.com/willemt/CLinkedListQueue is required for testing.
+There are no dependencies, however https://github.com/willemt/linked-List-queue is required for testing.
 
 Building
 --------

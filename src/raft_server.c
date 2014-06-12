@@ -23,7 +23,7 @@
 #include "raft_private.h"
 
 
-static void __log(raft_server_t *me_, void *src, const char *fmt, ...)
+static void __log(raft_server_t *me_, const char *fmt, ...)
 {
     raft_server_private_t* me = (void*)me_;
     char buf[1024];
@@ -76,7 +76,7 @@ void raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
 
-    __log(me_, NULL, "election starting: %d %d, term: %d",
+    __log(me_, "election starting: %d %d, term: %d",
             me->election_timeout, me->timeout_elapsed, me->current_term);
 
     raft_become_candidate(me_);
@@ -87,7 +87,7 @@ void raft_become_leader(raft_server_t* me_)
     raft_server_private_t* me = (void*)me_;
     int i;
 
-    __log(me_, NULL, "becoming leader");
+    __log(me_, "becoming leader");
 
     raft_set_state(me_,RAFT_STATE_LEADER);
     me->voted_for = -1;
@@ -105,7 +105,7 @@ void raft_become_candidate(raft_server_t* me_)
     raft_server_private_t* me = (void*)me_;
     int i;
 
-    __log(me_, NULL, "becoming candidate");
+    __log(me_, "becoming candidate");
 
     memset(me->votes_for_me, 0, sizeof(int) * me->num_nodes);
     me->current_term += 1;
@@ -126,7 +126,7 @@ void raft_become_follower(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
 
-    __log(me_, NULL, "becoming follower");
+    __log(me_, "becoming follower");
 
     raft_set_state(me_, RAFT_STATE_FOLLOWER);
     me->voted_for = -1;
@@ -136,7 +136,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (void*)me_;
 
-    __log(me_, NULL, "periodic elapsed time: %d", me->timeout_elapsed);
+    __log(me_, "periodic elapsed time: %d", me->timeout_elapsed);
 
     switch (me->state)
     {
@@ -182,7 +182,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     raft_server_private_t* me = (void*)me_;
     raft_node_t* p;
 
-    __log(me_, NULL, "received appendentries response from: %d", node);
+    __log(me_, "received appendentries response from: %d", node);
 
     p = raft_get_node(me_, node);
 
@@ -234,7 +234,7 @@ int raft_recv_appendentries(
 
     me->timeout_elapsed = 0;
 
-    __log(me_, NULL, "received appendentries from: %d", node);
+    __log(me_, "received appendentries from: %d", node);
 
     r.term = me->current_term;
 
@@ -245,7 +245,7 @@ int raft_recv_appendentries(
     /* 1. Reply false if term < currentTerm (§5.1) */
     if (ae->term < me->current_term)
     {
-        __log(me_, NULL, "AE term is less than current term");
+        __log(me_, "AE term is less than current term");
         r.success = 0;
         goto done;
     }
@@ -254,7 +254,7 @@ int raft_recv_appendentries(
     if (-1 != ae->prev_log_idx &&
          ae->prev_log_idx < raft_get_current_idx(me_))
     {
-        __log(me_, NULL, "AE prev_idx is less than current idx");
+        __log(me_, "AE prev_idx is less than current idx");
         r.success = 0;
         goto done;
     }
@@ -271,7 +271,7 @@ int raft_recv_appendentries(
                whose term matches prevLogTerm (§5.3) */
             if (e->term != ae->prev_log_term)
             {
-                __log(me_, NULL, "AE term doesn't match prev_idx");
+                __log(me_, "AE term doesn't match prev_idx");
                 r.success = 0;
                 goto done;
             }
@@ -287,7 +287,7 @@ int raft_recv_appendentries(
         }
         else
         {
-            __log(me_, NULL, "AE no log at prev_idx");
+            __log(me_, "AE no log at prev_idx");
             r.success = 0;
             goto done;
             //assert(0);
@@ -332,7 +332,7 @@ int raft_recv_appendentries(
         memcpy(c->data, cmd->data, cmd->len);
         if (0 == raft_append_entry(me_, c))
         {
-            __log(me_, NULL, "AE failure; couldn't append entry");
+            __log(me_, "AE failure; couldn't append entry");
             r.success = 0;
             goto done;
         }
@@ -372,7 +372,7 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr)
         r.vote_granted = 1;
     }
 
-    __log(me_, NULL, "node requested vote: %d replying: %s",
+    __log(me_, "node requested vote: %d replying: %s",
             node, r.vote_granted == 1 ? "granted" : "not granted");
 
     r.term = raft_get_current_term(me_);
@@ -397,7 +397,7 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
 {
     raft_server_private_t* me = (void*)me_;
 
-    __log(me_, NULL, "node responded to requestvote: %d status: %s",
+    __log(me_, "node responded to requestvote: %d status: %s",
             node, r->vote_granted == 1 ? "granted" : "not granted");
 
     if (raft_is_leader(me_))
@@ -427,7 +427,7 @@ int raft_send_entry_response(raft_server_t* me_,
     raft_server_private_t* me = (void*)me_;
     msg_entry_response_t res;
 
-    __log(me_, NULL, "send entry response to: %d", node);
+    __log(me_, "send entry response to: %d", node);
 
     res.id = etyid;
     res.was_committed = was_committed;
@@ -442,7 +442,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e)
     raft_entry_t ety;
     int res, i;
 
-    __log(me_, NULL, "received entry from: %d", node);
+    __log(me_, "received entry from: %d", node);
 
     ety.term = me->current_term;
     ety.id = e->id;
@@ -463,7 +463,7 @@ int raft_send_requestvote(raft_server_t* me_, int node)
     raft_server_private_t* me = (void*)me_;
     msg_requestvote_t rv;
 
-    __log(me_, NULL, "sending requestvote to: %d", node);
+    __log(me_, "sending requestvote to: %d", node);
 
     rv.term = me->current_term;
     rv.last_log_idx = raft_get_current_idx(me_);
@@ -492,7 +492,7 @@ int raft_apply_entry(raft_server_t* me_)
     if (!(e = log_get_from_idx(me->log, me->last_applied_idx+1)))
         return 0;
 
-    __log(me_, NULL, "applying log: %d", me->last_applied_idx);
+    __log(me_, "applying log: %d", me->last_applied_idx);
 
     me->last_applied_idx++;
     if (me->commit_idx < me->last_applied_idx)
@@ -506,7 +506,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 {
     raft_server_private_t* me = (void*)me_;
 
-    __log(me_, NULL, "sending appendentries to: %d", node);
+    __log(me_, "sending appendentries to: %d", node);
 
     if (!(me->cb.send_appendentries))
         return;
