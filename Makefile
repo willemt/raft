@@ -1,13 +1,14 @@
 CONTRIB_DIR = .
 TEST_DIR = ./tests
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
+VPATH = src
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
 	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
-	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -Iinclude -g -O2
+	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -Iinclude -g -O2 -fPIC
 
 UNAME := $(shell uname)
 
@@ -22,7 +23,7 @@ endif
 OBJECTS = raft_server.o raft_server_properties.o raft_node.o raft_log.o
 
 all: static shared
-	
+
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
 	git --git-dir=$(LLQUEUE_DIR)/.git init 
