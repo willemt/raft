@@ -424,4 +424,11 @@ int raft_get_nvotes_for_me(raft_server_t* me_);
  * @return node ID of who I voted for */
 int raft_get_voted_for(raft_server_t* me);
 
+/**
+ * Gets what this node thinks the node ID of the leader is.
+ * If this node doesn't think there's a leader, returns 0.
+ * @param current_leader Pointer to an integer to store the result.
+ * @return True if this node thinks there's a valid leader. */
+int raft_get_current_leader(raft_server_t* me, int* current_leader);
+
 #endif /* RAFT_H_ */
