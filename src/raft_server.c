@@ -416,8 +416,9 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
 
     ety.term = me->current_term;
     ety.id = e->id;
-    ety.data = e->data;
     ety.len = e->len;
+    ety.data = malloc(e->len);
+    memcpy(ety.data, e->data, e->len);
     res = raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
