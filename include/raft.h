@@ -5,14 +5,15 @@
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file. 
+ * found in the LICENSE file.
  *
  * @file
  * @author Willem Thiart himself@willemthiart.com
  * @version 0.1
  */
 
-typedef struct {
+typedef struct
+{
     /** The ID that this node used to have.
      * So that we can tell which nodes were removed/added when the
      * configuration changes */
@@ -25,7 +26,8 @@ typedef struct {
     void* udata_address;
 } raft_node_configuration_t;
 
-typedef struct {
+typedef struct
+{
     /* candidate's term */
     int term;
 
@@ -39,7 +41,8 @@ typedef struct {
     int last_log_term;
 } msg_requestvote_t;
 
-typedef struct {
+typedef struct
+{
     /* the entry's unique ID */
     unsigned int id;
 
@@ -50,7 +53,8 @@ typedef struct {
     unsigned int len;
 } msg_entry_t;
 
-typedef struct {
+typedef struct
+{
     /* the entry's unique ID */
     unsigned int id;
 
@@ -58,7 +62,8 @@ typedef struct {
     int was_committed;
 } msg_entry_response_t;
 
-typedef struct {
+typedef struct
+{
     /* currentTerm, for candidate to update itself */
     int term;
 
@@ -66,7 +71,8 @@ typedef struct {
     int vote_granted;
 } msg_requestvote_response_t;
 
-typedef struct {
+typedef struct
+{
     int term;
     int leader_id;
     int prev_log_idx;
@@ -76,7 +82,8 @@ typedef struct {
     int leader_commit;
 } msg_appendentries_t;
 
-typedef struct {
+typedef struct
+{
     /* currentTerm, for leader to update itself */
     int term;
 
@@ -96,7 +103,8 @@ typedef struct {
 typedef void* raft_server_t;
 typedef void* raft_node_t;
 
-typedef enum {
+typedef enum
+{
     RAFT_MSG_REQUESTVOTE,
     RAFT_MSG_REQUESTVOTE_RESPONSE,
     RAFT_MSG_APPENDENTRIES,
@@ -105,31 +113,19 @@ typedef enum {
     RAFT_MSG_ENTRY_RESPONSE,
 } raft_message_type_e;
 
-
-typedef int (
-    *func_send_f
-)   (
-    raft_server_t* raft,
-    void *udata,
-    int node,
-    raft_message_type_e msg_type,
-    const unsigned char *send_data,
-    const int len
-);
-
 /**
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-    *func_send_requestvote_f
+*func_send_requestvote_f
 )   (
     raft_server_t* raft,
     void *udata,
     int node,
     msg_requestvote_t* msg
-);
+    );
 
 /**
  * @param raft The Raft server making this callback
@@ -137,13 +133,13 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-    *func_send_requestvote_response_f
+*func_send_requestvote_response_f
 )   (
     raft_server_t* raft,
     void *udata,
     int node,
     msg_requestvote_response_t* msg
-);
+    );
 
 /**
  * @param raft The Raft server making this callback
@@ -151,13 +147,13 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-    *func_send_appendentries_f
+*func_send_appendentries_f
 )   (
     raft_server_t* raft,
     void *udata,
     int node,
     msg_appendentries_t* msg
-);
+    );
 
 /**
  * @param raft The Raft server making this callback
@@ -165,13 +161,13 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-    *func_send_appendentries_response_f
+*func_send_appendentries_response_f
 )   (
     raft_server_t* raft,
     void *udata,
     int node,
     msg_appendentries_response_t* msg
-);
+    );
 
 /**
  * @param raft The Raft server making this callback
@@ -179,13 +175,13 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-    *func_send_entries_f
+*func_send_entries_f
 )   (
     raft_server_t* raft,
     void *udata,
     int node,
     msg_entry_t* msg
-);
+    );
 
 /**
  * @param raft The Raft server making this callback
@@ -193,24 +189,24 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-    *func_send_entries_response_f
+*func_send_entries_response_f
 )   (
     raft_server_t* raft,
     void *udata,
     int node,
     msg_entry_response_t* msg
-);
+    );
 
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG
 typedef void (
-    *func_log_f
+*func_log_f
 )    (
     raft_server_t* raft,
     void *udata,
     const char *buf,
     ...
-);
+    );
 #endif
 
 /**
@@ -221,15 +217,16 @@ typedef void (
  * @param len Length in bytes of data to be applied
  * @return 0 on error */
 typedef int (
-    *func_applylog_f
+*func_applylog_f
 )   (
     raft_server_t* raft,
     void *udata,
     const unsigned char *data,
     const int len
-);
+    );
 
-typedef struct {
+typedef struct
+{
     func_send_requestvote_f send_requestvote;
     func_send_requestvote_response_f send_requestvote_response;
     func_send_appendentries_f send_appendentries;
@@ -240,7 +237,8 @@ typedef struct {
     func_applylog_f applylog;
 } raft_cbs_t;
 
-typedef struct {
+typedef struct
+{
     /* entry's term */
     unsigned int term;
     /* the entry's unique ID */
@@ -272,7 +270,7 @@ void raft_free(raft_server_t* me_);
  * Callbacks need to be set by the user for CRaft to work.
  *
  * @param funcs Callbacks
- * @param udata The context that we include when making a callback */
+ * @param udata "User data" - user's context that's included in a callback */
 void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* udata);
 
 /**
@@ -280,7 +278,7 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* udata);
  * @param nodes Array of nodes. End of array is marked by NULL entry
  * @param my_idx Index of the node that refers to this Raft server */
 void raft_set_configuration(raft_server_t* me_,
-        raft_node_configuration_t* nodes, int my_idx);
+                            raft_node_configuration_t* nodes, int my_idx);
 
 /**
  * Set election timeout
@@ -302,40 +300,40 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /**
  * Receive an appendentries message
- * @param node Index of the node who sent us this message 
- * @param ae The appendentries message 
+ * @param node Index of the node who sent us this message
+ * @param ae The appendentries message
  * @return 0 on error */
 int raft_recv_appendentries(raft_server_t* me, int node,
-        msg_appendentries_t* ae);
+                            msg_appendentries_t* ae);
 
 /**
  * Receive a response from an appendentries message we sent
- * @param node Index of the node who sent us this message 
+ * @param node Index of the node who sent us this message
  * @param r The appendentries response message
  * @return 0 on error */
 int raft_recv_appendentries_response(raft_server_t* me_,
-        int node, msg_appendentries_response_t* r);
+                                     int node, msg_appendentries_response_t* r);
 /**
  * Receive a requestvote message
- * @param node Index of the node who sent us this message 
+ * @param node Index of the node who sent us this message
  * @param vr The requestvote message
  * @return 0 on error */
 int raft_recv_requestvote(raft_server_t* me, int node,
-        msg_requestvote_t* vr);
+                          msg_requestvote_t* vr);
 
 /**
  * Receive a response from a requestvote message we sent
- * @param node Index of the node who sent us this message 
+ * @param node Index of the node who sent us this message
  * @param r The requestvote response message
  * @param node The node this response was sent by */
 int raft_recv_requestvote_response(raft_server_t* me, int node,
-        msg_requestvote_response_t* r);
+                                   msg_requestvote_response_t* r);
 
 /**
  * Receive an entry message from client.
  * Append the entry to the log
- * Send appendentries to followers 
- * @param node Index of the node who sent us this message 
+ * Send appendentries to followers
+ * @param node Index of the node who sent us this message
  * @param e The entry message */
 int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e);
 
