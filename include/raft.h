@@ -155,20 +155,6 @@ typedef int (
     msg_entry_t* msg
     );
 
-/**
- * @param raft The Raft server making this callback
- * @param udata User data that is passed from Raft server
- * @param node The peer's ID that we are sending this message to
- * @return 0 on error */
-typedef int (
-*func_send_entries_response_f
-)   (
-    raft_server_t* raft,
-    void *udata,
-    int node,
-    msg_entry_response_t* msg
-    );
-
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG
 typedef void (
@@ -202,7 +188,6 @@ typedef struct
     func_send_requestvote_f send_requestvote;
     func_send_appendentries_f send_appendentries;
     func_send_entries_f send_entries;
-    func_send_entries_response_f send_entries_response;
     func_log_f log;
     func_applylog_f applylog;
 } raft_cbs_t;
@@ -310,8 +295,10 @@ int raft_recv_requestvote_response(raft_server_t* me, int node,
  * Send appendentries to followers
  * This function should block if it needs to append the message.
  * @param node Index of the node who sent us this message
+ * @param[out] r The resulting response
  * @param e The entry message */
-int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e);
+int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e,
+                    msg_entry_response_t *r);
 
 /**
  * @return the server's node ID */

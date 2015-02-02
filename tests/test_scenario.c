@@ -37,8 +37,6 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
                                  .send_requestvote = sender_requestvote,
                                  .send_appendentries = sender_appendentries,
                                  .send_entries = sender_entries,
-                                 .send_entries_response =
-                                     sender_entries_response,
                                  .log = NULL
                              }), sender[j]);
     }

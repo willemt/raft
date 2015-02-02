@@ -403,22 +403,8 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
     return 0;
 }
 
-int raft_send_entry_response(raft_server_t* me_,
-                             int node, int etyid, int was_committed)
-{
-    raft_server_private_t* me = (void*)me_;
-    msg_entry_response_t res;
-
-    __log(me_, "send entry response to: %d", node);
-
-    res.id = etyid;
-    res.was_committed = was_committed;
-    if (me->cb.send_entries_response)
-        me->cb.send_entries_response(me_, me->udata, node, &res);
-    return 0;
-}
-
-int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e)
+int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
+                    msg_entry_response_t *r)
 {
     raft_server_private_t* me = (void*)me_;
     raft_entry_t ety;
@@ -431,13 +417,12 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e)
     ety.data = e->data;
     ety.len = e->len;
     res = raft_append_entry(me_, &ety);
-    raft_send_entry_response(me_, node, e->id, res);
     for (i = 0; i < me->num_nodes; i++)
-    {
-        if (me->nodeid == i)
-            continue;
-        raft_send_appendentries(me_, i);
-    }
+        if (me->nodeid != i)
+            raft_send_appendentries(me_, i);
+
+    r->id = e->id;
+    r->was_committed = res;
     return 0;
 }
 

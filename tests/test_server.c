@@ -1481,10 +1481,9 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(
 void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
 {
     void *r, *sender;
-    msg_entry_response_t *cr;
+    msg_entry_response_t cr;
     raft_cbs_t funcs = {
-        .send_entries_response = sender_entries_response,
-        .log                   = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -1510,15 +1509,14 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
     ety.len = strlen("entry");
 
     /* receive entry */
-    raft_recv_entry(r, 1, &ety);
+    raft_recv_entry(r, 1, &ety, &cr);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
     /* trigger response through commit */
     raft_apply_entry(r);
 
     /* leader sent response to entry message */
-    cr = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, NULL != cr);
+    CuAssertTrue(tc, 1 == cr.was_committed);
 }
 
 /* 5.3 */
@@ -1610,6 +1608,8 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
     };
 
     msg_entry_t ety;
+    msg_entry_response_t cr;
+
     ety.id = 1;
     ety.data = "entry";
     ety.len = strlen("entry");
@@ -1619,7 +1619,7 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
     raft_set_state(r, RAFT_STATE_LEADER);
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
-    raft_recv_entry(r, 1, &ety);
+    raft_recv_entry(r, 1, &ety, &cr);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 

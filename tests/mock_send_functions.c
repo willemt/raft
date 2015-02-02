@@ -171,8 +171,14 @@ void sender_poll_msgs(void* s)
             raft_recv_requestvote_response(me->raft, m->sender, m->data);
             break;
         case RAFT_MSG_ENTRY:
-            raft_recv_entry(me->raft, m->sender, m->data);
-            break;
+        {
+            msg_entry_response_t response;
+            raft_recv_entry(me->raft, m->sender, m->data, &response);
+            __append_msg(me, &response, RAFT_MSG_ENTRY_RESPONSE,
+                         sizeof(response), m->sender, me->raft);
+        }
+        break;
+
         case RAFT_MSG_ENTRY_RESPONSE:
 #if 0
             raft_recv_entry_response(me->raft, m->sender, m->data);
