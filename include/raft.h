@@ -133,20 +133,6 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-*func_send_requestvote_response_f
-)   (
-    raft_server_t* raft,
-    void *udata,
-    int node,
-    msg_requestvote_response_t* msg
-    );
-
-/**
- * @param raft The Raft server making this callback
- * @param udata User data that is passed from Raft server
- * @param node The peer's ID that we are sending this message to
- * @return 0 on error */
-typedef int (
 *func_send_appendentries_f
 )   (
     raft_server_t* raft,
@@ -214,7 +200,6 @@ typedef int (
 typedef struct
 {
     func_send_requestvote_f send_requestvote;
-    func_send_requestvote_response_f send_requestvote_response;
     func_send_appendentries_f send_appendentries;
     func_send_entries_f send_entries;
     func_send_entries_response_f send_entries_response;
@@ -285,6 +270,7 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /**
  * Receive an appendentries message
+ * This function should block if it needs to append the message.
  * @param node Index of the node who sent us this message
  * @param ae The appendentries message
  * @param[out] r The resulting response
@@ -304,9 +290,11 @@ int raft_recv_appendentries_response(raft_server_t* me_,
  * Receive a requestvote message
  * @param node Index of the node who sent us this message
  * @param vr The requestvote message
+ * @param[out] r The resulting response
  * @return 0 on error */
 int raft_recv_requestvote(raft_server_t* me, int node,
-                          msg_requestvote_t* vr);
+                          msg_requestvote_t* vr,
+                          msg_requestvote_response_t *r);
 
 /**
  * Receive a response from a requestvote message we sent
@@ -320,6 +308,7 @@ int raft_recv_requestvote_response(raft_server_t* me, int node,
  * Receive an entry message from client.
  * Append the entry to the log
  * Send appendentries to followers
+ * This function should block if it needs to append the message.
  * @param node Index of the node who sent us this message
  * @param e The entry message */
 int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e);

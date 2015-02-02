@@ -337,10 +337,10 @@ int raft_recv_appendentries(
     return 1;
 }
 
-int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr)
+int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
+                          msg_requestvote_response_t *r)
 {
     raft_server_private_t* me = (void*)me_;
-    msg_requestvote_response_t r;
 
     if (raft_get_current_term(me_) < vr->term)
         me->voted_for = -1;
@@ -350,20 +350,17 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr)
         -1 != me->voted_for ||
         /* we have a more up-to-date log */
         vr->last_log_idx < me->current_idx)
-        r.vote_granted = 0;
+        r->vote_granted = 0;
     else
     {
         raft_vote(me_, node);
-        r.vote_granted = 1;
+        r->vote_granted = 1;
     }
 
     __log(me_, "node requested vote: %d replying: %s",
-          node, r.vote_granted == 1 ? "granted" : "not granted");
+          node, r->vote_granted == 1 ? "granted" : "not granted");
 
-    r.term = raft_get_current_term(me_);
-    if (me->cb.send_requestvote_response)
-        me->cb.send_requestvote_response(me_, me->udata, node, &r);
-
+    r->term = raft_get_current_term(me_);
     return 0;
 }
 

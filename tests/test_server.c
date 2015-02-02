@@ -431,11 +431,10 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send_requestvote_response = sender_requestvote_response,
-        .log                       = NULL
+        .log = NULL
     };
     msg_requestvote_t rv;
-    msg_requestvote_response_t *rvr;
+    msg_requestvote_response_t rvr;
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
@@ -453,11 +452,9 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     /* term is less than current term */
     memset(&rv, 0, sizeof(msg_requestvote_t));
     rv.term = 1;
-    raft_recv_requestvote(r, 1, &rv);
+    raft_recv_requestvote(r, 1, &rv, &rvr);
 
-    rvr = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, NULL != rvr);
-    CuAssertTrue(tc, 0 == rvr->vote_granted);
+    CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
 /* If votedFor is null or candidateId, and candidate's log is at
@@ -469,11 +466,10 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send_requestvote_response = sender_requestvote_response,
-        .log                       = NULL
+        .log = NULL
     };
     msg_requestvote_t rv;
-    msg_requestvote_response_t *rvr;
+    msg_requestvote_response_t rvr;
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
@@ -495,11 +491,8 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     rv.candidate_id = 1;
     rv.last_log_idx = 0;
     rv.last_log_term = 1;
-    raft_recv_requestvote(r, 1, &rv);
-
-    rvr = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, NULL != rvr);
-    CuAssertTrue(tc, 0 == rvr->vote_granted);
+    raft_recv_requestvote(r, 1, &rv, &rvr);
+    CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
 void TestRaft_follower_becomes_follower_is_follower(CuTest * tc)
@@ -531,7 +524,7 @@ TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
@@ -572,7 +565,7 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     msg_appendentries_response_t aer;
 
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -648,7 +641,7 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
     char *str = "aaa";
 
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -698,7 +691,7 @@ TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_
     msg_entry_t ety;
     char *str = "aaa";
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
@@ -754,7 +747,7 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
     raft_entry_t *ety_appended;
 
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -822,7 +815,7 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -867,7 +860,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -920,7 +913,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .log                         = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -1000,8 +993,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send_requestvote_response = sender_requestvote_response,
-        .log                       = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -1013,7 +1005,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
 
 
     msg_requestvote_t rv;
-    msg_requestvote_response_t *rvr;
+    msg_requestvote_response_t rvr;
 
     sender = sender_new(NULL);
     r = raft_new();
@@ -1033,10 +1025,8 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     raft_set_current_idx(r, 2);
 
     /* vote not granted */
-    raft_recv_requestvote(r, 1, &rv);
-    rvr = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, NULL != rvr);
-    CuAssertTrue(tc, 0 == rvr->vote_granted);
+    raft_recv_requestvote(r, 1, &rv, &rvr);
+    CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
 void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
@@ -1249,8 +1239,7 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
     void *r;
     void *sender;
     raft_cbs_t funcs = {
-        .send_requestvote_response = sender_requestvote_response,
-        .log                       = NULL
+        .log = NULL
     };
 
     /* 2 nodes */
@@ -1260,8 +1249,8 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
         { (-1), NULL     }
     };
 
-    msg_requestvote_response_t* rvr;
     msg_requestvote_t rv;
+    msg_requestvote_response_t rvr;
 
     sender = sender_new(NULL);
     r = raft_new();
@@ -1271,11 +1260,10 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
     raft_vote(r, 0);
 
     memset(&rv, 0, sizeof(msg_requestvote_t));
-    raft_recv_requestvote(r, 1, &rv);
+    raft_recv_requestvote(r, 1, &rv, &rvr);
 
     /* we've vote already, so won't respond with a vote granted... */
-    rvr = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, 0 == rvr->vote_granted);
+    CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
 /* Candidate 5.2 */

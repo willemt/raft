@@ -35,10 +35,7 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
         raft_set_callbacks(r[j],
                            &((raft_cbs_t) {
                                  .send_requestvote = sender_requestvote,
-                                 .send_requestvote_response =
-                                     sender_requestvote_response,
-                                 .send_appendentries =
-                                     sender_appendentries,
+                                 .send_appendentries = sender_appendentries,
                                  .send_entries = sender_entries,
                                  .send_entries_response =
                                      sender_entries_response,
