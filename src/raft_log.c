@@ -1,4 +1,3 @@
-
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
@@ -38,9 +37,7 @@ typedef struct
     raft_entry_t* entries;
 } log_private_t;
 
-static void __ensurecapacity(
-    log_private_t * me
-    )
+static void __ensurecapacity(log_private_t * me)
 {
     int i, j;
     raft_entry_t *temp;
@@ -68,9 +65,7 @@ static void __ensurecapacity(
 
 log_t* log_new()
 {
-    log_private_t* me;
-
-    me = calloc(1, sizeof(log_private_t));
+    log_private_t* me = calloc(1, sizeof(log_private_t));
     me->size = INITIAL_CAPACITY;
     me->count = 0;
     me->back = in(me)->front = 0;
@@ -113,8 +108,7 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx)
 
 int log_count(log_t* me_)
 {
-    log_private_t* me = (void*)me_;
-    return me->count;
+    return ((log_private_t*)me_)->count;
 }
 
 void log_delete(log_t* me_, int idx)
@@ -200,4 +194,3 @@ void log_mark_node_has_committed(log_t* me_, int idx)
     if ((e = log_get_from_idx(me_, idx)))
         e->num_nodes += 1;
 }
-

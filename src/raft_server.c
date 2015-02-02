@@ -1,4 +1,3 @@
-
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
@@ -21,7 +20,6 @@
 #include "raft.h"
 #include "raft_log.h"
 #include "raft_private.h"
-
 
 static void __log(raft_server_t *me_, const char *fmt, ...)
 {
@@ -223,16 +221,17 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 int raft_recv_appendentries(
     raft_server_t* me_,
     const int node,
-    msg_appendentries_t* ae)
+    msg_appendentries_t* ae,
+    msg_appendentries_response_t *r
+    )
 {
     raft_server_private_t* me = (void*)me_;
-    msg_appendentries_response_t r;
 
     me->timeout_elapsed = 0;
 
     __log(me_, "received appendentries from: %d", node);
 
-    r.term = me->current_term;
+    r->term = me->current_term;
 
     /* we've found a leader who is legitimate */
     if (raft_is_leader(me_) && me->current_term <= ae->term)
@@ -242,8 +241,8 @@ int raft_recv_appendentries(
     if (ae->term < me->current_term)
     {
         __log(me_, "AE term is less than current term");
-        r.success = 0;
-        goto done;
+        r->success = 0;
+        return 1;
     }
 
 #if 0
@@ -251,8 +250,8 @@ int raft_recv_appendentries(
         ae->prev_log_idx < raft_get_current_idx(me_))
     {
         __log(me_, "AE prev_idx is less than current idx");
-        r.success = 0;
-        goto done;
+        r->success = 0;
+        return 1;
     }
 #endif
 
@@ -263,13 +262,13 @@ int raft_recv_appendentries(
 
         if ((e = raft_get_entry_from_idx(me_, ae->prev_log_idx)))
         {
-            /* 2. Reply false if log doesnt contain an entry at prevLogIndex
+            /* 2. Reply false if log doesn't contain an entry at prevLogIndex
                whose term matches prevLogTerm (§5.3) */
             if (e->term != ae->prev_log_term)
             {
                 __log(me_, "AE term doesn't match prev_idx");
-                r.success = 0;
-                goto done;
+                r->success = 0;
+                return 1;
             }
 
             /* 3. If an existing entry conflicts with a new one (same index
@@ -282,9 +281,8 @@ int raft_recv_appendentries(
         else
         {
             __log(me_, "AE no log at prev_idx");
-            r.success = 0;
-            goto done;
-            //assert(0);
+            r->success = 0;
+            return 1;
         }
     }
 
@@ -328,18 +326,14 @@ int raft_recv_appendentries(
         if (0 == raft_append_entry(me_, c))
         {
             __log(me_, "AE failure; couldn't append entry");
-            r.success = 0;
-            goto done;
+            r->success = 0;
+            return 1;
         }
     }
 
-    r.success = 1;
-    r.current_idx = raft_get_current_idx(me_);
-    r.first_idx = ae->prev_log_idx + 1;
-
-done:
-    if (me->cb.send_appendentries_response)
-        me->cb.send_appendentries_response(me_, me->udata, node, &r);
+    r->success = 1;
+    r->current_idx = raft_get_current_idx(me_);
+    r->first_idx = ae->prev_log_idx + 1;
     return 1;
 }
 
@@ -571,29 +565,3 @@ void raft_vote(raft_server_t* me_, int node)
     raft_server_private_t* me = (void*)me_;
     me->voted_for = node;
 }
-
-raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
-{
-    raft_server_private_t* me = (void*)me_;
-
-    if (nodeid < 0 || me->num_nodes <= nodeid)
-        return NULL;
-    return me->nodes[nodeid];
-}
-
-int raft_is_follower(raft_server_t* me_)
-{
-    return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
-}
-
-int raft_is_leader(raft_server_t* me_)
-{
-    return raft_get_state(me_) == RAFT_STATE_LEADER;
-}
-
-int raft_is_candidate(raft_server_t* me_)
-{
-    return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
-}
-
-/*--------------------------------------------------------------79-characters-*/

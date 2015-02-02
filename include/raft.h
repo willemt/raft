@@ -161,20 +161,6 @@ typedef int (
  * @param node The peer's ID that we are sending this message to
  * @return 0 on error */
 typedef int (
-*func_send_appendentries_response_f
-)   (
-    raft_server_t* raft,
-    void *udata,
-    int node,
-    msg_appendentries_response_t* msg
-    );
-
-/**
- * @param raft The Raft server making this callback
- * @param udata User data that is passed from Raft server
- * @param node The peer's ID that we are sending this message to
- * @return 0 on error */
-typedef int (
 *func_send_entries_f
 )   (
     raft_server_t* raft,
@@ -230,7 +216,6 @@ typedef struct
     func_send_requestvote_f send_requestvote;
     func_send_requestvote_response_f send_requestvote_response;
     func_send_appendentries_f send_appendentries;
-    func_send_appendentries_response_f send_appendentries_response;
     func_send_entries_f send_entries;
     func_send_entries_response_f send_entries_response;
     func_log_f log;
@@ -302,9 +287,11 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  * Receive an appendentries message
  * @param node Index of the node who sent us this message
  * @param ae The appendentries message
+ * @param[out] r The resulting response
  * @return 0 on error */
 int raft_recv_appendentries(raft_server_t* me, int node,
-                            msg_appendentries_t* ae);
+                            msg_appendentries_t* ae,
+                            msg_appendentries_response_t *r);
 
 /**
  * Receive a response from an appendentries message we sent

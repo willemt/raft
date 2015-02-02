@@ -1,8 +1,7 @@
-
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file. 
+ * found in the LICENSE file.
  *
  * @file
  * @brief Representation of a peer
@@ -17,7 +16,8 @@
 
 #include "raft.h"
 
-typedef struct {
+typedef struct
+{
     void* udata;
     int next_idx;
 } raft_node_private_t;
@@ -25,7 +25,7 @@ typedef struct {
 raft_node_t* raft_node_new(void* udata)
 {
     raft_node_private_t* me;
-    me = calloc(1,sizeof(raft_node_private_t));
+    me = calloc(1, sizeof(raft_node_private_t));
     me->udata = udata;
     return (void*)me;
 }

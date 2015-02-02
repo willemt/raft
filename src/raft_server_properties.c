@@ -1,8 +1,7 @@
-
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file. 
+ * found in the LICENSE file.
  *
  * @file
  * @author Willem Thiart himself@willemthiart.com
@@ -52,7 +51,6 @@ int raft_get_num_nodes(raft_server_t* me_)
 {
     return ((raft_server_private_t*)me_)->num_nodes;
 }
-
 
 int raft_get_timeout_elapsed(raft_server_t* me_)
 {
@@ -130,3 +128,26 @@ int raft_get_state(raft_server_t* me_)
     return ((raft_server_private_t*)me_)->state;
 }
 
+raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
+{
+    raft_server_private_t* me = (void*)me_;
+
+    if (nodeid < 0 || me->num_nodes <= nodeid)
+        return NULL;
+    return me->nodes[nodeid];
+}
+
+int raft_is_follower(raft_server_t* me_)
+{
+    return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
+}
+
+int raft_is_leader(raft_server_t* me_)
+{
+    return raft_get_state(me_) == RAFT_STATE_LEADER;
+}
+
+int raft_is_candidate(raft_server_t* me_)
+{
+    return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
+}
