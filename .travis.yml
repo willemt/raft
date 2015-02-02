@@ -4,4 +4,4 @@ before_install:
 script:
   - make tests
 after_success:
-  - coveralls --verbose
+  - coveralls --verbose --exclude include --exclude tests --exclude CLinkedListQueue
