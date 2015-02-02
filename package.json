@@ -1,6 +1,6 @@
 {
   "name": "raft",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "repo": "willemt/raft",
   "description": "C implementation of the Raft Consensus protocol, BSD licensed",
   "keywords": ["raft", "consensus", "protocol"],
@@ -14,4 +14,3 @@
     "src/raft_server_properties.c"
   ]
 }
-
