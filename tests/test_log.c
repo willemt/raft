@@ -27,7 +27,7 @@ void TestLog_append_is_not_empty(CuTest * tc)
     e.id = 1;
 
     l = log_new();
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e));
     CuAssertTrue(tc, 1 == log_count(l));
 }
 
@@ -38,11 +38,11 @@ void TestLog_get_at_idx(CuTest * tc)
 
     l = log_new();
     e1.id = 1;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e1));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     e2.id = 2;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e2));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e2));
     e3.id = 3;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e3));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e3));
     CuAssertTrue(tc, 3 == log_count(l));
 
     CuAssertTrue(tc, 3 == log_count(l));
@@ -56,7 +56,7 @@ void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
 
     l = log_new();
     e1.id = 1;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e1));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     CuAssertTrue(tc, NULL == log_get_from_idx(l, 2));
 }
 
@@ -82,11 +82,11 @@ void TestLog_delete(CuTest * tc)
 
     l = log_new();
     e1.id = 1;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e1));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     e2.id = 2;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e2));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e2));
     e3.id = 3;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e3));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e3));
     CuAssertTrue(tc, 3 == log_count(l));
 
     log_delete(l, 3);
@@ -107,11 +107,11 @@ void TestLog_delete_onwards(CuTest * tc)
 
     l = log_new();
     e1.id = 1;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e1));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     e2.id = 2;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e2));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e2));
     e3.id = 3;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e3));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e3));
     CuAssertTrue(tc, 3 == log_count(l));
 
     /* even 3 gets deleted */
@@ -129,11 +129,11 @@ void TestLog_peektail(CuTest * tc)
 
     l = log_new();
     e1.id = 1;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e1));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     e2.id = 2;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e2));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e2));
     e3.id = 3;
-    CuAssertTrue(tc, 1 == log_append_entry(l, &e3));
+    CuAssertTrue(tc, 0 == log_append_entry(l, &e3));
     CuAssertTrue(tc, 3 == log_count(l));
     CuAssertTrue(tc, e3.id == log_peektail(l)->id);
 }

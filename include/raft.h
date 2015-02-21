@@ -1,7 +1,3 @@
-
-#ifndef RAFT_H_
-#define RAFT_H_
-
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
@@ -11,6 +7,9 @@
  * @author Willem Thiart himself@willemthiart.com
  * @version 0.1
  */
+
+#ifndef RAFT_H_
+#define RAFT_H_
 
 typedef struct
 {
@@ -117,7 +116,7 @@ typedef enum
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
  * @param node The peer's ID that we are sending this message to
- * @return 0 on error */
+ * @return 0 on success */
 typedef int (
 *func_send_requestvote_f
 )   (
@@ -131,7 +130,7 @@ typedef int (
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
  * @param node The peer's ID that we are sending this message to
- * @return 0 on error */
+ * @return 0 on success */
 typedef int (
 *func_send_appendentries_f
 )   (
@@ -145,7 +144,7 @@ typedef int (
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
  * @param node The peer's ID that we are sending this message to
- * @return 0 on error */
+ * @return 0 on success */
 typedef int (
 *func_send_entries_f
 )   (
@@ -173,7 +172,7 @@ typedef void (
  * @param udata User data that is passed from Raft server
  * @param data Data to be applied to the log
  * @param len Length in bytes of data to be applied
- * @return 0 on error */
+ * @return 0 on success */
 typedef int (
 *func_applylog_f
 )   (
@@ -250,7 +249,7 @@ void raft_set_request_timeout(raft_server_t* me_, int msec);
 /**
  * Process events that are dependent on time passing
  * @param msec_elapsed Time in milliseconds since the last call
- * @return 0 on error */
+ * @return 0 on success */
 int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /**
@@ -259,7 +258,7 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  * @param node Index of the node who sent us this message
  * @param ae The appendentries message
  * @param[out] r The resulting response
- * @return 0 on error */
+ * @return 0 on success */
 int raft_recv_appendentries(raft_server_t* me, int node,
                             msg_appendentries_t* ae,
                             msg_appendentries_response_t *r);
@@ -268,7 +267,7 @@ int raft_recv_appendentries(raft_server_t* me, int node,
  * Receive a response from an appendentries message we sent
  * @param node Index of the node who sent us this message
  * @param r The appendentries response message
- * @return 0 on error */
+ * @return 0 on success */
 int raft_recv_appendentries_response(raft_server_t* me_,
                                      int node, msg_appendentries_response_t* r);
 /**
@@ -276,7 +275,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
  * @param node Index of the node who sent us this message
  * @param vr The requestvote message
  * @param[out] r The resulting response
- * @return 0 on error */
+ * @return 0 on success */
 int raft_recv_requestvote(raft_server_t* me, int node,
                           msg_requestvote_t* vr,
                           msg_requestvote_response_t *r);
@@ -285,7 +284,8 @@ int raft_recv_requestvote(raft_server_t* me, int node,
  * Receive a response from a requestvote message we sent
  * @param node Index of the node who sent us this message
  * @param r The requestvote response message
- * @param node The node this response was sent by */
+ * @param node The node this response was sent by
+ * @return 0 on success */
 int raft_recv_requestvote_response(raft_server_t* me, int node,
                                    msg_requestvote_response_t* r);
 
@@ -296,7 +296,8 @@ int raft_recv_requestvote_response(raft_server_t* me, int node,
  * This function should block if it needs to append the message.
  * @param node Index of the node who sent us this message
  * @param[out] r The resulting response
- * @param e The entry message */
+ * @param e The entry message
+ * @return 0 on success */
 int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e,
                     msg_entry_response_t *r);
 

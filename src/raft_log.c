@@ -78,18 +78,15 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     log_private_t* me = (void*)me_;
 
     if (0 == c->id)
-        return 0;
+        return -1;
 
     __ensurecapacity(me);
-
-//    if (hashmap_get(me->log_map, (void*)c->id+1))
-//        return 0;
 
     memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
     me->entries[me->back].num_nodes = 0;
     me->count++;
     me->back++;
-    return 1;
+    return 0;
 }
 
 raft_entry_t* log_get_from_idx(log_t* me_, int idx)
@@ -125,32 +122,16 @@ void log_delete(log_t* me_, int idx)
         me->back--;
         me->count--;
     }
-
-#if 0
-    const void *elem;
-
-    if (arrayqueue_is_empty(me))
-        return NULL;
-
-//    __checkwrapping(me);
-    in(me)->back--;
-    in(me)->count--;
-    if (-1 == in(me)->back)
-        in(me)->back = in(me)->size;
-    elem = me->entries[in(me)->back];
-
-    return (void*)elem;
-#endif
 }
 
 void *log_poll(log_t * me_)
 {
     log_private_t* me = (void*)me_;
-    const void *elem;
 
     if (0 == log_count(me_))
         return NULL;
-    elem = &me->entries[me->front];
+
+    const void *elem = &me->entries[me->front];
     me->front++;
     me->count--;
     me->base_log_idx++;
@@ -189,8 +170,7 @@ void log_free(log_t * me_)
 
 void log_mark_node_has_committed(log_t* me_, int idx)
 {
-    raft_entry_t* e;
-
-    if ((e = log_get_from_idx(me_, idx)))
+    raft_entry_t* e = log_get_from_idx(me_, idx);
+    if (e)
         e->num_nodes += 1;
 }
