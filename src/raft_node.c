@@ -25,9 +25,9 @@ typedef struct
 raft_node_t* raft_node_new(void* udata)
 {
     raft_node_private_t* me;
-    me = calloc(1, sizeof(raft_node_private_t));
+    me = (raft_node_private_t*)calloc(1, sizeof(raft_node_private_t));
     me->udata = udata;
-    return (void*)me;
+    return (raft_node_t*)me;
 }
 
 int raft_node_is_leader(raft_node_t* me_)
@@ -38,18 +38,18 @@ int raft_node_is_leader(raft_node_t* me_)
 
 int raft_node_get_next_idx(raft_node_t* me_)
 {
-    raft_node_private_t* me = (void*)me_;
+    raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->next_idx;
 }
 
 void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
 {
-    raft_node_private_t* me = (void*)me_;
+    raft_node_private_t* me = (raft_node_private_t*)me_;
     me->next_idx = nextIdx;
 }
 
 void* raft_node_get_udata(raft_node_t* me_)
 {
-    raft_node_private_t* me = (void*)me_;
+    raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->udata;
 }
