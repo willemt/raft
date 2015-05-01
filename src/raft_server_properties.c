@@ -22,13 +22,13 @@
 
 void raft_set_election_timeout(raft_server_t* me_, int millisec)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->election_timeout = millisec;
 }
 
 void raft_set_request_timeout(raft_server_t* me_, int millisec)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->request_timeout = millisec;
 }
 
@@ -59,7 +59,7 @@ int raft_get_timeout_elapsed(raft_server_t* me_)
 
 int raft_get_log_count(raft_server_t* me_)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     return log_count(me->log);
 }
 
@@ -70,7 +70,7 @@ int raft_get_voted_for(raft_server_t* me_)
 
 void raft_set_current_term(raft_server_t* me_, int term)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->current_term = term;
 }
 
@@ -81,7 +81,7 @@ int raft_get_current_term(raft_server_t* me_)
 
 void raft_set_current_idx(raft_server_t* me_, int idx)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->current_idx = idx;
 }
 
@@ -97,13 +97,13 @@ int raft_get_my_id(raft_server_t* me_)
 
 void raft_set_commit_idx(raft_server_t* me_, int idx)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->commit_idx = idx;
 }
 
 void raft_set_last_applied_idx(raft_server_t* me_, int idx)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->last_applied_idx = idx;
 }
 
@@ -119,7 +119,7 @@ int raft_get_commit_idx(raft_server_t* me_)
 
 void raft_set_state(raft_server_t* me_, int state)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->state = state;
 }
 
@@ -130,11 +130,11 @@ int raft_get_state(raft_server_t* me_)
 
 raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
 {
-    raft_server_private_t* me = (void*)me_;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
 
     if (nodeid < 0 || me->num_nodes <= nodeid)
         return NULL;
-    return me->nodes[nodeid];
+    return (raft_node_t*)me->nodes[nodeid];
 }
 
 int raft_is_follower(raft_server_t* me_)

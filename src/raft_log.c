@@ -45,7 +45,7 @@ static void __ensurecapacity(log_private_t * me)
     if (me->count < me->size)
         return;
 
-    temp = calloc(1, sizeof(raft_entry_t) * me->size * 2);
+    temp = (raft_entry_t*) calloc(1, sizeof(raft_entry_t) * me->size * 2);
 
     for (i = 0, j = me->front; i < me->count; i++, j++)
     {
@@ -65,17 +65,17 @@ static void __ensurecapacity(log_private_t * me)
 
 log_t* log_new()
 {
-    log_private_t* me = calloc(1, sizeof(log_private_t));
+    log_private_t* me = (log_private_t*) calloc(1, sizeof(log_private_t));
     me->size = INITIAL_CAPACITY;
     me->count = 0;
     me->back = in(me)->front = 0;
-    me->entries = calloc(1, sizeof(raft_entry_t) * me->size);
-    return (void*)me;
+    me->entries = (raft_entry_t*) calloc(1, sizeof(raft_entry_t) * me->size);
+    return (log_t*)me;
 }
 
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
 
     if (0 == c->id)
         return -1;
@@ -91,7 +91,7 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
 
 raft_entry_t* log_get_from_idx(log_t* me_, int idx)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
     int i;
 
     if (me->base_log_idx + me->count < idx || idx < me->base_log_idx)
@@ -110,7 +110,7 @@ int log_count(log_t* me_)
 
 void log_delete(log_t* me_, int idx)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
     int end;
 
     /* idx starts at 1 */
@@ -126,7 +126,7 @@ void log_delete(log_t* me_, int idx)
 
 void *log_poll(log_t * me_)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
 
     if (0 == log_count(me_))
         return NULL;
@@ -140,7 +140,7 @@ void *log_poll(log_t * me_)
 
 raft_entry_t *log_peektail(log_t * me_)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
 
     if (0 == log_count(me_))
         return NULL;
@@ -153,7 +153,7 @@ raft_entry_t *log_peektail(log_t * me_)
 
 void log_empty(log_t * me_)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
 
     me->front = 0;
     me->back = 0;
@@ -162,7 +162,7 @@ void log_empty(log_t * me_)
 
 void log_free(log_t * me_)
 {
-    log_private_t* me = (void*)me_;
+    log_private_t* me = (log_private_t*)me_;
 
     free(me->entries);
     free(me);
