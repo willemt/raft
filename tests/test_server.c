@@ -478,7 +478,6 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
         { (-1), NULL     }
     };
 
-
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_configuration(r, cfg, 0);
@@ -535,7 +534,6 @@ TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
         { (-1), (void*)2 },
         { (-1), NULL     }
     };
-
 
     r = raft_new();
     raft_set_configuration(r, cfg, 0);
@@ -1003,7 +1001,6 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
         { (-1), NULL     }
     };
 
-
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
@@ -1298,6 +1295,7 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     CuAssertTrue(tc, NULL != rv);
     CuAssertTrue(tc, 3 == rv->last_log_idx);
     CuAssertTrue(tc, 5 == rv->term);
+    CuAssertTrue(tc, 5 == rv->last_log_term);
 }
 
 /* Candidate 5.2 */
