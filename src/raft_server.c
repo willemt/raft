@@ -426,6 +426,7 @@ int raft_send_requestvote(raft_server_t* me_, int node)
     rv.term = me->current_term;
     rv.last_log_idx = raft_get_current_idx(me_);
     rv.last_log_term = raft_get_current_term(me_);
+    rv.candidate_id = raft_get_nodeid(me_);
     if (me->cb.send_requestvote)
         me->cb.send_requestvote(me_, me->udata, node, &rv);
     return 0;

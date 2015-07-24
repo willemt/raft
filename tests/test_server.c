@@ -1283,7 +1283,7 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
 
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_set_configuration(r, cfg, 99);
     raft_set_state(r, RAFT_STATE_CANDIDATE);
 
     raft_set_callbacks(r, &funcs, sender);
@@ -1296,6 +1296,7 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     CuAssertTrue(tc, 3 == rv->last_log_idx);
     CuAssertTrue(tc, 5 == rv->term);
     CuAssertTrue(tc, 5 == rv->last_log_term);
+    CuAssertTrue(tc, 99 == rv->candidate_id);
 }
 
 /* Candidate 5.2 */
