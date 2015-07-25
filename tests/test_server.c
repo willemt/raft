@@ -457,6 +457,41 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
+/* Reply true if term >= currentTerm (§5.1) */
+void TestRaft_server_recv_requestvote_reply_true_if_term_greater_than_or_equal_to_current_term(
+    CuTest * tc
+    )
+{
+    void *r;
+    void *sender;
+    raft_cbs_t funcs = {
+        .log = NULL
+    };
+    msg_requestvote_t rv;
+    msg_requestvote_response_t rvr;
+
+    /* 2 nodes */
+    raft_node_configuration_t cfg[] = {
+        { (-1), (void*)1 },
+        { (-1), (void*)2 },
+        { (-1), NULL     }
+    };
+
+    r = raft_new();
+    raft_set_configuration(r, cfg, 0);
+    sender = sender_new(NULL);
+    raft_set_callbacks(r, &funcs, sender);
+    raft_set_current_term(r, 1);
+
+    /* term is less than current term */
+    memset(&rv, 0, sizeof(msg_requestvote_t));
+    rv.term = 2;
+    rv.last_log_idx = 1;
+    raft_recv_requestvote(r, 1, &rv, &rvr);
+
+    CuAssertTrue(tc, 1 == rvr.vote_granted);
+}
+
 /* If votedFor is null or candidateId, and candidate's log is at
  * least as up-to-date as local log, grant vote (§5.2, §5.4) */
 void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
@@ -1766,6 +1801,89 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(
     raft_recv_appendentries(r, 1, &ae, &aer);
 
     CuAssertTrue(tc, 1 == raft_is_follower(r));
+}
+
+void TestRaft_leader_steps_down_if_received_appendentries_has_newer_term_than_itself(
+    CuTest * tc)
+{
+    void *r;
+    void *sender;
+    raft_cbs_t funcs = {
+        .log = NULL
+    };
+
+    /* 2 nodes */
+    raft_node_configuration_t cfg[] = {
+        { (-1), (void*)1 },
+        { (-1), (void*)2 },
+        { (-1), NULL     }
+    };
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t aer;
+
+    sender = sender_new(NULL);
+    r = raft_new();
+    raft_set_configuration(r, cfg, 0);
+
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 5);
+    raft_set_current_idx(r, 5);
+    raft_set_callbacks(r, &funcs, sender);
+
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 6;
+    ae.prev_log_idx = 5;
+    ae.prev_log_term = 5;
+    raft_recv_appendentries(r, 1, &ae, &aer);
+
+    CuAssertTrue(tc, 1 == raft_is_follower(r));
+}
+
+void TestRaft_leader_sends_empty_appendentries_every_request_timeout(
+    CuTest * tc)
+{
+    void *r;
+    void *sender;
+    raft_cbs_t funcs = {
+        .send_appendentries = sender_appendentries,
+        .log                = NULL
+    };
+
+    raft_node_configuration_t cfg[] = {
+        { (-1), (void*)1 },
+        { (-1), (void*)2 },
+        { (-1), (void*)3 },
+        { (-1), NULL     }
+    };
+
+    msg_appendentries_t* ae;
+
+    sender = sender_new(NULL);
+    r = raft_new();
+    raft_set_callbacks(r, &funcs, sender);
+    raft_set_configuration(r, cfg, 0);
+    raft_set_election_timeout(r, 1000);
+    raft_set_request_timeout(r, 500);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
+
+    /* candidate to leader */
+    raft_set_state(r, RAFT_STATE_CANDIDATE);
+    raft_become_leader(r);
+
+    /* receive appendentries messages for both nodes */
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL == ae);
+
+    /* force request timeout */
+    raft_periodic(r, 501);
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
 }
 
 /* TODO: If a server receives a request with a stale term number, it rejects the request. */

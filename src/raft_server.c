@@ -228,7 +228,7 @@ int raft_recv_appendentries(
 
     r->term = me->current_term;
 
-    /* we've found a leader who is legitimate */
+    /* Step down - we've found a leader who is legitimate */
     if (raft_is_leader(me_) && me->current_term <= ae->term)
         raft_become_follower(me_);
 
