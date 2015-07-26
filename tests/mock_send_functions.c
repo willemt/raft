@@ -96,12 +96,6 @@ int sender_appendentries_response(raft_server_t* raft,
                         sizeof(*msg), peer, raft);
 }
 
-int sender_entries(raft_server_t* raft,
-                   void* udata, int peer, msg_entry_t* msg)
-{
-    return __append_msg(udata, msg, RAFT_MSG_ENTRY, sizeof(*msg), peer, raft);
-}
-
 int sender_entries_response(raft_server_t* raft,
                             void* udata, int peer, msg_entry_response_t* msg)
 {
