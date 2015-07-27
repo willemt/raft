@@ -13,11 +13,6 @@
 
 typedef struct
 {
-    /** The ID that this node used to have.
-     * So that we can tell which nodes were removed/added when the
-     * configuration changes */
-    int old_id;
-
     /** User data pointer for addressing.
      * Examples of what this could be:
      * - void* pointing to implementor's networking data

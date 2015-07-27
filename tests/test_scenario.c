@@ -17,10 +17,10 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
     raft_server_t *r[3];
     void* sender[3];
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), (void*)3 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { (void*)3 },
+        { NULL     }
     };
 
     senders_new();

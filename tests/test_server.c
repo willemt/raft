@@ -318,9 +318,9 @@ void TestRaft_server_cfg_sets_num_nodes(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -335,9 +335,9 @@ void TestRaft_server_cant_get_node_we_dont_have(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -380,9 +380,9 @@ TestRaft_server_dont_increase_votes_for_me_when_receive_request_vote_response_is
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -406,9 +406,9 @@ void TestRaft_server_increase_votes_for_me_when_receive_request_vote_response(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -438,9 +438,9 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -472,9 +472,9 @@ void TestRaft_server_recv_requestvote_reply_true_if_term_greater_than_or_equal_t
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -508,9 +508,9 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -565,9 +565,9 @@ TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -603,9 +603,9 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -639,9 +639,9 @@ void TestRaft_follower_doesnt_log_after_appendentry_if_no_entries_are_specified(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -679,9 +679,9 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -728,9 +728,9 @@ TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_
     };
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_appendentries_t ae;
@@ -785,9 +785,9 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -853,11 +853,10 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
-
 
     r = raft_new();
     sender = sender_new(NULL);
@@ -898,9 +897,9 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -951,9 +950,9 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -1000,9 +999,9 @@ void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     r = raft_new();
@@ -1031,9 +1030,9 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_requestvote_t rv;
@@ -1143,10 +1142,10 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(
         .log              = NULL
     };
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), (void*)3 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { (void*)3 },
+        { NULL     }
     };
     msg_requestvote_t* rv;
 
@@ -1185,9 +1184,9 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_requestvote_response_t vr;
@@ -1227,12 +1226,12 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), (void*)3 },
-        { (-1), (void*)4 },
-        { (-1), (void*)5 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { (void*)3 },
+        { (void*)4 },
+        { (void*)5 },
+        { NULL     }
     };
 
     msg_requestvote_response_t vr;
@@ -1276,9 +1275,9 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_requestvote_t rv;
@@ -1311,9 +1310,9 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -1346,9 +1345,9 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -1383,9 +1382,9 @@ TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follow
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_appendentries_t ae;
@@ -1448,10 +1447,10 @@ TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), (void*)3 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { (void*)3 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -1486,10 +1485,10 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(
     };
 
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), (void*)3 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { (void*)3 },
+        { NULL     }
     };
 
     msg_appendentries_t* ae;
@@ -1522,9 +1521,9 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     sender = sender_new(NULL);
@@ -1566,9 +1565,9 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_appendentries_t* ae;
@@ -1605,9 +1604,9 @@ TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_appendentries_t* ae;
@@ -1636,9 +1635,9 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_entry_t ety;
@@ -1665,9 +1664,9 @@ void T_estRaft_leader_doesnt_append_entry_if_unique_id_is_duplicate(CuTest * tc)
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_entry_t ety;
@@ -1703,9 +1702,9 @@ TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_one_new
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
     sender = sender_new(NULL);
     r = raft_new();
@@ -1777,9 +1776,9 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_appendentries_t ae;
@@ -1814,9 +1813,9 @@ void TestRaft_leader_steps_down_if_received_appendentries_has_newer_term_than_it
 
     /* 2 nodes */
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { NULL     }
     };
 
     msg_appendentries_t ae;
@@ -1851,10 +1850,10 @@ void TestRaft_leader_sends_empty_appendentries_every_request_timeout(
     };
 
     raft_node_configuration_t cfg[] = {
-        { (-1), (void*)1 },
-        { (-1), (void*)2 },
-        { (-1), (void*)3 },
-        { (-1), NULL     }
+        { (void*)1 },
+        { (void*)2 },
+        { (void*)3 },
+        { NULL     }
     };
 
     msg_appendentries_t* ae;
