@@ -314,34 +314,18 @@ TestRaft_server_election_timeout_sets_to_zero_when_elapsed_time_greater_than_tim
 
 void TestRaft_server_cfg_sets_num_nodes(CuTest * tc)
 {
-    void *r;
-
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
-    r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    void *r = raft_new();
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     CuAssertTrue(tc, 2 == raft_get_num_nodes(r));
 }
 
 void TestRaft_server_cant_get_node_we_dont_have(CuTest * tc)
 {
-    void *r;
-
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
-    r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    void *r = raft_new();
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     CuAssertTrue(tc, NULL != raft_get_node(r, 0));
     CuAssertTrue(tc, NULL != raft_get_node(r, 1));
@@ -378,15 +362,9 @@ TestRaft_server_dont_increase_votes_for_me_when_receive_request_vote_response_is
     void *r;
     msg_requestvote_response_t rvr;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_current_term(r, 1);
     CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 
@@ -404,15 +382,9 @@ void TestRaft_server_increase_votes_for_me_when_receive_request_vote_response(
     void *r;
     msg_requestvote_response_t rvr;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_current_term(r, 1);
     CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 
@@ -436,15 +408,9 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
     raft_set_current_term(r, 2);
@@ -470,15 +436,9 @@ void TestRaft_server_recv_requestvote_reply_true_if_term_greater_than_or_equal_t
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
     raft_set_current_term(r, 1);
@@ -506,16 +466,10 @@ void TestRaft_server_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     raft_vote(r, 0);
@@ -563,15 +517,9 @@ TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
 
@@ -601,15 +549,9 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
 
@@ -637,15 +579,9 @@ void TestRaft_follower_doesnt_log_after_appendentry_if_no_entries_are_specified(
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     raft_set_state(r, RAFT_STATE_FOLLOWER);
 
@@ -677,15 +613,9 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
 
@@ -726,19 +656,14 @@ TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_
     raft_cbs_t funcs = {
         .log = NULL
     };
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
 
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     /* term is different from appendentries */
@@ -783,15 +708,9 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
 
@@ -851,16 +770,10 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     r = raft_new();
     sender = sender_new(NULL);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_current_term(r, 1);
     raft_set_callbacks(r, &funcs, sender);
 
@@ -895,16 +808,10 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     msg_appendentries_t ae;
@@ -948,16 +855,10 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     msg_appendentries_t ae;
@@ -995,21 +896,13 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
 void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(
     CuTest * tc)
 {
-    void *r;
-
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
-    r = raft_new();
+    void *r = raft_new();
 
     /*  1 second election timeout */
     raft_set_election_timeout(r, 1000);
 
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     /*  1.001 seconds have passed */
     raft_periodic(r, 1001);
@@ -1028,20 +921,14 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     /*  request vote */
     /*  vote indicates candidate's log is not complete compared to follower */
@@ -1141,18 +1028,14 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(
         .send_requestvote = sender_requestvote,
         .log              = NULL
     };
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { (void*)3 },
-        { NULL     }
-    };
     msg_requestvote_t* rv;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+    raft_add_peer(r, (void*)3, 0);
 
     /* set term so we can check it gets included in the outbound message */
     raft_set_current_term(r, 2);
@@ -1182,13 +1065,6 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_requestvote_response_t vr;
 
     memset(&vr, 0, sizeof(msg_requestvote_response_t));
@@ -1198,7 +1074,8 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(
     sender = sender_new(NULL);
 
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
     raft_set_election_timeout(r, 1000);
 
@@ -1224,22 +1101,16 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { (void*)3 },
-        { (void*)4 },
-        { (void*)5 },
-        { NULL     }
-    };
-
     msg_requestvote_response_t vr;
 
     sender = sender_new(NULL);
 
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+    raft_add_peer(r, (void*)3, 0);
+    raft_add_peer(r, (void*)4, 0);
+    raft_add_peer(r, (void*)5, 0);
     CuAssertTrue(tc, 5 == raft_get_num_nodes(r));
     raft_set_callbacks(r, &funcs, sender);
 
@@ -1273,19 +1144,13 @@ void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     raft_vote(r, 0);
@@ -1308,16 +1173,10 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     };
     msg_requestvote_t* rv;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 99);
+    raft_add_peer(r, (void*)1, 0);
+    raft_add_peer(r, (void*)2, 1);
     raft_set_state(r, RAFT_STATE_CANDIDATE);
 
     raft_set_callbacks(r, &funcs, sender);
@@ -1330,7 +1189,7 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     CuAssertTrue(tc, 3 == rv->last_log_idx);
     CuAssertTrue(tc, 5 == rv->term);
     CuAssertTrue(tc, 5 == rv->last_log_term);
-    CuAssertTrue(tc, 99 == rv->candidate_id);
+    CuAssertTrue(tc, 1 == rv->candidate_id);
 }
 
 /* Candidate 5.2 */
@@ -1343,17 +1202,11 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
 
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -1380,20 +1233,14 @@ TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follow
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     /* server's log is newer */
     raft_set_current_term(r, 1);
@@ -1445,18 +1292,12 @@ TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { (void*)3 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+    raft_add_peer(r, (void*)3, 0);
 
     /* candidate to leader */
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -1484,19 +1325,14 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(
         .log                = NULL
     };
 
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { (void*)3 },
-        { NULL     }
-    };
-
     msg_appendentries_t* ae;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+    raft_add_peer(r, (void*)3, 0);
 
     /* candidate to leader */
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -1519,17 +1355,11 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
@@ -1563,19 +1393,13 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(
         .log                = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_appendentries_t* ae;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
@@ -1602,19 +1426,13 @@ TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency
         .log                = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_appendentries_t* ae;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
@@ -1633,13 +1451,6 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
 {
     void *r;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_entry_t ety;
     msg_entry_response_t cr;
 
@@ -1648,7 +1459,8 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
     ety.len = strlen("entry");
 
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_state(r, RAFT_STATE_LEADER);
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
@@ -1700,15 +1512,10 @@ TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_one_new
     };
     msg_appendentries_response_t aer;
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     /* I'm the leader */
@@ -1774,19 +1581,13 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 5);
@@ -1811,19 +1612,13 @@ void TestRaft_leader_steps_down_if_received_appendentries_has_newer_term_than_it
         .log = NULL
     };
 
-    /* 2 nodes */
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { NULL     }
-    };
-
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
     sender = sender_new(NULL);
     r = raft_new();
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 5);
@@ -1849,19 +1644,14 @@ void TestRaft_leader_sends_empty_appendentries_every_request_timeout(
         .log                = NULL
     };
 
-    raft_node_configuration_t cfg[] = {
-        { (void*)1 },
-        { (void*)2 },
-        { (void*)3 },
-        { NULL     }
-    };
-
     msg_appendentries_t* ae;
 
     sender = sender_new(NULL);
     r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_set_configuration(r, cfg, 0);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+    raft_add_peer(r, (void*)3, 0);
     raft_set_election_timeout(r, 1000);
     raft_set_request_timeout(r, 500);
     CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));

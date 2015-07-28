@@ -511,6 +511,23 @@ void raft_set_configuration(raft_server_t* me_,
     me->nodeid = my_idx;
 }
 
+int raft_add_peer(raft_server_t* me_, void* udata, int is_self)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    /* TODO: does not yet support dynamic membership changes */
+    if (me->current_term != 0 && me->timeout_elapsed != 0 && me->election_timeout != 0)
+        return -1;
+
+    me->num_nodes++;
+    me->nodes = (raft_node_t*)realloc(me->nodes, sizeof(raft_node_t*) * me->num_nodes);
+    me->nodes[me->num_nodes - 1] = raft_node_new(udata);
+    me->votes_for_me = (int*)realloc(me->votes_for_me, me->num_nodes * sizeof(int));
+    if (is_self)
+        me->nodeid = me->num_nodes - 1;
+    return 0;
+}
+
 int raft_get_nvotes_for_me(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

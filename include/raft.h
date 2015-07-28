@@ -212,7 +212,27 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* udata);
  * @param nodes Array of nodes. End of array is marked by NULL entry
  * @param my_idx Index of the node that refers to this Raft server */
 void raft_set_configuration(raft_server_t* me_,
-                            raft_node_configuration_t* nodes, int my_idx);
+                            raft_node_configuration_t* nodes, int my_idx)
+__attribute__ ((deprecated));
+
+/**
+ * Add peer
+ *
+ * NOTE: This library does not yet support membership changes.
+ *  Once raft_periodic has been run this will fail.
+ *
+ * NOTE: The order this call is made is important.
+ *  This call MUST be made in the same order as the other raft peers.
+ *  This is because the node ID is assigned depending on when this call is made
+ *
+ * @param udata The user data for the node.
+ *  This is obtained using raft_node_get_udata.
+ *  Examples of what this could be:
+ *  - void* pointing to implementor's networking data
+ *  - a (IP,Port) tuple
+ * @param is_self True if this "peer" is this server
+ * @return 0 on success; otherwise -1 */
+int raft_add_peer(raft_server_t* me_, void* udata, int is_self);
 
 /**
  * Set election timeout
@@ -336,6 +356,10 @@ int raft_node_is_leader(raft_node_t* node);
 /**
  * @return the node's next index */
 int raft_node_get_next_idx(raft_node_t* node);
+
+/**
+ * @return this node's user data */
+void* raft_node_get_udata(raft_node_t* me_);
 
 /**
  * @param idx The entry's index
