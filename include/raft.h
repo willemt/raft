@@ -107,6 +107,20 @@ typedef enum
     RAFT_MSG_ENTRY_RESPONSE,
 } raft_message_type_e;
 
+typedef struct
+{
+    /* entry's term */
+    unsigned int term;
+    /* the entry's unique ID */
+    unsigned int id;
+    /* entry data */
+    unsigned char* data;
+    /* length of entry data */
+    unsigned int len;
+    /* number of nodes that have this entry */
+    unsigned int num_nodes;
+} raft_entry_t;
+
 /**
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
@@ -163,27 +177,58 @@ typedef int (
     const int len
     );
 
+/**
+ * Save who we voted for to disk
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param voted_for The node we voted for
+ * @return 0 on success */
+typedef int (
+*func_persist_vote_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    const int voted_for
+    );
+
+/**
+ * Save the term we are on to disk
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param term Current term
+ * @return 0 on success */
+typedef int (
+*func_persist_current_term_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    const int current_term
+    );
+
+/**
+ * Save log to disk
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param term Current term
+ * @return 0 on success */
+typedef int (
+*func_persist_entry_f
+)   (
+    raft_server_t* raft,
+    void *udata,
+    const raft_entry_t entry
+    );
+
 typedef struct
 {
     func_send_requestvote_f send_requestvote;
     func_send_appendentries_f send_appendentries;
     func_log_f log;
     func_applylog_f applylog;
+    func_persist_vote_f persist_vote;
+    func_persist_current_term_f persist_current_term;
+    func_persist_entry_f persist_entry;
 } raft_cbs_t;
-
-typedef struct
-{
-    /* entry's term */
-    unsigned int term;
-    /* the entry's unique ID */
-    unsigned int id;
-    /* entry data */
-    unsigned char* data;
-    /* length of entry data */
-    unsigned int len;
-    /* number of nodes that have this entry */
-    unsigned int num_nodes;
-} raft_entry_t;
 
 /**
  * Initialise a new Raft server

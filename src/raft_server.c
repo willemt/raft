@@ -23,11 +23,15 @@
 
 static void __log(raft_server_t *me_, const char *fmt, ...)
 {
+    raft_server_private_t* me = (raft_server_private_t*)me_;
     char buf[1024];
     va_list args;
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
+
+    if (me->cb.log)
+        me->cb.log(me_, me->udata, buf);
 
 #if 0 /* debugging */
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -477,6 +481,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     ae.term = me->current_term;
     ae.leader_id = me->nodeid;
     ae.prev_log_term = raft_node_get_next_idx(p);
+    ae.leader_commit = raft_get_commit_idx(me_);
     // TODO:
     ae.prev_log_idx = 0;
     ae.n_entries = 0;
