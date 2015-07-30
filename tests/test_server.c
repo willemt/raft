@@ -1400,6 +1400,32 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
     CuAssertTrue(tc, 1 == cr.was_committed);
 }
 
+void TestRaft_non_leader_recv_entry_msg_fails(CuTest * tc)
+{
+    msg_entry_response_t cr;
+    raft_cbs_t funcs = {
+        .log = NULL
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, sender);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+
+    raft_set_state(r, RAFT_STATE_FOLLOWER);
+
+    /* entry message */
+    msg_entry_t ety;
+    ety.id = 1;
+    ety.data = "entry";
+    ety.len = strlen("entry");
+
+    /* receive entry */
+    int e = raft_recv_entry(r, 1, &ety, &cr);
+    CuAssertTrue(tc, -1 == e);
+}
+
 /* 5.3 */
 void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(
     CuTest * tc)

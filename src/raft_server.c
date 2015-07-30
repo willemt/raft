@@ -412,6 +412,9 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
     raft_entry_t ety;
     int res, i;
 
+    if (!raft_is_leader(me_))
+        return -1;
+
     __log(me_, "received entry from: %d", node);
 
     ety.term = me->current_term;
