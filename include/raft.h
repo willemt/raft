@@ -97,16 +97,6 @@ typedef struct
 typedef void* raft_server_t;
 typedef void* raft_node_t;
 
-typedef enum
-{
-    RAFT_MSG_REQUESTVOTE,
-    RAFT_MSG_REQUESTVOTE_RESPONSE,
-    RAFT_MSG_APPENDENTRIES,
-    RAFT_MSG_APPENDENTRIES_RESPONSE,
-    RAFT_MSG_ENTRY,
-    RAFT_MSG_ENTRY_RESPONSE,
-} raft_message_type_e;
-
 typedef struct
 {
     /* entry's term */

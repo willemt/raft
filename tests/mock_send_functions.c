@@ -15,6 +15,7 @@
 #include "linked_list_queue.h"
 
 #include "raft.h"
+#include "mock_send_functions.h"
 
 typedef struct
 {
