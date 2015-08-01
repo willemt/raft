@@ -35,16 +35,18 @@ typedef struct
     int last_log_term;
 } msg_requestvote_t;
 
+
+typedef struct {
+    void *buf;
+    uint32_t len;
+} msg_entry_data_t;
+
 typedef struct
 {
     /* the entry's unique ID */
     unsigned int id;
 
-    /* entry data */
-    unsigned char* data;
-
-    /* length of entry data */
-    unsigned int len;
+    msg_entry_data_t data;
 } msg_entry_t;
 
 typedef struct
