@@ -643,8 +643,8 @@ void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
     ae.leader_commit = 5;
     /* include one entry */
     memset(&ety, 0, sizeof(msg_entry_t));
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     ety.id = 1;
     ae.entries = &ety;
     ae.n_entries = 1;
@@ -690,8 +690,8 @@ TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_
     ae.prev_log_term = 1;
     /* include one entry */
     memset(&ety, 0, sizeof(msg_entry_t));
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     ety.id = 1;
     ae.entries = &ety;
     ae.n_entries = 1;
@@ -758,8 +758,8 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
     /* include one entry */
     memset(&mety, 0, sizeof(msg_entry_t));
     char *str3 = "333";
-    mety.data = str3;
-    mety.len = 3;
+    mety.data.buf = str3;
+    mety.data.len = 3;
     mety.id = 3;
     ae.entries = &mety;
     ae.n_entries = 1;
@@ -1386,8 +1386,8 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
     /* entry message */
     msg_entry_t ety;
     ety.id = 1;
-    ety.data = "entry";
-    ety.len = strlen("entry");
+    ety.data.buf = "entry";
+    ety.data.len = strlen("entry");
 
     /* receive entry */
     raft_recv_entry(r, 1, &ety, &cr);
@@ -1418,8 +1418,8 @@ void TestRaft_non_leader_recv_entry_msg_fails(CuTest * tc)
     /* entry message */
     msg_entry_t ety;
     ety.id = 1;
-    ety.data = "entry";
-    ety.len = strlen("entry");
+    ety.data.buf = "entry";
+    ety.data.len = strlen("entry");
 
     /* receive entry */
     int e = raft_recv_entry(r, 1, &ety, &cr);
@@ -1524,8 +1524,8 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
     msg_entry_response_t cr;
 
     ety.id = 1;
-    ety.data = "entry";
-    ety.len = strlen("entry");
+    ety.data.buf = "entry";
+    ety.data.len = strlen("entry");
 
     r = raft_new();
     raft_add_peer(r, (void*)1, 1);
