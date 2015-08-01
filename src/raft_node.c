@@ -53,3 +53,9 @@ void* raft_node_get_udata(raft_node_t* me_)
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->udata;
 }
+
+void raft_node_set_udata(raft_node_t* me_, void* udata)
+{
+    raft_node_private_t* me = (raft_node_private_t*)me_;
+    me->udata = udata;
+}

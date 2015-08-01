@@ -397,6 +397,10 @@ int raft_node_get_next_idx(raft_node_t* node);
 void* raft_node_get_udata(raft_node_t* me_);
 
 /**
+ * Set this node's udata */
+void raft_node_set_udata(raft_node_t* me_, void* udata);
+
+/**
  * @param idx The entry's index
  * @return entry from index */
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int idx);
