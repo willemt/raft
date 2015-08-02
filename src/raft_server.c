@@ -193,7 +193,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         {
             raft_entry_t* e;
 
-            e = log_get_from_idx(me->log, me->last_applied_idx + 1);
+            e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
 
             /* majority has this */
             if (e && me->num_nodes / 2 <= e->num_nodes)
@@ -465,7 +465,7 @@ int raft_apply_entry(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     raft_entry_t* e;
 
-    if (!(e = log_get_from_idx(me->log, me->last_applied_idx + 1)))
+    if (!(e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1)))
         return -1;
 
     __log(me_, "applying log: %d", me->last_applied_idx);
@@ -492,11 +492,38 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     msg_appendentries_t ae;
     ae.term = me->current_term;
     ae.leader_id = me->nodeid;
-    ae.prev_log_term = raft_node_get_next_idx(p);
     ae.leader_commit = raft_get_commit_idx(me_);
-    // TODO:
+    int next_idx = raft_node_get_next_idx(p);
+
+    //__ae_set_prev_log(me, p, &ae, next_idx);
+
     ae.prev_log_idx = 0;
+    ae.prev_log_term = 0;
     ae.n_entries = 0;
+
+    msg_entry_t mety;
+
+    if (0 < next_idx)
+    {
+        /* previous log is the log just before the new logs */
+        raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx - 1);
+        if (ety)
+        {
+            ae.prev_log_idx = ety->id;
+            ae.prev_log_term = ety->term;
+
+            if (me->commit_idx < next_idx)
+            {
+                mety.id = ety->id;
+                mety.data.len = ety->len;
+                mety.data.buf = ety->data;
+                ae.entries = &mety;
+                // TODO: we want to send more than 1 at a time
+                ae.n_entries = 1;
+            }
+        }
+    }
+
     me->cb.send_appendentries(me_, me->udata, node, &ae);
 }
 
