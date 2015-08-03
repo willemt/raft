@@ -331,10 +331,12 @@ int raft_recv_requestvote_response(raft_server_t* me, int node,
  * Append the entry to the log
  * Send appendentries to followers
  * This function will block if it needs to append the message.
+ * Will fail:
+ *  - if the server is not the leader
  * @param node Index of the node who sent us this message
  * @param[out] r The resulting response
  * @param e The entry message
- * @return 0 on success, -1 if the server is not the leader */
+ * @return 0 on success, -1 on failure */
 int raft_recv_entry(raft_server_t* me, int node, msg_entry_t* e,
                     msg_entry_response_t *r);
 

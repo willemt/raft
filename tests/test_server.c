@@ -581,7 +581,7 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     CuAssertTrue(tc, 1 == current_leader);
 }
 
-void TestRaft_follower_doesnt_log_after_appendentry_if_no_entries_are_specified(
+void TestRaft_follower_recv_appendentries_does_not_log_if_no_entries_are_specified(
     CuTest * tc)
 {
     void *r;
@@ -610,7 +610,7 @@ void TestRaft_follower_doesnt_log_after_appendentry_if_no_entries_are_specified(
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 }
 
-void TestRaft_follower_increases_log_after_appendentry(CuTest * tc)
+void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
 {
     void *r;
     void *sender;
@@ -1009,7 +1009,7 @@ void TestRaft_follower_becoming_candidate_resets_election_timeout(CuTest * tc)
     CuAssertTrue(tc, raft_get_timeout_elapsed(r) < 900);
 }
 
-void TestRaft_follower_receiving_appendentries_resets_election_timeout(
+void TestRaft_follower_recv_appendentries_resets_election_timeout(
     CuTest * tc)
 {
     void *r;
