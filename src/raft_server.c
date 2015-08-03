@@ -180,33 +180,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
     __log(me_, "received appendentries response from: %d", node);
 
-    raft_node_t* p = raft_get_node(me_, node);
-
-    if (1 == r->success)
+    if (0 == r->success)
     {
-        int i;
-
-        for (i = r->first_idx; i <= r->current_idx; i++)
-            log_mark_node_has_committed(me->log, i);
-
-        while (1)
-        {
-            raft_entry_t* e;
-
-            e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
-
-            /* majority has this */
-            if (e && me->num_nodes / 2 <= e->num_nodes)
-            {
-                if (-1 == raft_apply_entry(me_))
-                    break;
-            }
-            else
-                break;
-        }
-    }
-    else
-    {
+        raft_node_t* p = raft_get_node(me_, node);
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_node_get_next_idx(p));
@@ -214,6 +190,26 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         // TODO can jump back to where node is different instead of iterating
         raft_node_set_next_idx(p, raft_node_get_next_idx(p) - 1);
         raft_send_appendentries(me_, node);
+        return 0;
+    }
+
+    int i;
+
+    for (i = r->first_idx; i <= r->current_idx; i++)
+        log_mark_node_has_committed(me->log, i);
+
+    while (1)
+    {
+        raft_entry_t* e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
+
+        /* majority has this */
+        if (e && me->num_nodes / 2 <= e->num_nodes)
+        {
+            if (-1 == raft_apply_entry(me_))
+                break;
+        }
+        else
+            break;
     }
 
     return 0;
