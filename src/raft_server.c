@@ -505,7 +505,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
         raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx - 1);
         if (ety)
         {
-            ae.prev_log_idx = ety->id;
+            ae.prev_log_idx = next_idx - 1;
             ae.prev_log_term = ety->term;
 
             if (me->commit_idx < next_idx)
