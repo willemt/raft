@@ -1499,7 +1499,6 @@ void TestRaft_leader_sends_appendentries_with_prevLogIdx(
 
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    raft_set_commit_idx(r, 10);
 
     /* receive appendentries messages */
     raft_send_appendentries(r, 0);
@@ -1528,6 +1527,43 @@ void TestRaft_leader_sends_appendentries_with_prevLogIdx(
     ae = sender_poll_msg_data(sender);
     CuAssertTrue(tc, NULL != ae);
     CuAssertTrue(tc, ae->prev_log_idx == 1);
+}
+
+void TestRaft_leader_sends_appendentries_when_peer_has_next_idx_of_0(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries = sender_appendentries,
+        .log                = NULL
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, sender);
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+
+    /* i'm leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+
+    /* receive appendentries messages */
+    raft_send_appendentries(r, 0);
+    msg_appendentries_t*  ae = sender_poll_msg_data(sender);
+
+    /* add an entry */
+    /* receive appendentries messages */
+    raft_node_t* n = raft_get_node(r, 0);
+    raft_node_set_next_idx(n, 1);
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 100;
+    ety.len = 4;
+    ety.data = (unsigned char*)"aaa";
+    raft_append_entry(r, &ety);
+    raft_send_appendentries(r, 0);
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+    CuAssertTrue(tc, ae->prev_log_idx == 0);
 }
 
 /* 5.3 */

@@ -499,7 +499,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 
     msg_entry_t mety;
 
-    if (0 < next_idx)
+    if (1 < next_idx)
     {
         /* previous log is the log just before the new logs */
         raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx - 1);
