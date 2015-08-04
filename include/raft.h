@@ -143,13 +143,16 @@ typedef int (
 
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG
+/**
+ * @param raft The Raft server making this callback
+ * @param udata User data that is passed from Raft server
+ * @param buf The buffer that was logged */
 typedef void (
 *func_log_f
 )    (
     raft_server_t* raft,
     void *udata,
-    const char *buf,
-    ...
+    const char *buf
     );
 #endif
 

@@ -32,12 +32,6 @@ static void __log(raft_server_t *me_, const char *fmt, ...)
 
     if (me->cb.log)
         me->cb.log(me_, me->udata, buf);
-
-#if 0 /* debugging */
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    printf("%d: %s\n", me->nodeid, buf);
-    __FUNC_log(bto, src, buf);
-#endif
 }
 
 raft_server_t* raft_new()
