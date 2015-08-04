@@ -252,38 +252,37 @@ int raft_recv_appendentries(
     }
 #endif
 
-    /* not the first appendentries we've received */
-    if (0 != ae->prev_log_idx)
+    /* Not the first appendentries we've received */
+    /* NOTE: the log starts at 1 */
+    if (1 < ae->prev_log_idx)
     {
         raft_entry_t* e = raft_get_entry_from_idx(me_, ae->prev_log_idx);
 
-        if (e)
+        if (!e)
         {
-            /* 2. Reply false if log doesn't contain an entry at prevLogIndex
-               whose term matches prevLogTerm (§5.3) */
-            if (e->term != ae->prev_log_term)
-            {
-                __log(me_, "AE term doesn't match prev_idx");
-                r->success = 0;
-                return 0;
-            }
-
-            /* 3. If an existing entry conflicts with a new one (same index
-               but different terms), delete the existing entry and all that
-               follow it (§5.3) */
-            raft_entry_t* e2;
-
-            e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
-
-            if (e2)
-                log_delete(me->log, ae->prev_log_idx + 1);
-        }
-        else
-        {
-            __log(me_, "AE no log at prev_idx");
+            __log(me_, "AE no log at prev_idx %d", ae->prev_log_idx);
             r->success = 0;
             return 0;
         }
+
+        /* 2. Reply false if log doesn't contain an entry at prevLogIndex
+           whose term matches prevLogTerm (§5.3) */
+        if (e->term != ae->prev_log_term)
+        {
+            __log(me_, "AE term doesn't match prev_idx");
+            r->success = 0;
+            return 0;
+        }
+
+        /* 3. If an existing entry conflicts with a new one (same index
+           but different terms), delete the existing entry and all that
+           follow it (§5.3) */
+        raft_entry_t* e2;
+
+        e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
+
+        if (e2)
+            log_delete(me->log, ae->prev_log_idx + 1);
     }
 
     /* 5. If leaderCommit > commitIndex, set commitIndex =
@@ -489,13 +488,12 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     ae.term = me->current_term;
     ae.leader_id = me->nodeid;
     ae.leader_commit = raft_get_commit_idx(me_);
-    int next_idx = raft_node_get_next_idx(p);
-
-    //__ae_set_prev_log(me, p, &ae, next_idx);
-
     ae.prev_log_idx = 0;
     ae.prev_log_term = 0;
     ae.n_entries = 0;
+    ae.entries = NULL;
+
+    int next_idx = raft_node_get_next_idx(p);
 
     msg_entry_t mety;
 

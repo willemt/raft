@@ -94,11 +94,14 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx)
     log_private_t* me = (log_private_t*)me_;
     int i;
 
+    assert(0 <= idx - 1);
+
     if (me->base_log_idx + me->count < idx || idx < me->base_log_idx)
         return NULL;
 
     /* idx starts at 1 */
     idx -= 1;
+
     i = (me->front + idx - me->base_log_idx) % me->size;
     return &me->entries[i];
 }
