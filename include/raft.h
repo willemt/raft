@@ -38,7 +38,7 @@ typedef struct
 
 typedef struct {
     void *buf;
-    uint32_t len;
+    unsigned int len;
 } msg_entry_data_t;
 
 typedef struct
