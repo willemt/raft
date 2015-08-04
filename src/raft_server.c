@@ -178,7 +178,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(me_, "received appendentries response from: %d", node);
+    __log(me_, "received appendentries response from: %d success: %d", node, r->success);
 
     if (0 == r->success)
     {
@@ -189,6 +189,8 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         // TODO does this have test coverage?
         // TODO can jump back to where node is different instead of iterating
         raft_node_set_next_idx(p, raft_node_get_next_idx(p) - 1);
+
+        /* retry */
         raft_send_appendentries(me_, node);
         return 0;
     }
@@ -458,12 +460,12 @@ int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
 int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    raft_entry_t* e;
 
-    if (!(e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1)))
+    raft_entry_t* e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
+    if (!e)
         return -1;
 
-    __log(me_, "applying log: %d", me->last_applied_idx);
+    __log(me_, "applying log: %d, size: %d", me->last_applied_idx, e->len);
 
     me->last_applied_idx++;
     if (me->commit_idx < me->last_applied_idx)
