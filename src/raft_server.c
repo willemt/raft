@@ -180,9 +180,10 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
     __log(me_, "received appendentries response from: %d success: %d", node, r->success);
 
+    raft_node_t* p = raft_get_node(me_, node);
+
     if (0 == r->success)
     {
-        raft_node_t* p = raft_get_node(me_, node);
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_node_get_next_idx(p));
@@ -194,6 +195,8 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         raft_send_appendentries(me_, node);
         return 0;
     }
+
+    raft_node_set_next_idx(p, r->current_idx + 1);
 
     int i;
 
