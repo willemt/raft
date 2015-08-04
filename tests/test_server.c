@@ -1653,7 +1653,7 @@ void T_estRaft_leader_doesnt_append_entry_if_unique_id_is_duplicate(CuTest * tc)
 #endif
 
 void
-TestRaft_leader_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry(
+TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry(
     CuTest * tc)
 {
     void *r;
@@ -1755,7 +1755,7 @@ void TestRaft_leader_recv_appendentries_response_increment_idx_of_peer(
     CuAssertTrue(tc, 2 == raft_node_get_next_idx(p));
 }
 
-void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(
+void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     CuTest * tc)
 {
     void *r;
@@ -1795,7 +1795,7 @@ void TestRaft_leader_steps_down_if_received_appendentries_is_newer_than_itself(
     CuAssertTrue(tc, 0 == current_leader);
 }
 
-void TestRaft_leader_steps_down_if_received_appendentries_has_newer_term_than_itself(
+void TestRaft_leader_recv_appendentries_steps_down_if_newer_term(
     CuTest * tc)
 {
     void *r;
