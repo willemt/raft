@@ -586,18 +586,3 @@ void raft_vote(raft_server_t* me_, int node)
     me->voted_for = node;
 }
 
-int raft_get_current_leader(raft_server_t* me_, int* current_leader)
-{
-    raft_server_private_t* me = (void*)me_;
-
-    /* use -1 as marker for unknown leader, because node IDs
-     * must be valid array indexes (see raft_get_node) */
-    if (me->current_leader < 0)
-        return 0;
-    else
-    {
-        if (current_leader != NULL)
-            *current_leader = me->current_leader;
-        return 1;
-    }
-}

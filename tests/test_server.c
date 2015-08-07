@@ -523,7 +523,7 @@ TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
     sender = sender_new(NULL);
     raft_set_callbacks(r, &funcs, sender);
     /* no leader known at this point */
-    CuAssertTrue(tc, 0 == raft_get_current_leader(r, NULL));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 
     /* term is low */
     memset(&ae, 0, sizeof(msg_appendentries_t));
@@ -537,7 +537,7 @@ TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
     CuAssertTrue(tc, NULL != aerr);
     CuAssertTrue(tc, 0 == aerr->success);
     /* rejected appendentries doesn't change the current leader. */
-    CuAssertTrue(tc, 0 == raft_get_current_leader(r, NULL));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 }
 
 /* TODO: check if test case is needed */
@@ -549,7 +549,6 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     void *sender;
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
-    int current_leader = 0;
 
     raft_cbs_t funcs = {
         .log = NULL
@@ -563,7 +562,7 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
 
     /*  older currentterm */
     raft_set_current_term(r, 1);
-    CuAssertTrue(tc, 0 == raft_get_current_leader(r, NULL));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 
     /*  newer term for appendentry */
     memset(&ae, 0, sizeof(msg_appendentries_t));
@@ -577,8 +576,7 @@ TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     /* term has been updated */
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
     /* and leader has been updated */
-    CuAssertTrue(tc, 1 == raft_get_current_leader(r, &current_leader));
-    CuAssertTrue(tc, 1 == current_leader);
+    CuAssertTrue(tc, 1 == raft_get_current_leader(r));
 }
 
 void TestRaft_follower_recv_appendentries_does_not_log_if_no_entries_are_specified(
@@ -1208,7 +1206,6 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
 {
     void *r;
     void *sender;
-    int current_leader = 0;
     raft_cbs_t funcs = {
         .log = NULL
     };
@@ -1222,7 +1219,7 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
 
     raft_set_state(r, RAFT_STATE_CANDIDATE);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
-    CuAssertTrue(tc, 0 == raft_get_current_leader(r, NULL));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 
     /* receive recent appendentries */
     msg_appendentries_t ae;
@@ -1233,8 +1230,7 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
     raft_recv_appendentries(r, 1, &ae, &aer);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
     /* after accepting a leader, it's available as the last known leader */
-    CuAssertTrue(tc, 1 == raft_get_current_leader(r, &current_leader));
-    CuAssertTrue(tc, 1 == current_leader);
+    CuAssertTrue(tc, 1 == raft_get_current_leader(r));
 }
 
 /* Candidate 5.2 */
@@ -1264,7 +1260,7 @@ TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follow
     /*  is a candidate */
     raft_set_state(r, RAFT_STATE_CANDIDATE);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
-    CuAssertTrue(tc, 0 == raft_get_current_leader(r, NULL));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 
     /*  invalid leader determined by "leaders" old log */
     memset(&ae, 0, sizeof(msg_appendentries_t));
@@ -1276,7 +1272,7 @@ TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follow
     raft_recv_appendentries(r, 1, &ae, &aer);
     CuAssertTrue(tc, 1 == raft_is_candidate(r));
     /* should not have changed leader after rejecting appendentry */
-    CuAssertTrue(tc, 0 == raft_get_current_leader(r, NULL));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 }
 
 void TestRaft_leader_becomes_leader_is_leader(CuTest * tc)
@@ -1760,7 +1756,6 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
 {
     void *r;
     void *sender;
-    int current_leader = 0;
     raft_cbs_t funcs = {
         .log = NULL
     };
@@ -1779,8 +1774,7 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     raft_set_callbacks(r, &funcs, sender);
     /* check that node 0 considers itself the leader */
     CuAssertTrue(tc, 1 == raft_is_leader(r));
-    CuAssertTrue(tc, 1 == raft_get_current_leader(r, &current_leader));
-    CuAssertTrue(tc, 0 == current_leader);
+    CuAssertTrue(tc, 0 == raft_get_current_leader(r));
 
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 5;
@@ -1791,8 +1785,7 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     /* after more recent appendentries from node 1, node 0 should
      * consider node 1 the leader. */
     CuAssertTrue(tc, 1 == raft_is_follower(r));
-    CuAssertTrue(tc, 1 == raft_get_current_leader(r, &current_leader));
-    CuAssertTrue(tc, 0 == current_leader);
+    CuAssertTrue(tc, 0 == raft_get_current_leader(r));
 }
 
 void TestRaft_leader_recv_appendentries_steps_down_if_newer_term(

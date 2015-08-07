@@ -140,6 +140,12 @@ raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
     return (raft_node_t*)me->nodes[nodeid];
 }
 
+int raft_get_current_leader(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    return me->current_leader;
+}
+
 int raft_is_follower(raft_server_t* me_)
 {
     return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
