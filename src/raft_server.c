@@ -134,8 +134,6 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(me_, "periodic elapsed time: %d", me->timeout_elapsed);
-
     switch (me->state)
     {
     case RAFT_STATE_FOLLOWER:
@@ -225,7 +223,8 @@ int raft_recv_appendentries(
 
     me->timeout_elapsed = 0;
 
-    __log(me_, "received appendentries from: %d", node);
+    if (0 < ae->n_entries)
+        __log(me_, "received appendentries from: %d", node);
 
     r->term = me->current_term;
 
