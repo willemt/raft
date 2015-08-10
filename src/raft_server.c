@@ -117,7 +117,6 @@ void raft_become_candidate(raft_server_t* me_)
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
             raft_send_requestvote(me_, i);
-
 }
 
 void raft_become_follower(raft_server_t* me_)
@@ -170,7 +169,8 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(me_, "received appendentries response from: %d success: %d", node, r->success);
+    __log(me_, "received appendentries response node: %d %s cidx: %d 1stidx: %d",
+            node, r->success == 1 ? "success" : "fail", r->current_idx, r->first_idx);
 
     raft_node_t* p = raft_get_node(me_, node);
 
@@ -332,6 +332,22 @@ int raft_recv_appendentries(
     return 0;
 }
 
+static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
+{
+    if (vr->term < raft_get_current_term((void*)me))
+        return 0;
+
+    /* we've already voted */
+    if (-1 != me->voted_for)
+        return 0;
+
+    /* we have a more up-to-date log */
+    if (vr->last_log_idx < me->current_idx)
+        return 0;
+
+    return 1;
+}
+        
 int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
                           msg_requestvote_response_t *r)
 {
@@ -340,17 +356,13 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
     if (raft_get_current_term(me_) < vr->term)
         me->voted_for = -1;
 
-    if (vr->term < raft_get_current_term(me_) ||
-        /* we've already voted */
-        -1 != me->voted_for ||
-        /* we have a more up-to-date log */
-        vr->last_log_idx < me->current_idx)
-        r->vote_granted = 0;
-    else
+    if (__should_grant_vote(me, vr))
     {
         raft_vote(me_, node);
         r->vote_granted = 1;
     }
+    else
+        r->vote_granted = 0;
 
     /* voted for someone, therefore must be in an election. */
     if (0 <= me->voted_for)
@@ -475,8 +487,6 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(me_, "sending appendentries to: %d", node);
-
     if (!(me->cb.send_appendentries))
         return;
 
@@ -515,6 +525,13 @@ void raft_send_appendentries(raft_server_t* me_, int node)
             }
         }
     }
+
+    __log(me_, "sending appendentries node: %d, %d %d %d %d",
+            node,
+            ae.term,
+            ae.leader_commit,
+            ae.prev_log_idx,
+            ae.prev_log_term);
 
     me->cb.send_appendentries(me_, me->udata, node, &ae);
 }
