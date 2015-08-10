@@ -10,7 +10,7 @@ C implementation of the Raft Consensus protocol, BSD licensed
 
 How does it work?
 -----------------
-See raft.h for full documentation.
+See `raft.h <https://github.com/willemt/raft/blob/master/include/raft.h>`_ for full documentation.
 
 See `ticketd <https://github.com/willemt/ticketd>`_ for real life use of the raft library.
 
