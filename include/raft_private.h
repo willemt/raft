@@ -31,7 +31,7 @@ typedef struct {
     int voted_for;
 
     /* the log which is replicated */
-    log_t* log;
+    void* log;
 
     /* Volatile state: */
 

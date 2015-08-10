@@ -68,10 +68,12 @@ int raft_get_voted_for(raft_server_t* me_)
     return ((raft_server_private_t*)me_)->voted_for;
 }
 
-void raft_set_current_term(raft_server_t* me_, int term)
+void raft_set_current_term(raft_server_t* me_, const int term)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     me->current_term = term;
+    if (me->cb.persist_term)
+        me->cb.persist_term(me_, me->udata, term);
 }
 
 int raft_get_current_term(raft_server_t* me_)
@@ -144,6 +146,11 @@ int raft_get_current_leader(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
     return me->current_leader;
+}
+
+void* raft_get_udata(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->udata;
 }
 
 int raft_is_follower(raft_server_t* me_)

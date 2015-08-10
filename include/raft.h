@@ -179,7 +179,7 @@ typedef int (
  * @param voted_for The node we voted for
  * @return 0 on success */
 typedef int (
-*func_persist_vote_f
+*func_persist_int_f
 )   (
     raft_server_t* raft,
     void *udata,
@@ -187,42 +187,38 @@ typedef int (
     );
 
 /**
- * Save the term we are on to disk
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
- * @param term Current term
+ * @param entry The entry that the event is happening to
  * @return 0 on success */
 typedef int (
-*func_persist_current_term_f
+*func_logentry_event_f
 )   (
     raft_server_t* raft,
     void *udata,
-    const int current_term
-    );
-
-/**
- * Save log to disk
- * @param raft The Raft server making this callback
- * @param udata User data that is passed from Raft server
- * @param term Current term
- * @return 0 on success */
-typedef int (
-*func_persist_entry_f
-)   (
-    raft_server_t* raft,
-    void *udata,
-    const raft_entry_t entry
+    raft_entry_t *entry
     );
 
 typedef struct
 {
+    /* message sending */
     func_send_requestvote_f send_requestvote;
     func_send_appendentries_f send_appendentries;
-    func_log_f log;
+
+    /* finite state machine application */
     func_applylog_f applylog;
-    func_persist_vote_f persist_vote;
-    func_persist_current_term_f persist_current_term;
-    func_persist_entry_f persist_entry;
+
+    /* persistence */
+    func_persist_int_f persist_vote;
+    func_persist_int_f persist_term;
+
+    /* log entry persistence */
+    func_logentry_event_f log_offer;
+    func_logentry_event_f log_poll;
+    func_logentry_event_f log_pop;
+
+    /* debugging - optional */
+    func_log_f log;
 } raft_cbs_t;
 
 /**
@@ -430,5 +426,19 @@ int raft_get_voted_for(raft_server_t* me);
  * @return node of what this node thinks is the valid leader;
  *   -1 if the leader is unknown */
 int raft_get_current_leader(raft_server_t* me);
+
+/**
+ * @return callback user data */
+void* raft_get_udata(raft_server_t* me_);
+
+/**
+ * Vote for a server
+ * @param node The server to vote for */
+void raft_vote(raft_server_t* me_, const int node);
+
+/**
+ * Set the current term
+ * @param term The new current term */
+void raft_set_current_term(raft_server_t* me_, const int term);
 
 #endif /* RAFT_H_ */

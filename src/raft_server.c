@@ -51,13 +51,13 @@ raft_server_t* raft_new()
     return (raft_server_t*)me;
 }
 
-void raft_set_callbacks(raft_server_t* me_,
-                        raft_cbs_t* funcs, void* udata)
+void raft_set_callbacks(raft_server_t* me_, raft_cbs_t* funcs, void* udata)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
     me->udata = udata;
+    log_set_callbacks(me->log, &me->cb, me_);
 }
 
 void raft_free(raft_server_t* me_)
@@ -597,9 +597,11 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
     return votes;
 }
 
-void raft_vote(raft_server_t* me_, int node)
+void raft_vote(raft_server_t* me_, const int node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     me->voted_for = node;
+    if (me->cb.persist_vote)
+        me->cb.persist_vote(me_, me->udata, node);
 }
 

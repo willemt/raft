@@ -15,6 +15,7 @@
 #include <assert.h>
 
 #include "raft.h"
+#include "raft_private.h"
 #include "raft_log.h"
 
 #define INITIAL_CAPACITY 10
@@ -35,6 +36,10 @@ typedef struct
     int base_log_idx;
 
     raft_entry_t* entries;
+
+    /* callbacks */
+    raft_cbs_t *cb;
+    void* raft;
 } log_private_t;
 
 static void __ensurecapacity(log_private_t * me)
@@ -73,6 +78,14 @@ log_t* log_new()
     return (log_t*)me;
 }
 
+void log_set_callbacks(log_t* me_, raft_cbs_t* funcs, void* raft)
+{
+    log_private_t* me = (log_private_t*)me_;
+
+    me->raft = raft;
+    me->cb = funcs;
+}
+
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
     log_private_t* me = (log_private_t*)me_;
@@ -86,6 +99,8 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     me->entries[me->back].num_nodes = 0;
     me->count++;
     me->back++;
+    if (me->cb && me->cb->log_offer)
+        me->cb->log_offer(me->raft, raft_get_udata(me->raft), c);
     return 0;
 }
 
@@ -122,6 +137,8 @@ void log_delete(log_t* me_, int idx)
 
     for (end = log_count(me_); idx < end; idx++)
     {
+        if (me->cb && me->cb->log_pop)
+            me->cb->log_pop(me->raft, raft_get_udata(me->raft), &me->entries[me->back]);
         me->back--;
         me->count--;
     }
@@ -135,6 +152,8 @@ void *log_poll(log_t * me_)
         return NULL;
 
     const void *elem = &me->entries[me->front];
+    if (me->cb && me->cb->log_poll)
+        me->cb->log_poll(me->raft, raft_get_udata(me->raft), &me->entries[me->front]);
     me->front++;
     me->count--;
     me->base_log_idx++;
