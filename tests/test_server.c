@@ -1720,6 +1720,51 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
 }
 
+void TestRaft_leader_recv_appendentries_response_failure_does_not_set_node_nextid_to_0(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+        .log                         = NULL
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+    raft_set_callbacks(r, &funcs, sender);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+
+    /* append entries */
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 1;
+    ety.data = "aaaa";
+    ety.len = 4;
+    raft_append_entry(r, &ety);
+
+    /* send appendentries -
+     * server will be waiting for response */
+    raft_send_appendentries(r, 0);
+
+    /* receive mock success response */
+    msg_appendentries_response_t aer;
+    memset(&aer, 0, sizeof(msg_appendentries_response_t));
+    aer.term = 1;
+    aer.success = 0;
+    aer.current_idx = 0;
+    aer.first_idx = 0;
+    raft_node_t* p = raft_get_node(r, 0);
+    raft_recv_appendentries_response(r, 0, &aer);
+    CuAssertTrue(tc, 1 == raft_node_get_next_idx(p));
+    raft_recv_appendentries_response(r, 0, &aer);
+    CuAssertTrue(tc, 1 == raft_node_get_next_idx(p));
+}
+
 void TestRaft_leader_recv_appendentries_response_increment_idx_of_peer(
     CuTest * tc)
 {

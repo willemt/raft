@@ -30,12 +30,6 @@ raft_node_t* raft_node_new(void* udata)
     return (raft_node_t*)me;
 }
 
-int raft_node_is_leader(raft_node_t* me_)
-{
-    // TODO
-    return 0;
-}
-
 int raft_node_get_next_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
@@ -45,7 +39,8 @@ int raft_node_get_next_idx(raft_node_t* me_)
 void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
-    me->next_idx = nextIdx;
+    /* log index begins at 1 */
+    me->next_idx = nextIdx < 1 ? 1 : nextIdx;
 }
 
 void* raft_node_get_udata(raft_node_t* me_)
