@@ -12,7 +12,9 @@ How does it work?
 -----------------
 See raft.h for full documentation.
 
-A CRaft user needs to implement all the functions in raft_cbs_t.
+See `ticketd <https://github.com/willemt/ticketd>`_ for real life use of the raft library.
+
+A user needs to implement all the functions in raft_cbs_t.
 
 Networking is out of scope for this project. The implementor will need to do all the plumbing. *Currently*, this is done by:
 
@@ -25,7 +27,10 @@ There are no dependencies, however https://github.com/willemt/linked-List-queue 
 
 Building
 --------
-$make tests
+.. code-block:: bash
+   :class: ignore
+
+   make tests
 
 Todo
 ----
