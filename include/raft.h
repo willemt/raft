@@ -441,4 +441,8 @@ void raft_vote(raft_server_t* me_, const int node);
  * @param term The new current term */
 void raft_set_current_term(raft_server_t* me_, const int term);
 
+/**
+ * @return this server's node ID */
+int raft_get_my_id(raft_server_t* me_);
+
 #endif /* RAFT_H_ */

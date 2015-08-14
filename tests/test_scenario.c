@@ -36,6 +36,9 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
                              }), sender[j]);
     }
 
+    /* NOTE: important for 1st node to send vote request before others */
+    raft_periodic(r[0], 1000);
+
     for (i = 0; i < 20; i++)
     {
 one_more_time:

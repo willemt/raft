@@ -353,11 +353,12 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    if (raft_get_current_term(me_) < vr->term)
-        me->voted_for = -1;
-
     if (__should_grant_vote(me, vr))
     {
+        /* It shouldn't be possible for a leader or candidate to grant a vote
+         * Both states would have voted for themselves */
+        assert(!(raft_is_leader(me_) || raft_is_candidate(me_)));
+
         raft_vote(me_, node);
         r->vote_granted = 1;
     }
