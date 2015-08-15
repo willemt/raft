@@ -313,7 +313,7 @@ int raft_recv_appendentries(
 
         /* TODO: replace malloc with mempoll/arena */
         raft_entry_t* c = (raft_entry_t*)malloc(sizeof(raft_entry_t));
-        c->term = me->current_term;
+        c->term = cmd->term;
         c->len = cmd->data.len;
         c->id = cmd->id;
         c->data = (unsigned char*)malloc(cmd->data.len);
@@ -509,17 +509,14 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 
     msg_entry_t mety;
 
-    if (1 < next_idx)
+    if (0 < next_idx)
     {
-        /* previous log is the log just before the new logs */
-        raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx - 1);
+        raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx);
         if (ety)
         {
-            ae.prev_log_idx = next_idx - 1;
-            ae.prev_log_term = ety->term;
-
             if (me->commit_idx < next_idx)
             {
+                mety.term = ety->term;
                 mety.id = ety->id;
                 mety.data.len = ety->len;
                 mety.data.buf = ety->data;
@@ -528,6 +525,15 @@ void raft_send_appendentries(raft_server_t* me_, int node)
                 ae.n_entries = 1;
             }
         }
+    }
+
+    /* previous log is the log just before the new logs */
+    if (1 < next_idx)
+    {
+        raft_entry_t* prev_ety = raft_get_entry_from_idx(me_, next_idx - 1);
+        ae.prev_log_idx = next_idx - 1;
+        if (prev_ety)
+            ae.prev_log_term = prev_ety->term;
     }
 
     __log(me_, "sending appendentries node: %d, %d %d %d %d",

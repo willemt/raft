@@ -85,6 +85,9 @@ int sender_requestvote_response(raft_server_t* raft,
 int sender_appendentries(raft_server_t* raft,
                          void* udata, int peer, msg_appendentries_t* msg)
 {
+    msg_entry_t* entries = calloc(1, sizeof(msg_entry_t) * msg->n_entries);
+    memcpy(entries, msg->entries, sizeof(msg_entry_t) * msg->n_entries);
+    msg->entries = entries;
     return __append_msg(udata, msg, RAFT_MSG_APPENDENTRIES, sizeof(*msg), peer,
                         raft);
 }

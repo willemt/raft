@@ -46,6 +46,9 @@ typedef struct
     /* the entry's unique ID */
     unsigned int id;
 
+    /* the term the entry was created */
+    int term;
+
     msg_entry_data_t data;
 } msg_entry_t;
 

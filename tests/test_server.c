@@ -654,7 +654,7 @@ void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
 
     /* receive an appendentry with commit */
     memset(&ae, 0, sizeof(msg_appendentries_t));
-    ae.term = 1;
+    ae.term = 3;
     ae.prev_log_term = 1;
     /* first appendentries msg */
     ae.prev_log_idx = 0;
@@ -664,12 +664,16 @@ void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
     ety.data.buf = str;
     ety.data.len = 3;
     ety.id = 1;
+    /* check that old terms are passed onto the log */
+    ety.term = 2;
     ae.entries = &ety;
     ae.n_entries = 1;
 
     raft_recv_appendentries(r, 1, &ae, &aer);
     CuAssertTrue(tc, 1 == aer.success);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
+    raft_entry_t* log = raft_get_entry_from_idx(r, 1);
+    CuAssertTrue(tc, 2 == log->term);
 }
 
 /*  5.3 */
@@ -830,17 +834,10 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
 void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
     CuTest * tc)
 {
-    void *r;
-    void *sender;
-    raft_cbs_t funcs = {
-        .log = NULL
-    };
-
-    sender = sender_new(NULL);
-    r = raft_new();
+    sender_new(NULL);
+    void *r = raft_new();
     raft_add_peer(r, (void*)1, 1);
     raft_add_peer(r, (void*)2, 0);
-    raft_set_callbacks(r, &funcs, sender);
 
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
@@ -852,9 +849,13 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
     /* include entries */
     msg_entry_t e[4];
     memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
     e[0].id = 1;
+    e[1].term = 1;
     e[1].id = 2;
+    e[2].term = 1;
     e[2].id = 3;
+    e[3].term = 1;
     e[3].id = 4;
     ae.entries = e;
     ae.n_entries = 4;
@@ -899,9 +900,13 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
     /* include entries */
     msg_entry_t e[4];
     memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
     e[0].id = 1;
+    e[1].term = 1;
     e[1].id = 2;
+    e[2].term = 1;
     e[2].id = 3;
+    e[3].term = 1;
     e[3].id = 4;
     ae.entries = e;
     ae.n_entries = 4;
@@ -1510,36 +1515,41 @@ void TestRaft_leader_sends_appendentries_with_prevLogIdx(
     void *sender = sender_new(NULL);
     void *r = raft_new();
     raft_set_callbacks(r, &funcs, sender);
-    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)1, 1); /* me */
     raft_add_peer(r, (void*)2, 0);
 
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
 
     /* receive appendentries messages */
-    raft_send_appendentries(r, 0);
+    raft_send_appendentries(r, 1);
     msg_appendentries_t*  ae = sender_poll_msg_data(sender);
     CuAssertTrue(tc, NULL != ae);
     CuAssertTrue(tc, ae->prev_log_idx == 0);
 
-    /* add an entry */
+    raft_node_t* n = raft_get_node(r, 1);
+
+    /* add 1 entry */
     /* receive appendentries messages */
     raft_entry_t ety;
-    ety.term = 1;
+    ety.term = 2;
     ety.id = 100;
     ety.len = 4;
     ety.data = (unsigned char*)"aaa";
     raft_append_entry(r, &ety);
-    raft_send_appendentries(r, 0);
+    raft_node_set_next_idx(n, 1);
+    raft_send_appendentries(r, 1);
     ae = sender_poll_msg_data(sender);
     CuAssertTrue(tc, NULL != ae);
     CuAssertTrue(tc, ae->prev_log_idx == 0);
+    CuAssertTrue(tc, ae->n_entries == 1);
+    CuAssertTrue(tc, ae->entries[0].id == 100);
+    CuAssertTrue(tc, ae->entries[0].term == 2);
 
     /* set next_idx */
     /* receive appendentries messages */
-    raft_node_t* n = raft_get_node(r, 0);
     raft_node_set_next_idx(n, 2);
-    raft_send_appendentries(r, 0);
+    raft_send_appendentries(r, 1);
     ae = sender_poll_msg_data(sender);
     CuAssertTrue(tc, NULL != ae);
     CuAssertTrue(tc, ae->prev_log_idx == 1);
