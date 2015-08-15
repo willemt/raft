@@ -103,14 +103,18 @@ typedef struct
 {
     /* entry's term */
     unsigned int term;
+
     /* the entry's unique ID */
     unsigned int id;
-    /* entry data */
-    unsigned char* data;
-    /* length of entry data */
-    unsigned int len;
+
     /* number of nodes that have this entry */
     unsigned int num_nodes;
+
+    /* length of entry data */
+    unsigned int len;
+
+    /* entry data */
+    unsigned char* data;
 } raft_entry_t;
 
 /**
@@ -432,17 +436,25 @@ int raft_get_current_leader(raft_server_t* me);
 void* raft_get_udata(raft_server_t* me_);
 
 /**
+ * @return this server's node ID */
+int raft_get_my_id(raft_server_t* me_);
+
+/**
  * Vote for a server
+ * This should be used to reload persistent state, ie. the voted-for field.
  * @param node The server to vote for */
 void raft_vote(raft_server_t* me_, const int node);
 
 /**
  * Set the current term
+ * This should be used to reload persistent state, ie. the current_term field.
  * @param term The new current term */
 void raft_set_current_term(raft_server_t* me_, const int term);
 
 /**
- * @return this server's node ID */
-int raft_get_my_id(raft_server_t* me_);
+ * Add an entry to the server's log
+ * This should be used to reload persistent state, ie. the commit log.
+ * @parma ety The entry to be appended */
+int raft_append_entry(raft_server_t* me_, raft_entry_t* ety);
 
 #endif /* RAFT_H_ */
