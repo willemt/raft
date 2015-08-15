@@ -50,7 +50,7 @@ static void __ensurecapacity(log_private_t * me)
     if (me->count < me->size)
         return;
 
-    temp = (raft_entry_t*) calloc(1, sizeof(raft_entry_t) * me->size * 2);
+    temp = (raft_entry_t*)calloc(1, sizeof(raft_entry_t) * me->size * 2);
 
     for (i = 0, j = me->front; i < me->count; i++, j++)
     {
@@ -70,11 +70,11 @@ static void __ensurecapacity(log_private_t * me)
 
 log_t* log_new()
 {
-    log_private_t* me = (log_private_t*) calloc(1, sizeof(log_private_t));
+    log_private_t* me = (log_private_t*)calloc(1, sizeof(log_private_t));
     me->size = INITIAL_CAPACITY;
     me->count = 0;
     me->back = in(me)->front = 0;
-    me->entries = (raft_entry_t*) calloc(1, sizeof(raft_entry_t) * me->size);
+    me->entries = (raft_entry_t*)calloc(1, sizeof(raft_entry_t) * me->size);
     return (log_t*)me;
 }
 
@@ -97,10 +97,10 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
 
     memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
     me->entries[me->back].num_nodes = 0;
+    if (me->cb && me->cb->log_offer)
+        me->cb->log_offer(me->raft, raft_get_udata(me->raft), c, me->back);
     me->count++;
     me->back++;
-    if (me->cb && me->cb->log_offer)
-        me->cb->log_offer(me->raft, raft_get_udata(me->raft), c);
     return 0;
 }
 
@@ -138,7 +138,8 @@ void log_delete(log_t* me_, int idx)
     for (end = log_count(me_); idx < end; idx++)
     {
         if (me->cb && me->cb->log_pop)
-            me->cb->log_pop(me->raft, raft_get_udata(me->raft), &me->entries[me->back]);
+            me->cb->log_pop(me->raft, raft_get_udata(me->raft),
+                            &me->entries[me->back], me->back);
         me->back--;
         me->count--;
     }
@@ -153,7 +154,8 @@ void *log_poll(log_t * me_)
 
     const void *elem = &me->entries[me->front];
     if (me->cb && me->cb->log_poll)
-        me->cb->log_poll(me->raft, raft_get_udata(me->raft), &me->entries[me->front]);
+        me->cb->log_poll(me->raft, raft_get_udata(me->raft),
+                         &me->entries[me->front], me->front);
     me->front++;
     me->count--;
     me->base_log_idx++;

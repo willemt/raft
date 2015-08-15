@@ -194,13 +194,15 @@ typedef int (
  * @param raft The Raft server making this callback
  * @param udata User data that is passed from Raft server
  * @param entry The entry that the event is happening to
+ * @param entry_idx The entries index in the log
  * @return 0 on success */
 typedef int (
 *func_logentry_event_f
 )   (
     raft_server_t* raft,
     void *udata,
-    raft_entry_t *entry
+    raft_entry_t *entry,
+    int entry_idx
     );
 
 typedef struct
