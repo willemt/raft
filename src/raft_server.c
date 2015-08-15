@@ -41,7 +41,7 @@ raft_server_t* raft_new()
         return NULL;
     me->current_term = 0;
     me->voted_for = -1;
-    me->current_idx = 1;
+    me->current_idx = 0;
     me->timeout_elapsed = 0;
     me->request_timeout = 200;
     me->election_timeout = 1000;
@@ -224,7 +224,13 @@ int raft_recv_appendentries(
     me->timeout_elapsed = 0;
 
     if (0 < ae->n_entries)
-        __log(me_, "received appendentries from: %d", node);
+        __log(me_, "recvd appendentries from: %d, %d %d %d %d #%d",
+                node,
+                ae->term,
+                ae->leader_commit,
+                ae->prev_log_idx,
+                ae->prev_log_term,
+                ae->n_entries);
 
     r->term = me->current_term;
 
@@ -252,7 +258,7 @@ int raft_recv_appendentries(
 
     /* Not the first appendentries we've received */
     /* NOTE: the log starts at 1 */
-    if (1 < ae->prev_log_idx)
+    if (0 < ae->prev_log_idx)
     {
         raft_entry_t* e = raft_get_entry_from_idx(me_, ae->prev_log_idx);
 
@@ -267,7 +273,8 @@ int raft_recv_appendentries(
            whose term matches prevLogTerm (§5.3) */
         if (e->term != ae->prev_log_term)
         {
-            __log(me_, "AE term doesn't match prev_idx");
+            __log(me_, "AE term doesn't match prev_idx (ie. %d vs %d)",
+                    e->term, ae->prev_log_term);
             r->success = 0;
             return 0;
         }
@@ -275,9 +282,7 @@ int raft_recv_appendentries(
         /* 3. If an existing entry conflicts with a new one (same index
            but different terms), delete the existing entry and all that
            follow it (§5.3) */
-        raft_entry_t* e2;
-
-        e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
+        raft_entry_t* e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
 
         if (e2)
             log_delete(me->log, ae->prev_log_idx + 1);
@@ -509,22 +514,16 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 
     msg_entry_t mety;
 
-    if (0 < next_idx)
+    raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx);
+    if (ety)
     {
-        raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx);
-        if (ety)
-        {
-            if (me->commit_idx < next_idx)
-            {
-                mety.term = ety->term;
-                mety.id = ety->id;
-                mety.data.len = ety->len;
-                mety.data.buf = ety->data;
-                ae.entries = &mety;
-                // TODO: we want to send more than 1 at a time
-                ae.n_entries = 1;
-            }
-        }
+        mety.term = ety->term;
+        mety.id = ety->id;
+        mety.data.len = ety->len;
+        mety.data.buf = ety->data;
+        ae.entries = &mety;
+        // TODO: we want to send more than 1 at a time
+        ae.n_entries = 1;
     }
 
     /* previous log is the log just before the new logs */

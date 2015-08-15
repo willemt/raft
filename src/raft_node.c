@@ -27,6 +27,7 @@ raft_node_t* raft_node_new(void* udata)
     raft_node_private_t* me;
     me = (raft_node_private_t*)calloc(1, sizeof(raft_node_private_t));
     me->udata = udata;
+    me->next_idx = 1;
     return (raft_node_t*)me;
 }
 
