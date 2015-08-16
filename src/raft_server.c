@@ -283,7 +283,6 @@ int raft_recv_appendentries(
            but different terms), delete the existing entry and all that
            follow it (§5.3) */
         raft_entry_t* e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
-
         if (e2)
             log_delete(me->log, ae->prev_log_idx + 1);
     }
@@ -323,7 +322,8 @@ int raft_recv_appendentries(
         c->id = cmd->id;
         c->data = (unsigned char*)malloc(cmd->data.len);
         memcpy(c->data, cmd->data.buf, cmd->data.len);
-        if (-1 == raft_append_entry(me_, c))
+        int e = raft_append_entry(me_, c);
+        if (-1 == e)
         {
             __log(me_, "AE failure; couldn't append entry");
             r->success = 0;
@@ -424,7 +424,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     raft_entry_t ety;
-    int res, i;
+    int i;
 
     if (!raft_is_leader(me_))
         return -1;
@@ -436,7 +436,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
     ety.len = e->data.len;
     ety.data = malloc(e->data.len);
     memcpy(ety.data, e->data.buf, e->data.len);
-    res = raft_append_entry(me_, &ety);
+    int res = raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
             raft_send_appendentries(me_, i);
@@ -613,4 +613,3 @@ void raft_vote(raft_server_t* me_, const int node)
     if (me->cb.persist_vote)
         me->cb.persist_vote(me_, me->udata, node);
 }
-
