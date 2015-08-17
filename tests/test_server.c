@@ -27,8 +27,8 @@ void TestRaft_server_idx_starts_at_1(CuTest * tc)
     CuAssertTrue(tc, 0 == raft_get_current_idx(r));
 
     raft_entry_t ety;
-    ety.data = "aaa";
-    ety.len = 3;
+    ety.data.buf = "aaa";
+    ety.data.len = 3;
     ety.id = 1;
     ety.term = 1;
     raft_append_entry(r, &ety);
@@ -95,8 +95,8 @@ void TestRaft_server_entry_append_cant_append_if_id_is_zero(CuTest* tc)
     raft_entry_t ety;
     char *str = "aaa";
 
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     ety.id = 0;
     ety.term = 1;
 
@@ -111,8 +111,8 @@ void TestRaft_server_entry_append_increases_logidx(CuTest* tc)
     raft_entry_t ety;
     char *str = "aaa";
 
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     ety.id = 1;
     ety.term = 1;
 
@@ -127,8 +127,8 @@ void TestRaft_server_append_entry_means_entry_gets_current_term(CuTest* tc)
     raft_entry_t ety;
     char *str = "aaa";
 
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     ety.id = 1;
     ety.term = 1;
 
@@ -148,8 +148,8 @@ T_estRaft_server_append_entry_not_sucessful_if_entry_with_id_already_appended(
     raft_entry_t ety;
     char *str = "aaa";
 
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     ety.id = 1;
     ety.term = 1;
 
@@ -178,19 +178,19 @@ void TestRaft_server_entry_is_retrieveable_using_idx(CuTest* tc)
 
     e1.term = 1;
     e1.id = 1;
-    e1.data = str;
-    e1.len = 3;
+    e1.data.buf = str;
+    e1.data.len = 3;
     raft_append_entry(r, &e1);
 
     /* different ID so we can be successful */
     e2.term = 1;
     e2.id = 2;
-    e2.data = str2;
-    e2.len = 3;
+    e2.data.buf = str2;
+    e2.data.len = 3;
     raft_append_entry(r, &e2);
 
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 2)));
-    CuAssertTrue(tc, !strncmp(ety_appended->data, str2, 3));
+    CuAssertTrue(tc, !strncmp(ety_appended->data.buf, str2, 3));
 }
 
 void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
@@ -208,8 +208,8 @@ void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
 
     ety.term = 1;
     ety.id = 1;
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     raft_append_entry(r, &ety);
     raft_apply_entry(r);
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
@@ -234,8 +234,8 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
     /* need at least one entry */
     ety.term = 1;
     ety.id = 1;
-    ety.data = "aaa";
-    ety.len = 3;
+    ety.data.buf = "aaa";
+    ety.data.len = 3;
     raft_append_entry(r, &ety);
 
     /* let time lapse */
@@ -256,8 +256,8 @@ void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest* tc)
     raft_set_last_applied_idx(r, 0);
 
     ety.id = 1;
-    ety.data = str;
-    ety.len = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
     raft_append_entry(r, &ety);
     raft_apply_entry(r);
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
@@ -668,8 +668,8 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
 
     /* increase log size */
     char *str1 = "111";
-    ety.data = str1;
-    ety.len = 3;
+    ety.data.buf = str1;
+    ety.data.len = 3;
     ety.id = 1;
     ety.term = 1;
     raft_append_entry(r, &ety);
@@ -677,14 +677,14 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
 
     /* this log will be overwritten by the appendentries below */
     char *str2 = "222";
-    ety.data = str2;
-    ety.len = 3;
+    ety.data.buf = str2;
+    ety.data.len = 3;
     ety.id = 2;
     ety.term = 1;
     raft_append_entry(r, &ety);
     CuAssertTrue(tc, 2 == raft_get_log_count(r));
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 2)));
-    CuAssertTrue(tc, !strncmp(ety_appended->data, str2, 3));
+    CuAssertTrue(tc, !strncmp(ety_appended->data.buf, str2, 3));
 
     /* pass a appendentry that is newer  */
     msg_entry_t mety;
@@ -706,7 +706,7 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
     CuAssertTrue(tc, 1 == aer.success);
     CuAssertTrue(tc, 2 == raft_get_log_count(r));
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 1)));
-    CuAssertTrue(tc, !strncmp(ety_appended->data, str1, 3));
+    CuAssertTrue(tc, !strncmp(ety_appended->data.buf, str1, 3));
 }
 
 void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
@@ -1330,8 +1330,8 @@ void TestRaft_leader_sends_appendentries_with_prevLogIdx(
     raft_entry_t ety;
     ety.term = 2;
     ety.id = 100;
-    ety.len = 4;
-    ety.data = (unsigned char*)"aaa";
+    ety.data.len = 4;
+    ety.data.buf = (unsigned char*)"aaa";
     raft_append_entry(r, &ety);
     raft_node_set_next_idx(n, 1);
     raft_send_appendentries(r, 1);
@@ -1379,8 +1379,8 @@ void TestRaft_leader_sends_appendentries_when_peer_has_next_idx_of_0(
     raft_entry_t ety;
     ety.term = 1;
     ety.id = 100;
-    ety.len = 4;
-    ety.data = (unsigned char*)"aaa";
+    ety.data.len = 4;
+    ety.data.buf = (unsigned char*)"aaa";
     raft_append_entry(r, &ety);
     raft_send_appendentries(r, 0);
     ae = sender_poll_msg_data(sender);
@@ -1452,7 +1452,7 @@ void T_estRaft_leader_doesnt_append_entry_if_unique_id_is_duplicate(CuTest * tc)
     msg_entry_t ety;
     ety.id = 1;
     ety.data = "entry";
-    ety.len = strlen("entry");
+    ety.data.len = strlen("entry");
 
     r = raft_new();
     raft_set_configuration(r, cfg, 0);
@@ -1495,8 +1495,8 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     raft_entry_t ety;
     ety.term = 1;
     ety.id = 1;
-    ety.data = "aaaa";
-    ety.len = 4;
+    ety.data.buf = "aaaa";
+    ety.data.len = 4;
     raft_append_entry(r, &ety);
     ety.id = 2;
     raft_append_entry(r, &ety);
@@ -1561,8 +1561,8 @@ void TestRaft_leader_recv_appendentries_response_failure_does_not_set_node_nexti
     raft_entry_t ety;
     ety.term = 1;
     ety.id = 1;
-    ety.data = "aaaa";
-    ety.len = 4;
+    ety.data.buf = "aaaa";
+    ety.data.len = 4;
     raft_append_entry(r, &ety);
 
     /* send appendentries -

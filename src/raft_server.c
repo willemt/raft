@@ -172,6 +172,8 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     __log(me_, "received appendentries response node: %d %s cidx: %d 1stidx: %d",
             node, r->success == 1 ? "success" : "fail", r->current_idx, r->first_idx);
 
+    // TODO: should force invalid leaders to stepdown
+
     raft_node_t* p = raft_get_node(me_, node);
 
     if (0 == r->success)
@@ -318,10 +320,10 @@ int raft_recv_appendentries(
         /* TODO: replace malloc with mempoll/arena */
         raft_entry_t* c = (raft_entry_t*)malloc(sizeof(raft_entry_t));
         c->term = cmd->term;
-        c->len = cmd->data.len;
+        memcpy(&c->data, &cmd->data, sizeof(raft_entry_data_t));
+        c->data.buf = (unsigned char*)malloc(cmd->data.len);
+        memcpy(c->data.buf, cmd->data.buf, cmd->data.len);
         c->id = cmd->id;
-        c->data = (unsigned char*)malloc(cmd->data.len);
-        memcpy(c->data, cmd->data.buf, cmd->data.len);
         int e = raft_append_entry(me_, c);
         if (-1 == e)
         {
@@ -433,9 +435,9 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
 
     ety.term = me->current_term;
     ety.id = e->id;
-    ety.len = e->data.len;
-    ety.data = malloc(e->data.len);
-    memcpy(ety.data, e->data.buf, e->data.len);
+    ety.data.len = e->data.len;
+    ety.data.buf = malloc(e->data.len);
+    memcpy(ety.data.buf, e->data.buf, e->data.len);
     int res = raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
@@ -482,13 +484,13 @@ int raft_apply_entry(raft_server_t* me_)
     if (!e)
         return -1;
 
-    __log(me_, "applying log: %d, size: %d", me->last_applied_idx, e->len);
+    __log(me_, "applying log: %d, size: %d", me->last_applied_idx, e->data.len);
 
     me->last_applied_idx++;
     if (me->commit_idx < me->last_applied_idx)
         me->commit_idx = me->last_applied_idx;
     if (me->cb.applylog)
-        me->cb.applylog(me_, me->udata, e->data, e->len);
+        me->cb.applylog(me_, me->udata, e->data.buf, e->data.len);
     return 0;
 }
 
@@ -503,7 +505,6 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 
     msg_appendentries_t ae;
     ae.term = me->current_term;
-    ae.leader_id = me->nodeid;
     ae.leader_commit = raft_get_commit_idx(me_);
     ae.prev_log_idx = 0;
     ae.prev_log_term = 0;
@@ -519,8 +520,8 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     {
         mety.term = ety->term;
         mety.id = ety->id;
-        mety.data.len = ety->len;
-        mety.data.buf = ety->data;
+        mety.data.len = ety->data.len;
+        mety.data.buf = ety->data.buf;
         ae.entries = &mety;
         // TODO: we want to send more than 1 at a time
         ae.n_entries = 1;
