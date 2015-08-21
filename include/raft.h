@@ -11,7 +11,8 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
-typedef struct {
+typedef struct
+{
     void *buf;
 
     unsigned int len;
@@ -39,8 +40,11 @@ typedef struct
     /** the entry's unique ID */
     unsigned int id;
 
-    /** whether or not the entry was committed */
-    int was_committed;
+    /** the entry's term */
+    int term;
+
+    /** the entry's index */
+    int idx;
 } msg_entry_response_t;
 
 /** Vote request message.
@@ -196,9 +200,9 @@ typedef int (
 *func_applylog_f
 )   (
     raft_server_t* raft,
-    void *udata,
-    const unsigned char *data,
-    const int len
+    void *user_data,
+    const unsigned char *log_data,
+    const int log_len
     );
 
 /** Callback for saving who we voted for to disk.
@@ -510,5 +514,10 @@ void raft_set_current_term(raft_server_t* me, const int term);
  * This should be used to reload persistent state, ie. the commit log.
  * @param[in] ety The entry to be appended */
 int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
+
+/** Confirm if a msg_entry_response has been committed.
+ * @param[in] r The response we want to check */
+int raft_msg_entry_response_committed(raft_server_t* me_,
+                                      const msg_entry_response_t* r);
 
 #endif /* RAFT_H_ */

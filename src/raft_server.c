@@ -21,6 +21,9 @@
 #include "raft_log.h"
 #include "raft_private.h"
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) < (b) ? (b) : (a))
+
 static void __log(raft_server_t *me_, const char *fmt, ...)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -181,7 +184,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_node_get_next_idx(p));
-        // TODO does this have test coverage?
         // TODO can jump back to where node is different instead of iterating
         raft_node_set_next_idx(p, raft_node_get_next_idx(p) - 1);
 
@@ -280,27 +282,26 @@ int raft_recv_appendentries(
             r->success = 0;
             return 0;
         }
-
-        /* 3. If an existing entry conflicts with a new one (same index
-           but different terms), delete the existing entry and all that
-           follow it (§5.3) */
-        raft_entry_t* e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
-        if (e2)
-            log_delete(me->log, ae->prev_log_idx + 1);
     }
 
-    /* 5. If leaderCommit > commitIndex, set commitIndex =
+    /* 3. If an existing entry conflicts with a new one (same index
+       but different terms), delete the existing entry and all that
+       follow it (§5.3) */
+    raft_entry_t* e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
+    if (e2)
+    {
+        log_delete(me->log, ae->prev_log_idx + 1);
+        raft_set_current_idx(me_, ae->prev_log_idx);
+    }
+
+    /* 4. If leaderCommit > commitIndex, set commitIndex =
         min(leaderCommit, last log index) */
     if (raft_get_commit_idx(me_) < ae->leader_commit)
     {
-        raft_entry_t* e = log_peektail(me->log);
-        if (e)
-        {
-            int id = e->id < ae->leader_commit ?  e->id : ae->leader_commit;
-            raft_set_commit_idx(me_, id);
-            while (0 == raft_apply_entry(me_))
-                ;
-        }
+        int last_log_idx = max(raft_get_current_idx(me_) - 1, 1);
+        raft_set_commit_idx(me_, min(last_log_idx, ae->leader_commit));
+        while (0 == raft_apply_entry(me_))
+            ;
     }
 
     if (raft_is_candidate(me_))
@@ -407,8 +408,9 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
 
     assert(node < me->num_nodes);
 
-//    if (r->term != raft_get_current_term(me_))
-//        return 0;
+    // TODO: if invalid leader then stepdown
+    // if (r->term != raft_get_current_term(me_))
+    // return 0;
 
     if (1 == r->vote_granted)
     {
@@ -438,13 +440,14 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
     ety.data.len = e->data.len;
     ety.data.buf = malloc(e->data.len);
     memcpy(ety.data.buf, e->data.buf, e->data.len);
-    int res = raft_append_entry(me_, &ety);
+    raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
             raft_send_appendentries(me_, i);
 
     r->id = e->id;
-    r->was_committed = (0 == res);
+    r->idx = me->current_idx;
+    r->term = me->current_term;
     return 0;
 }
 
@@ -613,4 +616,17 @@ void raft_vote(raft_server_t* me_, const int node)
     me->voted_for = node;
     if (me->cb.persist_vote)
         me->cb.persist_vote(me_, me->udata, node);
+}
+
+int raft_msg_entry_response_committed(raft_server_t* me_,
+                                      const msg_entry_response_t* r)
+{
+    raft_entry_t* ety = raft_get_entry_from_idx(me_, r->idx);
+    if (!ety)
+        return 0;
+
+    /* entry from another leader has invalidated this entry message */
+    if (r->term != ety->term)
+        return -1;
+    return r->idx <= raft_get_commit_idx(me_);
 }

@@ -1221,9 +1221,6 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
 
     /* trigger response through commit */
     raft_apply_entry(r);
-
-    /* leader sent response to entry message */
-    CuAssertTrue(tc, 1 == cr.was_committed);
 }
 
 void TestRaft_non_leader_recv_entry_msg_fails(CuTest * tc)
@@ -1536,6 +1533,79 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     /* leader will now have majority followers who have appended this log */
     CuAssertTrue(tc, 2 == raft_get_commit_idx(r));
     CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
+}
+
+void TestRaft_leader_recv_entry_is_committed_returns_0_if_not_committed(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+
+    /* entry message */
+    msg_entry_t mety;
+    mety.id = 1;
+    mety.data.buf = "entry";
+    mety.data.len = strlen("entry");
+
+    /* receive entry */
+    msg_entry_response_t cr;
+    raft_recv_entry(r, 1, &mety, &cr);
+    CuAssertTrue(tc, 0 == raft_msg_entry_response_committed(r, &cr));
+
+    raft_set_commit_idx(r, 1);
+    CuAssertTrue(tc, 1 == raft_msg_entry_response_committed(r, &cr));
+}
+
+void TestRaft_leader_recv_entry_is_committed_returns_neg_1_if_invalidated(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_peer(r, (void*)1, 1);
+    raft_add_peer(r, (void*)2, 0);
+
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+
+    /* entry message */
+    msg_entry_t mety;
+    mety.id = 1;
+    mety.data.buf = "entry";
+    mety.data.len = strlen("entry");
+
+    /* receive entry */
+    msg_entry_response_t cr;
+    raft_recv_entry(r, 1, &mety, &cr);
+    CuAssertTrue(tc, 0 == raft_msg_entry_response_committed(r, &cr));
+    CuAssertTrue(tc, cr.term == 1);
+    CuAssertTrue(tc, cr.idx == 1);
+    CuAssertTrue(tc, 1 == raft_get_current_idx(r));
+    CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
+
+    /* append entry that invalidates entry message */
+    msg_appendentries_t ae;
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.leader_commit = 1;
+    ae.term = 2;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 0;
+    msg_appendentries_response_t aer;
+    msg_entry_t e[1];
+    memset(&e, 0, sizeof(msg_entry_t) * 1);
+    e[0].term = 2;
+    e[0].id = 999;
+    e[0].data.buf = "aaa";
+    e[0].data.len = 3;
+    ae.entries = e;
+    ae.n_entries = 1;
+    raft_recv_appendentries(r, 1, &ae, &aer);
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertTrue(tc, 1 == raft_get_current_idx(r));
+    CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+    CuAssertTrue(tc, -1 == raft_msg_entry_response_committed(r, &cr));
 }
 
 void TestRaft_leader_recv_appendentries_response_failure_does_not_set_node_nextid_to_0(
