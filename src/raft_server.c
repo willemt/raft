@@ -44,7 +44,6 @@ raft_server_t* raft_new()
         return NULL;
     me->current_term = 0;
     me->voted_for = -1;
-    me->current_idx = 0;
     me->timeout_elapsed = 0;
     me->request_timeout = 200;
     me->election_timeout = 1000;
@@ -289,10 +288,7 @@ int raft_recv_appendentries(
        follow it (§5.3) */
     raft_entry_t* e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
     if (e2)
-    {
         log_delete(me->log, ae->prev_log_idx + 1);
-        raft_set_current_idx(me_, ae->prev_log_idx);
-    }
 
     /* 4. If leaderCommit > commitIndex, set commitIndex =
         min(leaderCommit, last log index) */
@@ -350,7 +346,7 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
         return 0;
 
     /* we have a more up-to-date log */
-    if (vr->last_log_idx < me->current_idx)
+    if (vr->last_log_idx < raft_get_current_idx((void*)me))
         return 0;
 
     return 1;
@@ -446,7 +442,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
             raft_send_appendentries(me_, i);
 
     r->id = e->id;
-    r->idx = me->current_idx;
+    r->idx = raft_get_current_idx(me_);
     r->term = me->current_term;
     return 0;
 }
@@ -470,13 +466,7 @@ int raft_send_requestvote(raft_server_t* me_, int node)
 int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-
-    if (0 == log_append_entry(me->log, c))
-    {
-        me->current_idx += 1;
-        return 0;
-    }
-    return -1;
+    return log_append_entry(me->log, c);
 }
 
 int raft_apply_entry(raft_server_t* me_)

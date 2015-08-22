@@ -198,3 +198,9 @@ void log_mark_node_has_committed(log_t* me_, int idx)
     if (e)
         e->num_nodes += 1;
 }
+
+int log_get_current_idx(log_t* me_)
+{
+    log_private_t* me = (log_private_t*)me_;
+    return log_count(me_) + me->base_log_idx;
+}

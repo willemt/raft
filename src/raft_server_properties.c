@@ -81,15 +81,10 @@ int raft_get_current_term(raft_server_t* me_)
     return ((raft_server_private_t*)me_)->current_term;
 }
 
-void raft_set_current_idx(raft_server_t* me_, int idx)
-{
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    me->current_idx = idx;
-}
-
 int raft_get_current_idx(raft_server_t* me_)
 {
-    return ((raft_server_private_t*)me_)->current_idx;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    return log_get_current_idx(me->log);
 }
 
 int raft_get_my_id(raft_server_t* me_)

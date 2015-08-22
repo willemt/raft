@@ -44,9 +44,6 @@ typedef struct {
     /* follower/leader/candidate indicator */
     int state;
 
-    /* most recently append idx, also indicates size of log */
-    int current_idx;
-
     /* amount of time left till timeout */
     int timeout_elapsed;
 
@@ -82,8 +79,6 @@ void raft_become_follower(raft_server_t* me);
 void raft_vote(raft_server_t* me, int node);
 
 void raft_set_current_term(raft_server_t* me,int term);
-
-void raft_set_current_idx(raft_server_t* me,int idx);
 
 /**
  * @return 0 on error */

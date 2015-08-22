@@ -864,7 +864,14 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
 
     /* server's term and idx are more up-to-date */
     raft_set_current_term(r, 1);
-    raft_set_current_idx(r, 2);
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 100;
+    ety.data.len = 4;
+    ety.data.buf = (unsigned char*)"aaa";
+    raft_append_entry(r, &ety);
+    ety.id = 101;
+    raft_append_entry(r, &ety);
 
     /* vote not granted */
     raft_recv_requestvote(r, 1, &rv, &rvr);
@@ -947,7 +954,6 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(
 
     /* set term so we can check it gets included in the outbound message */
     raft_set_current_term(r, 2);
-    raft_set_current_idx(r, 5);
 
     /* becoming candidate triggers vote requests */
     raft_become_candidate(r);
@@ -1059,7 +1065,17 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
 
     raft_set_callbacks(r, &funcs, sender);
     raft_set_current_term(r, 5);
-    raft_set_current_idx(r, 3);
+    /* 3 entries */
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 100;
+    ety.data.len = 4;
+    ety.data.buf = (unsigned char*)"aaa";
+    raft_append_entry(r, &ety);
+    ety.id = 101;
+    raft_append_entry(r, &ety);
+    ety.id = 102;
+    raft_append_entry(r, &ety);
     raft_send_requestvote(r, 1);
 
     msg_requestvote_t* rv = sender_poll_msg_data(sender);
@@ -1108,7 +1124,6 @@ TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follow
 
     /* server's log is newer */
     raft_set_current_term(r, 1);
-    raft_set_current_idx(r, 2);
 
     /*  is a candidate */
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -1687,22 +1702,15 @@ void TestRaft_leader_recv_appendentries_response_increment_idx_of_peer(
 void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     CuTest * tc)
 {
-    raft_cbs_t funcs = {
-        .log = NULL
-    };
-
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *sender = sender_new(NULL);
     void *r = raft_new();
     raft_add_peer(r, (void*)1, 1);
     raft_add_peer(r, (void*)2, 0);
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 5);
-    raft_set_current_idx(r, 5);
-    raft_set_callbacks(r, &funcs, sender);
     /* check that node 0 considers itself the leader */
     CuAssertTrue(tc, 1 == raft_is_leader(r));
     CuAssertTrue(tc, 0 == raft_get_current_leader(r));
@@ -1731,7 +1739,6 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer_term(
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 5);
-    raft_set_current_idx(r, 5);
 
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 6;

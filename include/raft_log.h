@@ -43,4 +43,6 @@ void log_mark_node_has_committed(log_t* me_, int idx);
 
 void log_delete(log_t* me_, int idx);
 
+int log_get_current_idx(log_t* me_);
+
 #endif /* RAFT_LOG_H_ */
