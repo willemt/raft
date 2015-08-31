@@ -2,20 +2,20 @@ In general
 ==========
 Please see `ticketd <https://github.com/willemt/ticketd>`_ for a real life use of the Raft library.
 
-It's best to have 2 separate threads. One for handling peer traffic, and a another for handling client traffic. 
+It's best to have 2 separate threads. One for handling peer traffic, and another for handling client traffic. 
 
 Initializing the Raft server
 ============================
 
-We instantiate a new Raft server using `raft_new`.
+We instantiate a new Raft server using ``raft_new``.
 
 .. code-block:: c
 
     void* raft = raft_new();
 
-We provide our callbacks to the raft server using `raft_set_callbacks`
+We provide our callbacks to the raft server using ``raft_set_callbacks``
 
-We MUST implement the following callbacks: `send_requestvote`, `send_appendentries`, `applylog`, `persist_vote`, `persist_term`, `log_offer`, and `log_pop`.
+We MUST implement the following callbacks: ``send_requestvote``, ``send_appendentries``, ``applylog``, ``persist_vote``, ``persist_term``, ``log_offer``, and ``log_pop``.
 
 .. code-block:: c
 
@@ -35,19 +35,19 @@ We MUST implement the following callbacks: `send_requestvote`, `send_appendentri
 
     raft_set_callbacks(raft, &raft_callbacks, user_data);
 
-We tell the Raft server what the cluster configuration is by using the `raft_add_node` function. For example, if we have 5 servers [*] in our cluster, we call `raft_add_node` 5 [*] times.
+We tell the Raft server what the cluster configuration is by using the ``raft_add_node`` function. For example, if we have 5 servers [#] in our cluster, we call ``raft_add_node`` 5 [#] times.
 
 .. code-block:: c
 
     raft_add_node(raft, connection_user_data, peer_is_self);
 
-.. [*] AKA "Raft peer"
-.. [*] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
+.. [#] AKA "Raft peer"
+.. [#] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
 
 Calling raft_periodic periodically
 ==================================
 
-We need to call `raft_periodic` at periodic intervals.
+We need to call ``raft_periodic`` at periodic intervals.
 
 .. code-block:: c
 
@@ -76,29 +76,29 @@ Our Raft application receives log entries from the client.
 When this happens we need to:
  - Redirect the client to the Raft cluster leader (if necessary)
  - Append the entry to our log
- - Block until the log entry has been committed [*]
+ - Block until the log entry has been committed [#]
 
-.. [*] When the log entry has been replicated across a majority of servers in the Raft cluster
+.. [#] When the log entry has been replicated across a majority of servers in the Raft cluster
 
 Append the entry to our log
 ---------------------------
 
-We call `raft_recv_entry` when we want to append the entry to the log.
+We call ``raft_recv_entry`` when we want to append the entry to the log.
 
 .. code-block:: c
 
     msg_entry_response_t response;
     e = raft_recv_entry(raft, node_idx, &entry, &response);
 
-You should popuate the `entry` struct with the log entry the client has sent. After the call completes the `response` parameter is populated and can be used by the `raft_msg_entry_response_committed` to check if the log entry has been committed or not.
+You should popuate the ``entry`` struct with the log entry the client has sent. After the call completes the ``response`` parameter is populated and can be used by the ``raft_msg_entry_response_committed`` to check if the log entry has been committed or not.
 
 Blocking until the log entry has been committed
 -----------------------------------------------
 When the server receives a log entry from the client, it has to block until the entry is committed. This is necessary as our Raft server has to replicate the log entry with the other peers of the Raft cluster.
 
-The `raft_recv_entry` function does not block! This means you will need to implement the blocking functionality yourself.  
+The ``raft_recv_entry`` function does not block! This means you will need to implement the blocking functionality yourself.  
 
-*Example below is from the `ticketd` client thread. This shows that we need to block on client requests. `ticketd` does the blocking by waiting on a conditional, which is signalled by the peer thread. The separate thread is responsible for handling traffic between Raft peers.*
+*Example below is from the ``ticketd`` client thread. This shows that we need to block on client requests. ``ticketd`` does the blocking by waiting on a conditional, which is signalled by the peer thread. The separate thread is responsible for handling traffic between Raft peers.*
 
 .. code-block:: c
 
@@ -128,7 +128,7 @@ The `raft_recv_entry` function does not block! This means you will need to imple
         }
     } while (!done);
 
-*Example from `ticketd` of the peer thread. When an appendentries response is received from a raft peer, we signal to the client thread that an entry might be committed.*
+*Example from ``ticketd`` of the peer thread. When an appendentries response is received from a raft peer, we signal to the client thread that an entry might be committed.*
 
 .. code-block:: c
 
@@ -142,7 +142,7 @@ When we receive an entry log from the client it's possible we might not be a lea
 
 If we aren't currently the leader of the raft cluster, we MUST send a redirect error message to the client. This is so that the client can connect directly to the leader in future connections.
 
-We use the `raft_get_current_leader` function to check who is the current leader.
+We use the ``raft_get_current_leader`` function to check who is the current leader.
 
 *Example of ticketd sending a 301 HTTP redirect response:*
 
@@ -183,7 +183,7 @@ Implementing callbacks
 send_requestvote
 ----------------
 
-For this callback we have to serialize a `msg_requestvote_t` struct, and then send it to the peer identified by `node_idx`.
+For this callback we have to serialize a ``msg_requestvote_t`` struct, and then send it to the peer identified by ``node_idx``.
 
 *Example from ticketd showing how the callback is implemented:*
 
@@ -216,7 +216,7 @@ For this callback we have to serialize a `msg_requestvote_t` struct, and then se
 send_appendentries
 ------------------
 
-For this callback we have to serialize a `msg_appendentries_t` struct, and then send it to the peer identified by `node_idx`. This struct is more complicated to serialize because the `m->entries` array might be populated.
+For this callback we have to serialize a ``msg_appendentries_t`` struct, and then send it to the peer identified by ``node_idx``. This struct is more complicated to serialize because the ``m->entries`` array might be populated.
 
 *Example from ticketd showing how the callback is implemented:*
 
@@ -286,9 +286,9 @@ For this callback we have to serialize a `msg_appendentries_t` struct, and then 
 applylog
 --------
 
-This callback is all what is needed to interface the FSM [*]_ with the Raft library:
+This callback is all what is needed to interface the FSM [#]_ with the Raft library:
 
-.. [*] Finite state machine
+.. [#] Finite state machine
 
 persist_vote & persist_term
 ---------------------------
@@ -302,14 +302,14 @@ For this callback the user needs to add a log entry. The log MUST be saved to di
 
 log_poll
 --------
-For this callback the user needs to remove the most oldes log entry [*]. The log MUST be saved to disk before this callback returns.
+For this callback the user needs to remove the most oldes log entry [#]. The log MUST be saved to disk before this callback returns.
 
 This callback only needs to be implemented to support log compaction.
 
-.. [*] The log entry at the front of the log
+.. [#] The log entry at the front of the log
 
 log_pop
 -------
-For this callback the user needs to remove the most youngest log entry [*]. The log MUST be saved to disk before this callback returns.
+For this callback the user needs to remove the most youngest log entry [#]. The log MUST be saved to disk before this callback returns.
 
-.. [*] The log entry at the back of the log
+.. [#] The log entry at the back of the log
