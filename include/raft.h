@@ -146,7 +146,7 @@ typedef struct
 
 /** Callback for sending request vote messages.
  * @param[in] raft The Raft server making this callback
- * @param[in] udata User data that is passed from Raft server
+ * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The peer's ID that we are sending this message to
  * @param[in] msg The request vote message to be sent
  * @return 0 on success */
@@ -154,14 +154,14 @@ typedef int (
 *func_send_requestvote_f
 )   (
     raft_server_t* raft,
-    void *udata,
+    void *user_data,
     int node,
     msg_requestvote_t* msg
     );
 
 /** Callback for sending append entries messages.
  * @param[in] raft The Raft server making this callback
- * @param[in] udata User data that is passed from Raft server
+ * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The peer's ID that we are sending this message to
  * @param[in] msg The appendentries message to be sent
  * @return 0 on success */
@@ -169,7 +169,7 @@ typedef int (
 *func_send_appendentries_f
 )   (
     raft_server_t* raft,
-    void *udata,
+    void *user_data,
     int node,
     msg_appendentries_t* msg
     );
@@ -179,20 +179,20 @@ typedef int (
 /** Callback for providing debug logging information.
  * This callback is optional
  * @param[in] raft The Raft server making this callback
- * @param[in] udata User data that is passed from Raft server
+ * @param[in] user_data User data that is passed from Raft server
  * @param[in] buf The buffer that was logged */
 typedef void (
 *func_log_f
 )    (
     raft_server_t* raft,
-    void *udata,
+    void *user_data,
     const char *buf
     );
 #endif
 
 /** Callback for applying this log entry to the state machine.
  * @param[in] raft The Raft server making this callback
- * @param[in] udata User data that is passed from Raft server
+ * @param[in] user_data User data that is passed from Raft server
  * @param[in] data Data to be applied to the log
  * @param[in] len Length in bytes of data to be applied
  * @return 0 on success */
@@ -208,14 +208,14 @@ typedef int (
 /** Callback for saving who we voted for to disk.
  * This callback MUST flush the change to disk.
  * @param[in] raft The Raft server making this callback
- * @param[in] udata User data that is passed from Raft server
+ * @param[in] user_data User data that is passed from Raft server
  * @param[in] voted_for The node we voted for
  * @return 0 on success */
 typedef int (
 *func_persist_int_f
 )   (
     raft_server_t* raft,
-    void *udata,
+    void *user_data,
     const int voted_for
     );
 
@@ -228,7 +228,7 @@ typedef int (
  * </ul>
  * This callback MUST flush the change to disk.
  * @param[in] raft The Raft server making this callback
- * @param[in] udata User data that is passed from Raft server
+ * @param[in] user_data User data that is passed from Raft server
  * @param[in] entry The entry that the event is happening to
  * @param[in] entry_idx The entries index in the log
  * @return 0 on success */
@@ -236,7 +236,7 @@ typedef int (
 *func_logentry_event_f
 )   (
     raft_server_t* raft,
-    void *udata,
+    void *user_data,
     raft_entry_t *entry,
     int entry_idx
     );
@@ -301,8 +301,8 @@ void raft_free(raft_server_t* me);
 /** Set callbacks and user data.
  *
  * @param[in] funcs Callbacks
- * @param[in] udata "User data" - user's context that's included in a callback */
-void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* udata);
+ * @param[in] user_data "User data" - user's context that's included in a callback */
+void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
 
 /** Set configuration.
  *
@@ -324,14 +324,14 @@ __attribute__ ((deprecated));
  * This call MUST be made in the same order as the other raft peers.
  * This is because the node ID is assigned depending on when this call is made
  *
- * @param[in] udata The user data for the node.
+ * @param[in] user_data The user data for the node.
  *  This is obtained using raft_node_get_udata.
  *  Examples of what this could be:
  *  - void* pointing to implementor's networking data
  *  - a (IP,Port) tuple
  * @param[in] is_self Set to 1 if this "peer" is this server
  * @return 0 on success; otherwise -1 */
-int raft_add_peer(raft_server_t* me, void* udata, int is_self);
+int raft_add_peer(raft_server_t* me, void* user_data, int is_self);
 
 /** Set election timeout.
  * The amount of time that needs to elapse before we assume the leader is down
@@ -466,8 +466,8 @@ int raft_node_get_next_idx(raft_node_t* node);
 void* raft_node_get_udata(raft_node_t* me);
 
 /**
- * Set this node's udata */
-void raft_node_set_udata(raft_node_t* me, void* udata);
+ * Set this node's user data */
+void raft_node_set_udata(raft_node_t* me, void* user_data);
 
 /**
  * @param[in] idx The entry's index
