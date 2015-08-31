@@ -35,7 +35,7 @@ We MUST implement the following callbacks: ``send_requestvote``, ``send_appenden
 
     raft_set_callbacks(raft, &raft_callbacks, user_data);
 
-We tell the Raft server what the cluster configuration is by using the ``raft_add_node`` function. For example, if we have 5 servers [#] in our cluster, we call ``raft_add_node`` 5 [#] times.
+We tell the Raft server what the cluster configuration is by using the ``raft_add_node`` function. For example, if we have 5 servers [#]_ in our cluster, we call ``raft_add_node`` 5 [#]_ times.
 
 .. code-block:: c
 
@@ -53,7 +53,7 @@ We need to call ``raft_periodic`` at periodic intervals.
 
     raft_periodic(raft, 1000);
 
-*Example of ticketd using a libuv timer*
+*Example of ticketd using a libuv timer:*
 
 .. code-block:: c
 
@@ -74,9 +74,10 @@ Receiving the entry (client sends entry to Raft cluster)
 Our Raft application receives log entries from the client.
 
 When this happens we need to:
+
  - Redirect the client to the Raft cluster leader (if necessary)
  - Append the entry to our log
- - Block until the log entry has been committed [#]
+ - Block until the log entry has been committed [#]_
 
 .. [#] When the log entry has been replicated across a majority of servers in the Raft cluster
 
@@ -98,7 +99,7 @@ When the server receives a log entry from the client, it has to block until the 
 
 The ``raft_recv_entry`` function does not block! This means you will need to implement the blocking functionality yourself.  
 
-*Example below is from the ``ticketd`` client thread. This shows that we need to block on client requests. ``ticketd`` does the blocking by waiting on a conditional, which is signalled by the peer thread. The separate thread is responsible for handling traffic between Raft peers.*
+*Example below is from the ticketd client thread. This shows that we need to block on client requests. ticketd does the blocking by waiting on a conditional, which is signalled by the peer thread. The separate thread is responsible for handling traffic between Raft peers.*
 
 .. code-block:: c
 
@@ -128,7 +129,7 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
         }
     } while (!done);
 
-*Example from ``ticketd`` of the peer thread. When an appendentries response is received from a raft peer, we signal to the client thread that an entry might be committed.*
+*Example from ticketd of the peer thread. When an appendentries response is received from a raft peer, we signal to the client thread that an entry might be committed.*
 
 .. code-block:: c
 
@@ -286,9 +287,7 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
 applylog
 --------
 
-This callback is all what is needed to interface the FSM [#]_ with the Raft library:
-
-.. [#] Finite state machine
+This callback is all what is needed to interface the FSM with the Raft library:
 
 persist_vote & persist_term
 ---------------------------
@@ -302,14 +301,14 @@ For this callback the user needs to add a log entry. The log MUST be saved to di
 
 log_poll
 --------
-For this callback the user needs to remove the most oldes log entry [#]. The log MUST be saved to disk before this callback returns.
+For this callback the user needs to remove the most oldes log entry [#]_. The log MUST be saved to disk before this callback returns.
 
 This callback only needs to be implemented to support log compaction.
 
-.. [#] The log entry at the front of the log
 
 log_pop
 -------
-For this callback the user needs to remove the most youngest log entry [#]. The log MUST be saved to disk before this callback returns.
+For this callback the user needs to remove the most youngest log entry [#]_. The log MUST be saved to disk before this callback returns.
 
+.. [#] The log entry at the front of the log
 .. [#] The log entry at the back of the log
