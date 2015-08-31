@@ -48,7 +48,7 @@ typedef struct
 } msg_entry_response_t;
 
 /** Vote request message.
- * Sent to peers when a server wants to become leader.
+ * Sent to nodes when a server wants to become leader.
  * This message could force a leader/candidate to become a follower. */
 typedef struct
 {
@@ -66,7 +66,7 @@ typedef struct
 } msg_requestvote_t;
 
 /** Vote request response message.
- * Indicates if peer has accepted the server's vote request. */
+ * Indicates if node has accepted the server's vote request. */
 typedef struct
 {
     /** currentTerm, for candidate to update itself */
@@ -77,7 +77,7 @@ typedef struct
 } msg_requestvote_response_t;
 
 /** Appendentries message.
- * This message is used to tell peers if it's safe to apply entries to the FSM.
+ * This message is used to tell nodes if it's safe to apply entries to the FSM.
  * Can be sent without any entries as a keep alive message.
  * This message could force a leader/candidate to become a follower. */
 typedef struct
@@ -85,11 +85,11 @@ typedef struct
     /** currentTerm, to force other leader/candidate to step down */
     int term;
 
-    /** the index of the log just before the newest entry for the peer who
+    /** the index of the log just before the newest entry for the node who
      * receives this message */
     int prev_log_idx;
 
-    /** the term of the log just before the newest entry for the peer who
+    /** the term of the log just before the newest entry for the node who
      * receives this message */
     int prev_log_term;
 
@@ -147,7 +147,7 @@ typedef struct
 /** Callback for sending request vote messages.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The peer's ID that we are sending this message to
+ * @param[in] node The node's ID that we are sending this message to
  * @param[in] msg The request vote message to be sent
  * @return 0 on success */
 typedef int (
@@ -162,7 +162,7 @@ typedef int (
 /** Callback for sending append entries messages.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The peer's ID that we are sending this message to
+ * @param[in] node The node's ID that we are sending this message to
  * @param[in] msg The appendentries message to be sent
  * @return 0 on success */
 typedef int (
@@ -306,8 +306,8 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
 
 /** Set configuration.
  *
- * @deprecated This function has been replaced by raft_add_peer and
- * raft_remove peer
+ * @deprecated This function has been replaced by raft_add_node and
+ * raft_remove_node
  *
  * @param[in] nodes Array of nodes. End of array is marked by NULL entry
  * @param[in] my_idx Index of the node that refers to this Raft server */
@@ -315,13 +315,13 @@ void raft_set_configuration(raft_server_t* me,
                             raft_node_configuration_t* nodes, int my_idx)
 __attribute__ ((deprecated));
 
-/** Add peer.
+/** Add node.
  *
  * @note This library does not yet support membership changes.
  * Once raft_periodic has been run this will fail.
  *
  * @note The order this call is made is important.
- * This call MUST be made in the same order as the other raft peers.
+ * This call MUST be made in the same order as the other raft nodes.
  * This is because the node ID is assigned depending on when this call is made
  *
  * @param[in] user_data The user data for the node.
@@ -329,9 +329,9 @@ __attribute__ ((deprecated));
  *  Examples of what this could be:
  *  - void* pointing to implementor's networking data
  *  - a (IP,Port) tuple
- * @param[in] is_self Set to 1 if this "peer" is this server
+ * @param[in] is_self Set to 1 if this "node" is this server
  * @return 0 on success; otherwise -1 */
-int raft_add_peer(raft_server_t* me, void* user_data, int is_self);
+int raft_add_node(raft_server_t* me, void* user_data, int is_self);
 
 /** Set election timeout.
  * The amount of time that needs to elapse before we assume the leader is down

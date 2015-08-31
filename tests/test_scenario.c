@@ -25,9 +25,9 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
         sender[j] = sender_new((void*)j);
         sender_set_raft(sender[j], r[j]);
         raft_set_election_timeout(r[j], 500);
-        raft_add_peer(r[j], (void*)1, j==0);
-        raft_add_peer(r[j], (void*)2, j==1);
-        raft_add_peer(r[j], (void*)3, j==2);
+        raft_add_node(r[j], (void*)1, j==0);
+        raft_add_node(r[j], (void*)2, j==1);
+        raft_add_node(r[j], (void*)3, j==2);
         raft_set_callbacks(r[j],
                            &((raft_cbs_t) {
                                  .send_requestvote = sender_requestvote,

@@ -567,7 +567,7 @@ void raft_set_configuration(raft_server_t* me_,
     me->nodeid = my_idx;
 }
 
-int raft_add_peer(raft_server_t* me_, void* udata, int is_self)
+int raft_add_node(raft_server_t* me_, void* udata, int is_self)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
