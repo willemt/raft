@@ -75,9 +75,9 @@ Our Raft application receives log entries from the client.
 
 When this happens we need to:
 
- - Redirect the client to the Raft cluster leader (if necessary)
- - Append the entry to our log
- - Block until the log entry has been committed [#]_
+* Redirect the client to the Raft cluster leader (if necessary)
+* Append the entry to our log
+* Block until the log entry has been committed [#]_
 
 .. [#] When the log entry has been replicated across a majority of servers in the Raft cluster
 
@@ -304,7 +304,6 @@ log_poll
 For this callback the user needs to remove the most oldes log entry [#]_. The log MUST be saved to disk before this callback returns.
 
 This callback only needs to be implemented to support log compaction.
-
 
 log_pop
 -------
