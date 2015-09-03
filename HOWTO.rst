@@ -311,3 +311,38 @@ For this callback the user needs to remove the most youngest log entry [#]_. The
 
 .. [#] The log entry at the front of the log
 .. [#] The log entry at the back of the log
+
+Receving traffic from peers
+===========================
+To receive ``Append Entries``, ``Append Entries response``, ``Request Vote``, and ``Request Vote response`` messages, you need to deserialize the bytes into the message's corresponding struct.
+
+The table below shows the structs that you need to deserialize-to or deserialize-from:
+
++-------------------------+------------------------------+
+| Message Type            | Struct                       |
++-------------------------+------------------------------+
+| Append Entries          | msg_appendentries_t          |
+| Append Entries response | msg_appendentries_response_t |
+| Request Vote            | msg_requestvote_t            |
+| Request Vote response   | msg_requestvote_response_t   |
++-------------------------+------------------------------+
+
+Example of how we receive an Append Entries message, and reply to it:
+
+.. code-block:: c
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t response;
+    char buf_in[1024]. buf_out[1024];
+    size_t len_in, len_out;
+
+    read(socket, buf_in, &len_in);
+
+    deserialize_appendentries(buf_in, len_in, &ae);
+
+    e = raft_recv_requestvote(sv->raft, conn->node_idx, &ae, &response);
+
+    serialize_appendentries_response(&response, buf_out, &len_out);
+
+    write(socket, buf_out, &len_out);
+
