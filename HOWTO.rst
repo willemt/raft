@@ -318,14 +318,17 @@ To receive ``Append Entries``, ``Append Entries response``, ``Request Vote``, an
 
 The table below shows the structs that you need to deserialize-to or deserialize-from:
 
-+-------------------------+------------------------------+
-| Message Type            | Struct                       |
-+-------------------------+------------------------------+
-| Append Entries          | msg_appendentries_t          |
-| Append Entries response | msg_appendentries_response_t |
-| Request Vote            | msg_requestvote_t            |
-| Request Vote response   | msg_requestvote_response_t   |
-+-------------------------+------------------------------+
++-------------------------+------------------------------+----------------------------------+
+| Message Type            | Struct                       | Function                         |
++-------------------------+------------------------------+----------------------------------+
+| Append Entries          | msg_appendentries_t          | raft_recv_appendentries          |
++-------------------------+------------------------------+----------------------------------+
+| Append Entries response | msg_appendentries_response_t | raft_recv_appendentries_response |
++-------------------------+------------------------------+----------------------------------+
+| Request Vote            | msg_requestvote_t            | raft_recv_requestvote            |
++-------------------------+------------------------------+----------------------------------+
+| Request Vote response   | msg_requestvote_response_t   | raft_recv_requestvote_response   |
++-------------------------+------------------------------+----------------------------------+
 
 Example of how we receive an Append Entries message, and reply to it:
 
