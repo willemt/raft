@@ -1,41 +1,17 @@
-In general
-==========
-Please see `ticketd <https://github.com/willemt/ticketd>`_ for a real life use of the Raft library.
+Recipe for integrating with this library
+========================================
+Please see `ticketd <https://github.com/willemt/ticketd>`_ for a real life use of this library.
 
-It's best to have 2 separate threads. One for handling peer traffic, and another for handling client traffic. 
+It's best to have two separate threads - one for handling Raft peer traffic, and another for handling client traffic. 
 
 Initializing the Raft server
-============================
+----------------------------
 
-We instantiate a new Raft server using ``raft_new``.
+Instantiate a new Raft server using ``raft_new``.
 
 .. code-block:: c
 
     void* raft = raft_new();
-
-We provide our callbacks to the raft server using ``raft_set_callbacks``
-
-We MUST implement the following callbacks: ``send_requestvote``, ``send_appendentries``, ``applylog``, ``persist_vote``, ``persist_term``, ``log_offer``, and ``log_pop``.
-
-.. code-block:: c
-
-    raft_cbs_t raft_callbacks = {
-        .send_requestvote            = __send_requestvote,
-        .send_appendentries          = __send_appendentries,
-        .applylog                    = __applylog,
-        .persist_vote                = __persist_vote,
-        .persist_term                = __persist_term,
-        .log_offer                   = __raft_logentry_offer,
-        .log_poll                    = __raft_logentry_poll,
-        .log_pop                     = __raft_logentry_pop,
-        .log                         = __raft_log,
-    };
-
-    char* user_data = "test";
-
-    raft_set_callbacks(raft, &raft_callbacks, user_data);
-
-We tell the Raft server what the cluster configuration is by using the ``raft_add_node`` function. For example, if we have 5 servers [#]_ in our cluster, we call ``raft_add_node`` 5 [#]_ times.
 
 .. code-block:: c
 
@@ -44,8 +20,8 @@ We tell the Raft server what the cluster configuration is by using the ``raft_ad
 .. [#] AKA "Raft peer"
 .. [#] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
 
-Calling raft_periodic periodically
-==================================
+Calling raft_periodic() periodically
+------------------------------------
 
 We need to call ``raft_periodic`` at periodic intervals.
 
@@ -69,7 +45,7 @@ We need to call ``raft_periodic`` at periodic intervals.
     uv_timer_start(periodic_req, __periodic, 0, 1000);
 
 Receiving the entry (client sends entry to Raft cluster)
-========================================================
+--------------------------------------------------------
 
 Our Raft application receives log entries from the client.
 
@@ -81,8 +57,8 @@ When this happens we need to:
 
 .. [#] When the log entry has been replicated across a majority of servers in the Raft cluster
 
-Append the entry to our log
----------------------------
+Receiving the entry - Append the entry to our log
+-------------------------------------------------
 
 We call ``raft_recv_entry`` when we want to append the entry to the log.
 
@@ -93,8 +69,8 @@ We call ``raft_recv_entry`` when we want to append the entry to the log.
 
 You should popuate the ``entry`` struct with the log entry the client has sent. After the call completes the ``response`` parameter is populated and can be used by the ``raft_msg_entry_response_committed`` to check if the log entry has been committed or not.
 
-Blocking until the log entry has been committed
------------------------------------------------
+Receiving the entry - Blocking until the log entry has been committed
+---------------------------------------------------------------------
 When the server receives a log entry from the client, it has to block until the entry is committed. This is necessary as our Raft server has to replicate the log entry with the other peers of the Raft cluster.
 
 The ``raft_recv_entry`` function does not block! This means you will need to implement the blocking functionality yourself.  
@@ -136,8 +112,8 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
     e = raft_recv_appendentries_response(sv->raft, conn->node_idx, &m.aer);
     uv_cond_signal(&sv->appendentries_received);
 
-Redirecting the client to the leader
-------------------------------------
+Receiving the entry - Redirecting the client to the leader
+----------------------------------------------------------
 
 When we receive an entry log from the client it's possible we might not be a leader.
 
@@ -178,11 +154,36 @@ We use the ``raft_get_current_leader`` function to check who is the current lead
         return 0;
     }
 
-Implementing callbacks
-======================
+Function callbacks
+------------------
 
-send_requestvote
-----------------
+You provide your callbacks to the raft server using ``raft_set_callbacks``
+
+We MUST implement the following callbacks: ``send_requestvote``, ``send_appendentries``, ``applylog``, ``persist_vote``, ``persist_term``, ``log_offer``, and ``log_pop``.
+
+*Example of function callbacks being set*
+
+.. code-block:: c
+
+    raft_cbs_t raft_callbacks = {
+        .send_requestvote            = __send_requestvote,
+        .send_appendentries          = __send_appendentries,
+        .applylog                    = __applylog,
+        .persist_vote                = __persist_vote,
+        .persist_term                = __persist_term,
+        .log_offer                   = __raft_logentry_offer,
+        .log_poll                    = __raft_logentry_poll,
+        .log_pop                     = __raft_logentry_pop,
+        .log                         = __raft_log,
+    };
+
+    char* user_data = "test";
+
+    raft_set_callbacks(raft, &raft_callbacks, user_data);
+
+We tell the Raft server what the cluster configuration is by using the ``raft_add_node`` function. For example, if we have 5 servers [#]_ in our cluster, we call ``raft_add_node`` 5 [#]_ times.
+
+**send_requestvote()**
 
 For this callback we have to serialize a ``msg_requestvote_t`` struct, and then send it to the peer identified by ``node_idx``.
 
@@ -214,8 +215,7 @@ For this callback we have to serialize a ``msg_requestvote_t`` struct, and then 
         return 0;
     }
 
-send_appendentries
-------------------
+**send_appendentries()**
 
 For this callback we have to serialize a ``msg_appendentries_t`` struct, and then send it to the peer identified by ``node_idx``. This struct is more complicated to serialize because the ``m->entries`` array might be populated.
 
@@ -284,36 +284,31 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
     }
 
 
-applylog
---------
+**applylog()**
 
 This callback is all what is needed to interface the FSM with the Raft library:
 
-persist_vote & persist_term
----------------------------
+**persist_vote() & persist_term()**
 
 These callbacks simply save data to disk, so that when the Raft server is rebooted, it starts from the correct point.
 
-log_offer
----------
+**log_offer()**
 
 For this callback the user needs to add a log entry. The log MUST be saved to disk before this callback returns.
 
-log_poll
---------
+**log_poll()**
 For this callback the user needs to remove the most oldes log entry [#]_. The log MUST be saved to disk before this callback returns.
 
 This callback only needs to be implemented to support log compaction.
 
-log_pop
--------
+**log_pop()**
 For this callback the user needs to remove the most youngest log entry [#]_. The log MUST be saved to disk before this callback returns.
 
 .. [#] The log entry at the front of the log
 .. [#] The log entry at the back of the log
 
 Receving traffic from peers
-===========================
+---------------------------
 To receive ``Append Entries``, ``Append Entries response``, ``Request Vote``, and ``Request Vote response`` messages, you need to deserialize the bytes into the message's corresponding struct.
 
 The table below shows the structs that you need to deserialize-to or deserialize-from:
@@ -330,7 +325,7 @@ The table below shows the structs that you need to deserialize-to or deserialize
 | Request Vote response   | msg_requestvote_response_t   | raft_recv_requestvote_response   |
 +-------------------------+------------------------------+----------------------------------+
 
-Example of how we receive an Append Entries message, and reply to it:
+*Example of how we receive an Append Entries message, and reply to it:*
 
 .. code-block:: c
 
