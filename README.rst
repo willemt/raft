@@ -4,44 +4,32 @@
 .. image:: https://coveralls.io/repos/willemt/raft/badge.png
   :target: https://coveralls.io/r/willemt/raft
 
-What?
-=====
-C implementation of the Raft Consensus protocol, BSD licensed.
+C implementation of the Raft consensus protocol, BSD licensed.
 
-How does it work?
-=================
 See `raft.h <https://github.com/willemt/raft/blob/master/include/raft.h>`_ for full documentation.
 
-See `ticketd <https://github.com/willemt/ticketd>`_ for real life use of the raft library.
+See `ticketd <https://github.com/willemt/ticketd>`_ for real life use of this library.
 
-Networking is out of scope for this project. The implementor will need to do all the plumbing. *Currently*, this is done by:
+Networking is out of scope for this project. The implementor will need to do all the plumbing.
 
-- Implementing all the callbacks within raft_cbs_t; and
-- Calling raft_recv_* functions with msg_* message structs
-
-Dependencies
-============
 There are no dependencies, however https://github.com/willemt/linked-List-queue is required for testing.
 
 Building
 ========
+
 .. code-block:: bash
    :class: ignore
 
    make tests
 
-Todo
-====
-- Member changes
-- Log compaction
-
 How to integrate with this library
 ==================================
+
 See `ticketd <https://github.com/willemt/ticketd>`_ for an example of how to integrate with this library.
 
-If you don't have access to coroutines it's best to have two separate threads - one for handling Raft peer traffic, and another for handling client traffic. 
+If you don't have access to coroutines it's best to use two separate threads - one for handling Raft peer traffic, and another for handling client traffic. 
 
-Be aware that this library is not thread safe. You will need to ensure that the library's functions are accessed exclusively.
+Be aware that this library is not thread safe. You will need to ensure that the library's functions are called exclusively.
 
 Initializing the Raft server
 ----------------------------
@@ -63,6 +51,9 @@ Where:
 * ``connection_user_data`` is a pointer to user data.
 * ``peer_is_self`` is boolean indicating that this is the current server's server index.
 
+.. [#] AKA "Raft peer"
+.. [#] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
+
 Calling raft_periodic() periodically
 ------------------------------------
 
@@ -72,7 +63,7 @@ We need to call ``raft_periodic`` at periodic intervals.
 
     raft_periodic(raft, 1000);
 
-*Example of ticketd using a libuv timer:*
+*Example using a libuv timer:*
 
 .. code-block:: c
 
@@ -87,8 +78,8 @@ We need to call ``raft_periodic`` at periodic intervals.
     uv_timer_init(&peer_loop, periodic_req);
     uv_timer_start(periodic_req, __periodic, 0, 1000);
 
-Receiving the entry (client sends entry to Raft cluster)
---------------------------------------------------------
+Receiving the entry (ie. client sends entry to Raft cluster)
+------------------------------------------------------------
 
 Our Raft application receives log entries from the client.
 
@@ -100,8 +91,7 @@ When this happens we need to:
 
 .. [#] When the log entry has been replicated across a majority of servers in the Raft cluster
 
-Receiving the entry - Append the entry to our log
--------------------------------------------------
+**Append the entry to our log**
 
 We call ``raft_recv_entry`` when we want to append the entry to the log.
 
@@ -112,8 +102,8 @@ We call ``raft_recv_entry`` when we want to append the entry to the log.
 
 You should popuate the ``entry`` struct with the log entry the client has sent. After the call completes the ``response`` parameter is populated and can be used by the ``raft_msg_entry_response_committed`` to check if the log entry has been committed or not.
 
-Receiving the entry - Blocking until the log entry has been committed
----------------------------------------------------------------------
+**Blocking until the log entry has been committed**
+
 When the server receives a log entry from the client, it has to block until the entry is committed. This is necessary as our Raft server has to replicate the log entry with the other peers of the Raft cluster.
 
 The ``raft_recv_entry`` function does not block! This means you will need to implement the blocking functionality yourself.  
@@ -155,12 +145,11 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
     e = raft_recv_appendentries_response(sv->raft, conn->node_idx, &m.aer);
     uv_cond_signal(&sv->appendentries_received);
 
-Receiving the entry - Redirecting the client to the leader
-----------------------------------------------------------
+**Redirecting the client to the leader**
 
 When we receive an entry log from the client it's possible we might not be a leader.
 
-If we aren't currently the leader of the raft cluster, we MUST send a redirect error message to the client. This is so that the client can connect directly to the leader in future connections.
+If we aren't currently the leader of the raft cluster, we MUST send a redirect error message to the client. This is so that the client can connect directly to the leader in future connections. This enables future requests to be faster until the leader changes.
 
 We use the ``raft_get_current_leader`` function to check who is the current leader.
 
@@ -200,7 +189,7 @@ We use the ``raft_get_current_leader`` function to check who is the current lead
 Function callbacks
 ------------------
 
-You provide your callbacks to the Raft server using ``raft_set_callbacks``
+You provide your callbacks to the Raft server using ``raft_set_callbacks``.
 
 The following callbacks MUST be implemented: ``send_requestvote``, ``send_appendentries``, ``applylog``, ``persist_vote``, ``persist_term``, ``log_offer``, and ``log_pop``.
 
@@ -347,13 +336,12 @@ This callback only needs to be implemented to support log compaction.
 
 For this callback the user needs to remove the youngest log entry [#]_. The log MUST be synced to disk before this callback can return.
 
-.. [#] AKA "Raft peer"
-.. [#] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
 .. [#] The log entry at the front of the log
 .. [#] The log entry at the back of the log
 
 Receving traffic from peers
 ---------------------------
+
 To receive ``Append Entries``, ``Append Entries response``, ``Request Vote``, and ``Request Vote response`` messages, you need to deserialize the bytes into the message's corresponding struct.
 
 The table below shows the structs that you need to deserialize-to or deserialize-from:
@@ -389,3 +377,8 @@ The table below shows the structs that you need to deserialize-to or deserialize
 
     write(socket, buf_out, &len_out);
 
+Todo
+====
+
+- Member changes
+- Log compaction
