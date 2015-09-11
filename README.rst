@@ -27,7 +27,7 @@ How to integrate with this library
 
 See `ticketd <https://github.com/willemt/ticketd>`_ for an example of how to integrate with this library.
 
-If you don't have access to coroutines it's best to use two separate threads - one for handling Raft peer traffic, and another for handling client traffic. 
+If you don't have access to coroutines it's easiest to use two separate threads - one for handling Raft peer traffic, and another for handling client traffic. 
 
 Be aware that this library is not thread safe. You will need to ensure that the library's functions are called exclusively.
 
@@ -138,7 +138,7 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
         }
     } while (!done);
 
-*Example from ticketd of the peer thread. When an appendentries response is received from a raft peer, we signal to the client thread that an entry might be committed.*
+*Example from ticketd of the peer thread. When an appendentries response is received from a Raft peer, we signal to the client thread that an entry might be committed.*
 
 .. code-block:: c
 
@@ -316,7 +316,7 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
 
 **applylog()**
 
-This callback is all what is needed to interface the FSM with the Raft library:
+This callback is all what is needed to interface the FSM with the Raft library.
 
 **persist_vote() & persist_term()**
 
