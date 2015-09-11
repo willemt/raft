@@ -333,6 +333,8 @@ __attribute__ ((deprecated));
  * @return 0 on success; otherwise -1 */
 int raft_add_node(raft_server_t* me, void* user_data, int is_self);
 
+#define raft_add_peer raft_add_node
+
 /** Set election timeout.
  * The amount of time that needs to elapse before we assume the leader is down
  * @param[in] msec Election timeout in milliseconds */
