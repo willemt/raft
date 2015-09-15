@@ -2560,3 +2560,8 @@ void TestRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(C
     raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
+
+void TestRaft_membership_change_add_node_fails_if_node_is_being_added(CuTest * tc)
+{
+
+}

@@ -240,6 +240,22 @@ typedef int (
     int entry_idx
     );
 
+/** Callback for sending log entry messages.
+ * This callback is optional.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node's ID that we are sending this message to
+ * @param[in] msg The entry message to be sent
+ * @return 0 on success */
+typedef int (
+*func_send_entry_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    int node,
+    msg_entry_t* msg
+    );
+
 typedef struct
 {
     /** Callback for sending request vote messages */
@@ -324,6 +340,11 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
  * @param[in] id The integer ID of this node
  *  This is used for identifying clients across sessions.
  * @param[in] is_self Set to 1 if this "node" is this server
+ * @param[out] r If the cluster has started, an entry will be sent to the
+ *  leader so that we can have the membership change committed. We can check
+ *  this entry response with raft_msg_entry_response_committed to confirm if
+ *  it has been committed. If the cluster has not started it is safe to pass
+ *  NULL.
  * @return 0 on success; otherwise -1 */
 raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_self);
 

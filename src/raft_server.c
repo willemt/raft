@@ -258,13 +258,12 @@ int raft_recv_appendentries(
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(node);
     assert(node != me->node);
 
     me->timeout_elapsed = 0;
 
     if (0 < ae->n_entries)
-        __log(me_, "recvd appendentries from: %d, %d %d %d %d #%d",
+        __log(me_, "recvd appendentries from: %lx, %d %d %d %d #%d",
               node,
               ae->term,
               ae->leader_commit,
@@ -659,6 +658,12 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
         me->node = me->nodes[me->num_nodes - 1];
 
     return me->nodes[me->num_nodes - 1];
+}
+
+int raft_has_started(raft_server_t* me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    return me->current_term != 0 && me->timeout_elapsed != 0 && me->election_timeout != 0;
 }
 
 int raft_get_nvotes_for_me(raft_server_t* me_)
