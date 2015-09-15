@@ -56,6 +56,9 @@ typedef struct {
 
     /* my node ID */
     raft_node_t* node;
+
+    /** 1 if there is a configuration change in progress */
+    int cfg_inprogress;
 } raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);

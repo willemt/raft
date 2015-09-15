@@ -661,6 +661,12 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     return me->nodes[me->num_nodes - 1];
 }
 
+int raft_has_started(raft_server_t* me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    return me->current_term != 0 && me->timeout_elapsed != 0 && me->election_timeout != 0;
+}
+
 int raft_get_nvotes_for_me(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
