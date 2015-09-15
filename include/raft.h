@@ -220,16 +220,21 @@ typedef int (
     );
 
 /** Callback for saving log entry changes.
+ *
  * This callback is used for:
  * <ul>
  *      <li>Adding entries to the log (ie. offer)
  *      <li>Removing the first entry from the log (ie. polling)
  *      <li>Removing the last entry from the log (ie. popping)
  * </ul>
+ *
  * This callback MUST flush the change to disk.
+ *
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] entry The entry that the event is happening to
+ *    The user is allowed to change the memory pointed to in the
+ *    raft_entry_data_t struct.
  * @param[in] entry_idx The entries index in the log
  * @return 0 on success */
 typedef int (
@@ -351,7 +356,16 @@ void raft_set_request_timeout(raft_server_t* me, int msec);
 int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /** Receive an appendentries message.
- * This function will block if it needs to append the message.
+ *
+ * Will block (ie. by syncing to disk) if we need to append a message.
+ *
+ * Might call malloc once to increase the log entry array size.
+ *
+ * @note The memory pointer (ie. raft_entry_data_t) for each msg_entry_t is
+ *   copied directly. If the memory is temporary you MUST either make the
+ *   memory permanent (ie. via malloc) OR re-assign the memory within the
+ *   log_offer callback.
+ *
  * @param[in] node Index of the node who sent us this message
  * @param[in] ae The appendentries message
  * @param[out] r The resulting response
@@ -387,11 +401,18 @@ int raft_recv_requestvote_response(raft_server_t* me,
                                    int node,
                                    msg_requestvote_response_t* r);
 
-/** Receive an entry message from client.
+/** Receive an entry message from the client.
  *
  * Append the entry to the log and send appendentries to followers.
  *
- * This function will block if it needs to append the message.
+ * Will block (ie. by syncing to disk) if we need to append a message.
+ *
+ * Might call malloc once to increase the log entry array size.
+ *
+ * @note The memory pointer (ie. raft_entry_data_t) in msg_entry_t is
+ *   copied directly. If the memory is temporary you MUST either make the
+ *   memory permanent (ie. via malloc) OR re-assign the memory within the
+ *   log_offer callback.
  *
  * Will fail:
  * <ul>

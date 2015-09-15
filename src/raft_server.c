@@ -314,14 +314,11 @@ int raft_recv_appendentries(
     {
         msg_entry_t* cmd = &ae->entries[i];
 
-        /* TODO: replace malloc with mempoll/arena */
-        raft_entry_t* c = (raft_entry_t*)malloc(sizeof(raft_entry_t));
-        c->term = cmd->term;
-        memcpy(&c->data, &cmd->data, sizeof(raft_entry_data_t));
-        c->data.buf = (unsigned char*)malloc(cmd->data.len);
-        memcpy(c->data.buf, cmd->data.buf, cmd->data.len);
-        c->id = cmd->id;
-        int e = raft_append_entry(me_, c);
+        raft_entry_t c;
+        c.term = cmd->term;
+        c.id = cmd->id;
+        memcpy(&c.data, &cmd->data, sizeof(raft_entry_data_t));
+        int e = raft_append_entry(me_, &c);
         if (-1 == e)
         {
             __log(me_, "AE failure; couldn't append entry");
@@ -433,9 +430,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
 
     ety.term = me->current_term;
     ety.id = e->id;
-    ety.data.len = e->data.len;
-    ety.data.buf = malloc(e->data.len);
-    memcpy(ety.data.buf, e->data.buf, e->data.len);
+    memcpy(&ety.data, &e->data, e->data.len);
     raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
