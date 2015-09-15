@@ -314,14 +314,11 @@ int raft_recv_appendentries(
     {
         msg_entry_t* cmd = &ae->entries[i];
 
-        /* TODO: replace malloc with mempoll/arena */
-        raft_entry_t* c = (raft_entry_t*)malloc(sizeof(raft_entry_t));
-        c->term = cmd->term;
-        memcpy(&c->data, &cmd->data, sizeof(raft_entry_data_t));
-        c->data.buf = (unsigned char*)malloc(cmd->data.len);
-        memcpy(c->data.buf, cmd->data.buf, cmd->data.len);
-        c->id = cmd->id;
-        int e = raft_append_entry(me_, c);
+        raft_entry_t ety;
+        ety.term = cmd->term;
+        ety.id = cmd->id;
+        memcpy(&ety.data, &cmd->data, sizeof(raft_entry_data_t));
+        int e = raft_append_entry(me_, &ety);
         if (-1 == e)
         {
             __log(me_, "AE failure; couldn't append entry");
@@ -423,7 +420,6 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
                     msg_entry_response_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    raft_entry_t ety;
     int i;
 
     if (!raft_is_leader(me_))
@@ -431,11 +427,10 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
 
     __log(me_, "received entry from: %d", node);
 
+    raft_entry_t ety;
     ety.term = me->current_term;
     ety.id = e->id;
-    ety.data.len = e->data.len;
-    ety.data.buf = malloc(e->data.len);
-    memcpy(ety.data.buf, e->data.buf, e->data.len);
+    memcpy(&ety.data, &e->data, sizeof(raft_entry_data_t));
     raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
@@ -463,10 +458,10 @@ int raft_send_requestvote(raft_server_t* me_, int node)
     return 0;
 }
 
-int raft_append_entry(raft_server_t* me_, raft_entry_t* c)
+int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    return log_append_entry(me->log, c);
+    return log_append_entry(me->log, ety);
 }
 
 int raft_apply_entry(raft_server_t* me_)
