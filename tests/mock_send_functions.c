@@ -31,7 +31,7 @@ typedef struct
     /* what type of message is it? */
     int type;
     /* who sent this? */
-    int sender;
+    raft_node_t* sender;
 } msg_t;
 
 static sender_t** __senders = NULL;
@@ -48,62 +48,68 @@ static int __append_msg(
     void* data,
     int type,
     int len,
-    int peer,
+    raft_node_t* node,
     raft_server_t* raft
     )
 {
-    msg_t* m;
-    m = malloc(sizeof(msg_t));
+    msg_t* m = malloc(sizeof(msg_t));
     m->type = type;
     m->len = len;
     m->data = malloc(len);
-    m->sender = raft_get_nodeid(raft);
+    m->sender = raft_get_node(raft, raft_get_nodeid(raft));
     memcpy(m->data, data, len);
     llqueue_offer(me->outbox, m);
 
-    if (__nsenders > peer)
-        llqueue_offer(__senders[peer]->inbox, m);
+    /* give to peer */
+    sender_t* peer = raft_node_get_udata(node);
+    if (peer)
+    {
+        msg_t* m2 = malloc(sizeof(msg_t));
+        memcpy(m2, m, sizeof(msg_t));
+        m2->sender = raft_get_node(peer->raft, raft_get_nodeid(raft));
+        llqueue_offer(peer->inbox, m2);
+    }
 
     return 1;
 }
 
 int sender_requestvote(raft_server_t* raft,
-                       void* udata, int peer, msg_requestvote_t* msg)
+                       void* udata, raft_node_t* node, msg_requestvote_t* msg)
 {
-    return __append_msg(udata, msg, RAFT_MSG_REQUESTVOTE, sizeof(*msg), peer,
+    return __append_msg(udata, msg, RAFT_MSG_REQUESTVOTE, sizeof(*msg), node,
                         raft);
 }
 
 int sender_requestvote_response(raft_server_t* raft,
-                                void* udata, int peer,
+                                void* udata, raft_node_t* node,
                                 msg_requestvote_response_t* msg)
 {
     return __append_msg(udata, msg, RAFT_MSG_REQUESTVOTE_RESPONSE, sizeof(*msg),
-                        peer, raft);
+                        node, raft);
 }
 
 int sender_appendentries(raft_server_t* raft,
-                         void* udata, int peer, msg_appendentries_t* msg)
+                         void* udata, raft_node_t* node, msg_appendentries_t* msg)
 {
     msg_entry_t* entries = calloc(1, sizeof(msg_entry_t) * msg->n_entries);
     memcpy(entries, msg->entries, sizeof(msg_entry_t) * msg->n_entries);
     msg->entries = entries;
-    return __append_msg(udata, msg, RAFT_MSG_APPENDENTRIES, sizeof(*msg), peer,
+    return __append_msg(udata, msg, RAFT_MSG_APPENDENTRIES, sizeof(*msg), node,
                         raft);
 }
 
 int sender_appendentries_response(raft_server_t* raft,
-                                  void* udata, int peer,
+                                  void* udata, raft_node_t* node,
                                   msg_appendentries_response_t* msg)
 {
     return __append_msg(udata, msg, RAFT_MSG_APPENDENTRIES_RESPONSE,
-                        sizeof(*msg), peer, raft);
+                        sizeof(*msg), node, raft);
 }
 
 int sender_entries_response(raft_server_t* raft,
-                            void* udata, int peer, msg_entry_response_t* msg)
+                            void* udata, raft_node_t* node, msg_entry_response_t* msg)
 {
-    return __append_msg(udata, msg, RAFT_MSG_ENTRY_RESPONSE, sizeof(*msg), peer,
+    return __append_msg(udata, msg, RAFT_MSG_ENTRY_RESPONSE, sizeof(*msg), node,
                         raft);
 }
 
