@@ -89,6 +89,7 @@ void raft_become_leader(raft_server_t* me_)
     __log(me_, "becoming leader");
 
     raft_set_state(me_, RAFT_STATE_LEADER);
+
     for (i = 0; i < me->num_nodes; i++)
     {
         if (me->node != me->nodes[i])
