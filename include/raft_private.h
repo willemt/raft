@@ -56,10 +56,6 @@ typedef struct {
 
     /* my node ID */
     raft_node_t* node;
-
-    /* Is 1 if we are in catch up mode
-     * This is when we are about to join a Raft node */
-    int catchup_mode;
 } raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);
