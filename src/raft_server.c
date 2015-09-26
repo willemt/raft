@@ -579,6 +579,7 @@ int raft_add_node(raft_server_t* me_, void* udata, int is_self)
     me->nodes = (raft_node_t*)realloc(me->nodes, sizeof(raft_node_t*) * me->num_nodes);
     me->nodes[me->num_nodes - 1] = raft_node_new(udata);
     me->votes_for_me = (int*)realloc(me->votes_for_me, me->num_nodes * sizeof(int));
+    me->votes_for_me[me->num_nodes - 1] = 0;
     if (is_self)
         me->nodeid = me->num_nodes - 1;
     return 0;
