@@ -87,11 +87,6 @@ int raft_get_current_idx(raft_server_t* me_)
     return log_get_current_idx(me->log);
 }
 
-int raft_get_my_id(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->nodeid;
-}
-
 void raft_set_commit_idx(raft_server_t* me_, int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
