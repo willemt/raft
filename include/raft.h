@@ -149,7 +149,7 @@ typedef int (
 )   (
     raft_server_t* raft,
     void *user_data,
-    int node,
+    raft_node_t* node,
     msg_requestvote_t* msg
     );
 
@@ -164,7 +164,7 @@ typedef int (
 )   (
     raft_server_t* raft,
     void *user_data,
-    int node,
+    raft_node_t* node,
     msg_appendentries_t* msg
     );
 
@@ -210,7 +210,7 @@ typedef int (
 )   (
     raft_server_t* raft,
     void *user_data,
-    const int voted_for
+    int node
     );
 
 /** Callback for saving log entry changes.
@@ -307,17 +307,6 @@ void raft_free(raft_server_t* me);
  * @param[in] user_data "User data" - user's context that's included in a callback */
 void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
 
-/** Set configuration.
- *
- * @deprecated This function has been replaced by raft_add_node and
- * raft_remove_node
- *
- * @param[in] nodes Array of nodes. End of array is marked by NULL entry
- * @param[in] my_idx Index of the node that refers to this Raft server */
-void raft_set_configuration(raft_server_t* me,
-                            raft_node_configuration_t* nodes, int my_idx)
-__attribute__ ((deprecated));
-
 /** Add node.
  *
  * @note This library does not yet support membership changes.
@@ -332,9 +321,11 @@ __attribute__ ((deprecated));
  *  Examples of what this could be:
  *  - void* pointing to implementor's networking data
  *  - a (IP,Port) tuple
+ * @param[in] id The integer ID of this node
+ *  This is used for identifying clients across sessions.
  * @param[in] is_self Set to 1 if this "node" is this server
  * @return 0 on success; otherwise -1 */
-int raft_add_node(raft_server_t* me, void* user_data, int is_self);
+raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_self);
 
 #define raft_add_peer raft_add_node
 
@@ -371,7 +362,7 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  * @param[out] r The resulting response
  * @return 0 on success */
 int raft_recv_appendentries(raft_server_t* me,
-                            int node,
+                            raft_node_t* node,
                             msg_appendentries_t* ae,
                             msg_appendentries_response_t *r);
 
@@ -380,7 +371,7 @@ int raft_recv_appendentries(raft_server_t* me,
  * @param[in] r The appendentries response message
  * @return 0 on success */
 int raft_recv_appendentries_response(raft_server_t* me,
-                                     int node,
+                                     raft_node_t* node,
                                      msg_appendentries_response_t* r);
 
 /** Receive a requestvote message.
@@ -389,7 +380,7 @@ int raft_recv_appendentries_response(raft_server_t* me,
  * @param[out] r The resulting response
  * @return 0 on success */
 int raft_recv_requestvote(raft_server_t* me,
-                          int node,
+                          raft_node_t* node,
                           msg_requestvote_t* vr,
                           msg_requestvote_response_t *r);
 
@@ -398,7 +389,7 @@ int raft_recv_requestvote(raft_server_t* me,
  * @param[in] r The requestvote response message
  * @return 0 on success */
 int raft_recv_requestvote_response(raft_server_t* me,
-                                   int node,
+                                   raft_node_t* node,
                                    msg_requestvote_response_t* r);
 
 /** Receive an entry message from the client.
@@ -426,7 +417,7 @@ int raft_recv_requestvote_response(raft_server_t* me,
  * @param[out] r The resulting response
  * @return 0 on success, -1 on failure */
 int raft_recv_entry(raft_server_t* me,
-                    int node,
+                    raft_node_t* node,
                     msg_entry_t* ety,
                     msg_entry_response_t *r);
 
@@ -506,7 +497,7 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me, int idx);
 /**
  * @param[in] node The node's index
  * @return node pointed to by node index */
-raft_node_t* raft_get_node(raft_server_t *me, int node);
+raft_node_t* raft_get_node(raft_server_t* me_, const int id);
 
 /**
  * @return number of votes this server has received this election */
@@ -532,7 +523,7 @@ int raft_get_my_id(raft_server_t* me);
 /** Vote for a server.
  * This should be used to reload persistent state, ie. the voted-for field.
  * @param[in] node The server to vote for */
-void raft_vote(raft_server_t* me, const int node);
+void raft_vote(raft_server_t* me_, raft_node_t* node);
 
 /** Set the current term.
  * This should be used to reload persistent state, ie. the current_term field.
@@ -548,6 +539,10 @@ int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
  * @param[in] r The response we want to check */
 int raft_msg_entry_response_committed(raft_server_t* me_,
                                       const msg_entry_response_t* r);
+
+/** Get node's ID.
+ * @return ID of node */
+int raft_node_get_id(raft_node_t* me_);
 
 /** Tell if we are a leader, candidate or follower.
  * @return get state of type raft_state_e. */

@@ -21,7 +21,7 @@ typedef struct {
 
     /* The candidate the server voted for in its current term,
      * or Nil if it hasn't voted for any.  */
-    int voted_for;
+    raft_node_t* voted_for;
 
     /* the log which is replicated */
     void* log;
@@ -40,9 +40,6 @@ typedef struct {
     /* amount of time left till timeout */
     int timeout_elapsed;
 
-    /* who has voted for me. This is an array with N = 'num_nodes' elements */
-    int *votes_for_me;
-
     raft_node_t* nodes;
     int num_nodes;
 
@@ -51,14 +48,14 @@ typedef struct {
 
     /* what this node thinks is the node ID of the current leader, or -1 if
      * there isn't a known current leader. */
-    int current_leader;
+    raft_node_t* current_leader;
 
     /* callbacks */
     raft_cbs_t cb;
     void* udata;
 
     /* my node ID */
-    int nodeid;
+    raft_node_t* node;
 } raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);
@@ -69,15 +66,15 @@ void raft_become_candidate(raft_server_t* me);
 
 void raft_become_follower(raft_server_t* me);
 
-void raft_vote(raft_server_t* me, int node);
+void raft_vote(raft_server_t* me, raft_node_t* node);
 
 void raft_set_current_term(raft_server_t* me,int term);
 
 /**
  * @return 0 on error */
-int raft_send_requestvote(raft_server_t* me, int node);
+int raft_send_requestvote(raft_server_t* me, raft_node_t* node);
 
-void raft_send_appendentries(raft_server_t* me, int node);
+int raft_send_appendentries(raft_server_t* me, raft_node_t* node);
 
 void raft_send_appendentries_all(raft_server_t* me_);
 
@@ -101,13 +98,17 @@ void raft_set_state(raft_server_t* me_, int state);
 
 int raft_get_state(raft_server_t* me_);
 
-raft_node_t* raft_node_new(void* udata);
+raft_node_t* raft_node_new(void* udata, int id);
 
 void raft_node_set_next_idx(raft_node_t* node, int nextIdx);
 
 void raft_node_set_match_idx(raft_node_t* node, int matchIdx);
 
 int raft_node_get_match_idx(raft_node_t* me_);
+
+void raft_node_vote_for_me(raft_node_t* me_, const int vote);
+
+int raft_node_has_vote_for_me(raft_node_t* me_);
 
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
