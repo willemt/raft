@@ -53,6 +53,10 @@ void TestRaft_server_voting_results_in_voting(CuTest * tc)
     void *r = raft_new();
     raft_vote(r, 1);
     CuAssertTrue(tc, 1 == raft_get_voted_for(r));
+
+    /* have to reset */
+    raft_vote(r, -1);
+
     raft_vote(r, 9);
     CuAssertTrue(tc, 9 == raft_get_voted_for(r));
 }

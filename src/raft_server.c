@@ -599,6 +599,9 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
 void raft_vote(raft_server_t* me_, const int node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    assert(-1 == me->voted_for || node == -1);
+
     me->voted_for = node;
     if (me->cb.persist_vote)
         me->cb.persist_vote(me_, me->udata, node);
