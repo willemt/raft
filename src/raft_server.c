@@ -88,7 +88,6 @@ void raft_become_leader(raft_server_t* me_)
     __log(me_, "becoming leader");
 
     raft_set_state(me_, RAFT_STATE_LEADER);
-    me->voted_for = -1;
     for (i = 0; i < me->num_nodes; i++)
     {
         if (me->nodeid != i)
@@ -123,12 +122,9 @@ void raft_become_candidate(raft_server_t* me_)
 
 void raft_become_follower(raft_server_t* me_)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-
     __log(me_, "becoming follower");
-
     raft_set_state(me_, RAFT_STATE_FOLLOWER);
-    me->voted_for = -1;
+    raft_vote(me_, -1);
 }
 
 int raft_periodic(raft_server_t* me_, int msec_since_last_period)
