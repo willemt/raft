@@ -172,6 +172,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
     // TODO: should force invalid leaders to stepdown
 
+    if (!raft_is_leader(me_))
+        return -1;
+
     raft_node_t* p = raft_get_node(me_, node);
 
     if (0 == r->success)

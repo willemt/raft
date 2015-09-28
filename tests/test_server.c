@@ -1542,6 +1542,53 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
 }
 
+void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_set_callbacks(r, &funcs, sender);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+    /* the last applied idx will became 1, and then 2 */
+    raft_set_last_applied_idx(r, 0);
+
+    /* append entries - we need two */
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 1;
+    ety.data.buf = "aaaa";
+    ety.data.len = 4;
+    raft_append_entry(r, &ety);
+
+
+    raft_send_appendentries(r, 0);
+    raft_send_appendentries(r, 1);
+
+    CuAssertTrue(tc, NULL != sender_poll_msg_data(sender));
+    CuAssertTrue(tc, NULL != sender_poll_msg_data(sender));
+
+    raft_become_follower(r);
+
+    /* receive mock success responses */
+    msg_appendentries_response_t aer;
+    memset(&aer, 0, sizeof(msg_appendentries_response_t));
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 1;
+    aer.first_idx = 1;
+    CuAssertTrue(tc, -1 == raft_recv_appendentries_response(r, 1, &aer));
+    CuAssertTrue(tc, NULL == sender_poll_msg_data(sender));
+}
+
 void TestRaft_leader_recv_entry_is_committed_returns_0_if_not_committed(CuTest * tc)
 {
     void *r = raft_new();
