@@ -111,6 +111,10 @@ raft_node_t* raft_node_new(void* udata);
 
 void raft_node_set_next_idx(raft_node_t* node, int nextIdx);
 
+void raft_node_set_match_idx(raft_node_t* node, int matchIdx);
+
+int raft_node_get_match_idx(raft_node_t* me_);
+
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
 #endif /* RAFT_PRIVATE_H_ */
