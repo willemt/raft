@@ -133,23 +133,10 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    switch (me->state)
-    {
-    case RAFT_STATE_FOLLOWER:
-        if (me->last_applied_idx < me->commit_idx)
-            if (-1 == raft_apply_entry(me_))
-                return -1;
-        break;
-    }
-
     me->timeout_elapsed += msec_since_last_period;
 
     if (me->state == RAFT_STATE_LEADER)
     {
-        if (me->last_applied_idx < me->commit_idx)
-            if (-1 == raft_apply_entry(me_))
-                return -1;
-
         if (me->request_timeout <= me->timeout_elapsed)
         {
             raft_send_appendentries_all(me_);
@@ -158,6 +145,10 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     }
     else if (me->election_timeout <= me->timeout_elapsed)
         raft_election_start(me_);
+
+    if (me->last_applied_idx < me->commit_idx)
+        if (-1 == raft_apply_entry(me_))
+            return -1;
 
     return 0;
 }
