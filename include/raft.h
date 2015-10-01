@@ -138,9 +138,6 @@ typedef struct
     /** the entry's unique ID */
     unsigned int id;
 
-    /** number of nodes that have this entry */
-    unsigned int num_nodes;
-
     raft_entry_data_t data;
 } raft_entry_t;
 

@@ -39,8 +39,6 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx);
  * @return youngest entry */
 raft_entry_t *log_peektail(log_t * me_);
 
-void log_mark_node_has_committed(log_t* me_, int idx);
-
 void log_delete(log_t* me_, int idx);
 
 int log_get_current_idx(log_t* me_);

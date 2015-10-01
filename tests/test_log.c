@@ -1,4 +1,3 @@
-
 #include <stdbool.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -58,21 +57,6 @@ void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
     e1.id = 1;
     CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     CuAssertTrue(tc, NULL == log_get_from_idx(l, 2));
-}
-
-void TestLog_mark_node_has_committed_adds_nodes(CuTest * tc)
-{
-    void *l;
-    raft_entry_t e1;
-
-    l = log_new();
-    e1.id = 1;
-    log_append_entry(l, &e1);
-    CuAssertTrue(tc, 0 == log_get_from_idx(l, 1)->num_nodes);
-    log_mark_node_has_committed(l, 1);
-    CuAssertTrue(tc, 1 == log_get_from_idx(l, 1)->num_nodes);
-    log_mark_node_has_committed(l, 1);
-    CuAssertTrue(tc, 2 == log_get_from_idx(l, 1)->num_nodes);
 }
 
 void TestLog_delete(CuTest * tc)

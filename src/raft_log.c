@@ -96,7 +96,6 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     __ensurecapacity(me);
 
     memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
-    me->entries[me->back].num_nodes = 0;
     if (me->cb && me->cb->log_offer)
         me->cb->log_offer(me->raft, raft_get_udata(me->raft), c, me->back);
     me->count++;
@@ -190,13 +189,6 @@ void log_free(log_t * me_)
 
     free(me->entries);
     free(me);
-}
-
-void log_mark_node_has_committed(log_t* me_, int idx)
-{
-    raft_entry_t* e = log_get_from_idx(me_, idx);
-    if (e)
-        e->num_nodes += 1;
 }
 
 int log_get_current_idx(log_t* me_)
