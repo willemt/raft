@@ -20,6 +20,7 @@ typedef struct
 {
     void* udata;
     int next_idx;
+    int match_idx;
 } raft_node_private_t;
 
 raft_node_t* raft_node_new(void* udata)
@@ -27,7 +28,8 @@ raft_node_t* raft_node_new(void* udata)
     raft_node_private_t* me;
     me = (raft_node_private_t*)calloc(1, sizeof(raft_node_private_t));
     me->udata = udata;
-    me->next_idx = 1;
+    me->next_idx  = 1;
+    me->match_idx = 0;
     return (raft_node_t*)me;
 }
 
@@ -43,6 +45,20 @@ void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
     /* log index begins at 1 */
     me->next_idx = nextIdx < 1 ? 1 : nextIdx;
 }
+
+
+int raft_node_get_match_idx(raft_node_t* me_)
+{
+    raft_node_private_t* me = (raft_node_private_t*)me_;
+    return me->match_idx;
+}
+
+void raft_node_set_match_idx(raft_node_t* me_, int matchIdx)
+{
+    raft_node_private_t* me = (raft_node_private_t*)me_;
+    me->match_idx = matchIdx;
+}
+
 
 void* raft_node_get_udata(raft_node_t* me_)
 {

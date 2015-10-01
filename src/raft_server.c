@@ -94,6 +94,7 @@ void raft_become_leader(raft_server_t* me_)
         {
             raft_node_t* p = raft_get_node(me_, i);
             raft_node_set_next_idx(p, raft_get_current_idx(me_) + 1);
+	    raft_node_set_match_idx(p, 0);
             raft_send_appendentries(me_, i);
         }
     }
@@ -143,7 +144,11 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     me->timeout_elapsed += msec_since_last_period;
 
     if (me->state == RAFT_STATE_LEADER)
-    {
+    {   
+	if(me->last_applied_idx < me->commit_idx)
+	    if (-1 == raft_apply_entry(me_))
+                return -1;  
+
         if (me->request_timeout <= me->timeout_elapsed)
         {
             raft_send_appendentries_all(me_);
@@ -191,25 +196,19 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     }
 
     raft_node_set_next_idx(p, r->current_idx + 1);
+    raft_node_set_match_idx(p, r->current_idx);
 
+    /* Update commit idx */
+    int votes = 1; /* include me */
     int i;
+    int point = r->current_idx;
+    for(i = 0; i < me->num_nodes; i++) /* Check others */
+        if(i != me->nodeid && raft_node_get_match_idx(p) >= point)
+            votes++;
+    if(votes > me->num_nodes/2 && raft_get_commit_idx(me_) < point)
+        raft_set_commit_idx(me_, point);
 
-    for (i = r->first_idx; i <= r->current_idx; i++)
-        log_mark_node_has_committed(me->log, i);
-
-    while (1)
-    {
-        raft_entry_t* e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
-
-        /* majority has this */
-        if (e && me->num_nodes / 2 <= e->num_nodes)
-        {
-            if (-1 == raft_apply_entry(me_))
-                break;
-        }
-        else
-            break;
-    }
+    /* raft periodic applies committed entries lazily */
 
     return 0;
 }
