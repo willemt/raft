@@ -146,6 +146,12 @@ int raft_get_current_leader(raft_server_t* me_)
     return -1;
 }
 
+raft_node_t* raft_get_current_leader_node(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    return me->current_leader;
+}
+
 void* raft_get_udata(raft_server_t* me_)
 {
     return ((raft_server_private_t*)me_)->udata;
