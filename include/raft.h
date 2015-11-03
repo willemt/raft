@@ -512,6 +512,11 @@ int raft_get_voted_for(raft_server_t* me);
  *   -1 if the leader is unknown */
 int raft_get_current_leader(raft_server_t* me);
 
+/** Get what this node thinks the node of the leader is.
+ * @return node of what this node thinks is the valid leader;
+ *   NULL if the leader is unknown */
+raft_node_t* raft_get_current_leader_node(raft_server_t* me);
+
 /**
  * @return callback user data */
 void* raft_get_udata(raft_server_t* me);
