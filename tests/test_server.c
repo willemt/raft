@@ -324,6 +324,27 @@ void TestRaft_server_election_timeout_promotes_us_to_leader_if_there_is_only_1_n
     CuAssertTrue(tc, 1 == raft_is_leader(r));
 }
 
+void TestRaft_server_recv_entry_auto_commits_if_we_are_the_only_node(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_set_election_timeout(r, 1000);
+    raft_become_leader(r);
+    CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
+
+    /* entry message */
+    msg_entry_t ety;
+    ety.id = 1;
+    ety.data.buf = "entry";
+    ety.data.len = strlen("entry");
+
+    /* receive entry */
+    msg_entry_response_t cr;
+    raft_recv_entry(r, 1, &ety, &cr);
+    CuAssertTrue(tc, 1 == raft_get_log_count(r));
+    CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+}
+
 void TestRaft_server_cfg_sets_num_nodes(CuTest * tc)
 {
     void *r = raft_new();

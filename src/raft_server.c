@@ -433,6 +433,10 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
         if (me->nodeid != i)
             raft_send_appendentries(me_, i);
 
+    /* if we're the only node, we can consider the entry committed */
+    if (1 == me->num_nodes)
+        me->commit_idx = raft_get_current_idx(me_);
+
     r->id = e->id;
     r->idx = raft_get_current_idx(me_);
     r->term = me->current_term;
