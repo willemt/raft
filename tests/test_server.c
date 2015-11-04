@@ -312,17 +312,16 @@ void TestRaft_server_periodic_elapses_election_timeout(CuTest * tc)
     CuAssertTrue(tc, 100 == raft_get_timeout_elapsed(r));
 }
 
-void
-TestRaft_server_election_timeout_sets_to_zero_when_elapsed_time_greater_than_timeout(
-    CuTest * tc)
+void TestRaft_server_election_timeout_promotes_us_to_leader_if_there_is_only_1_node(CuTest * tc)
 {
     void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
     raft_set_election_timeout(r, 1000);
 
-    /* greater than 1000 */
-    raft_periodic(r, 2000);
-    /* less than 1000 as the timeout would be randomised */
-    CuAssertTrue(tc, raft_get_timeout_elapsed(r) < 1000);
+    /* clock over (ie. 1000 + 1), causing new election */
+    raft_periodic(r, 1001);
+
+    CuAssertTrue(tc, 1 == raft_is_leader(r));
 }
 
 void TestRaft_server_cfg_sets_num_nodes(CuTest * tc)

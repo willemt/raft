@@ -144,7 +144,12 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         }
     }
     else if (me->election_timeout <= me->timeout_elapsed)
-        raft_election_start(me_);
+    {
+        if (1 == me->num_nodes)
+            raft_become_leader(me_);
+        else
+            raft_election_start(me_);
+    }
 
     if (me->last_applied_idx < me->commit_idx)
         if (-1 == raft_apply_entry(me_))
