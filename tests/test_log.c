@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "CuTest.h"
 
+#include "linked_list_queue.h"
+
 #include "raft.h"
 #include "raft_log.h"
 #include "raft_private.h"
@@ -59,12 +61,32 @@ void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
     CuAssertTrue(tc, NULL == log_get_from_idx(l, 2));
 }
 
+static int __log_pop(
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t *entry,
+    int entry_idx
+    )
+{
+    raft_entry_t* copy = malloc(sizeof(*entry));
+    memcpy(copy, entry, sizeof(*entry));
+    llqueue_offer((void*)raft, copy);
+    return 0;
+}
+
 void TestLog_delete(CuTest * tc)
 {
     void *l;
     raft_entry_t e1, e2, e3;
 
+    void* queue = llqueue_new();
+
     l = log_new();
+    raft_cbs_t funcs = {
+        .log_pop = __log_pop
+    };
+    log_set_callbacks(l, &funcs, queue);
+
     e1.id = 1;
     CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
     e2.id = 2;
@@ -74,6 +96,8 @@ void TestLog_delete(CuTest * tc)
     CuAssertTrue(tc, 3 == log_count(l));
 
     log_delete(l, 3);
+    CuAssertTrue(tc, ((raft_entry_t*)llqueue_poll(queue))->id == e3.id);
+
     CuAssertTrue(tc, 2 == log_count(l));
     CuAssertTrue(tc, NULL == log_get_from_idx(l, 3));
     log_delete(l, 2);

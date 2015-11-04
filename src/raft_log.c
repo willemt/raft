@@ -138,7 +138,7 @@ void log_delete(log_t* me_, int idx)
     {
         if (me->cb && me->cb->log_pop)
             me->cb->log_pop(me->raft, raft_get_udata(me->raft),
-                            &me->entries[me->back], me->back);
+                            &me->entries[me->back - 1], me->back);
         me->back--;
         me->count--;
     }
