@@ -283,18 +283,27 @@ int raft_recv_appendentries(
     /* 3. If an existing entry conflicts with a new one (same index
        but different terms), delete the existing entry and all that
        follow it (§5.3) */
-    int has_mismatch = 0, i;
+    int i;
     for (i = 0; i < ae->n_entries; i++)
     {
-        msg_entry_t* cmd = &ae->entries[i];
-        int index = ae->prev_log_idx + 1 + i;
-        raft_entry_t* e2 = raft_get_entry_from_idx(me_, index);
-        if (!e2)
-            break; /* reached end of log */
-        if (e2 && e2->term != cmd->term)
-            has_mismatch = 1;
-        if (has_mismatch)
-            log_delete(me->log, index);
+        msg_entry_t* ety = &ae->entries[i];
+        int ety_index = ae->prev_log_idx + 1 + i;
+        raft_entry_t* existing_ety = raft_get_entry_from_idx(me_, ety_index);
+        if (existing_ety && existing_ety->term != ety->term)
+        {
+            log_delete(me->log, ety_index);
+            break;
+        }
+        else if (!existing_ety)
+            break;
+    }
+
+    /* Pick up remainder in case of mismatch or missing existing entry */
+    for (; i < ae->n_entries; i++)
+    {
+        int e = raft_append_entry(me_, &ae->entries[i]);
+        if (-1 == e)
+            goto fail;
     }
 
     /* 4. If leaderCommit > commitIndex, set commitIndex =
@@ -309,31 +318,19 @@ int raft_recv_appendentries(
         raft_become_follower(me_);
 
     raft_set_current_term(me_, ae->term);
+
     /* update current leader because we accepted appendentries from it */
     me->current_leader = node;
-
-    /* append all entries to log */
-    for (i = 0; i < ae->n_entries; i++)
-    {
-        msg_entry_t* cmd = &ae->entries[i];
-
-        raft_entry_t ety;
-        ety.term = cmd->term;
-        ety.id = cmd->id;
-        memcpy(&ety.data, &cmd->data, sizeof(raft_entry_data_t));
-        int e = raft_append_entry(me_, &ety);
-        if (-1 == e)
-        {
-            __log(me_, "AE failure; couldn't append entry");
-            r->success = 0;
-            return -1;
-        }
-    }
 
     r->success = 1;
     r->current_idx = raft_get_current_idx(me_);
     r->first_idx = ae->prev_log_idx + 1;
     return 0;
+
+fail:
+    __log(me_, "AE failure; couldn't append entry");
+    r->success = 0;
+    return -1;
 }
 
 static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)

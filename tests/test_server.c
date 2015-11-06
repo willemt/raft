@@ -801,6 +801,44 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
     CuAssertTrue(tc, 2 == raft_get_log_count(r));
 }
 
+void TestRaft_follower_recv_appendentries_does_not_add_dupe_entries_already_in_log(
+    CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_set_current_term(r, 1);
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t aer;
+
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 1;
+    /* include 1 entry */
+    msg_entry_t e[2];
+    memset(&e, 0, sizeof(msg_entry_t) * 2);
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
+    memset(&aer, 0, sizeof(aer));
+    raft_recv_appendentries(r, 1, &ae, &aer);
+    memset(&aer, 0, sizeof(aer));
+    raft_recv_appendentries(r, 1, &ae, &aer);
+    /* still successful even when no raft_append_entry() happened! */
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
+
+    /* lets get the server to append 2 now! */
+    e[1].id = 2;
+    ae.n_entries = 2;
+    memset(&aer, 0, sizeof(aer));
+    raft_recv_appendentries(r, 1, &ae, &aer);
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
+}
+
 /* If leaderCommit > commitidx, set commitidx =
  *  min(leaderCommit, last log idx) */
 void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
