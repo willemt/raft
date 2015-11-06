@@ -18,20 +18,22 @@ typedef struct
     unsigned int len;
 } raft_entry_data_t;
 
-/** Message sent from client to server.
- * The client sends this message to a server with the intention of having it
- * applied to the FSM. */
+/** Entry that is stored in the server's entry log. */
 typedef struct
 {
-    /** the term the entry was created */
-    int term;
+    /** the entry's term at the point it was created */
+    unsigned int term;
 
-    /** the entry's unique ID
-     * The ID is used to prevent duplicate entries from being appended */
+    /** the entry's unique ID */
     unsigned int id;
 
     raft_entry_data_t data;
-} msg_entry_t;
+} raft_entry_t;
+
+/** Message sent from client to server.
+ * The client sends this message to a server with the intention of having it
+ * applied to the FSM. */
+typedef raft_entry_t msg_entry_t;
 
 /** Entry message response.
  * Indicates to client if entry was committed or not. */
@@ -128,18 +130,6 @@ typedef struct
 
 typedef void* raft_server_t;
 typedef void* raft_node_t;
-
-/** Entry that is stored in the server's entry log. */
-typedef struct
-{
-    /** the entry's term at the point it was created */
-    unsigned int term;
-
-    /** the entry's unique ID */
-    unsigned int id;
-
-    raft_entry_data_t data;
-} raft_entry_t;
 
 /** Callback for sending request vote messages.
  * @param[in] raft The Raft server making this callback
