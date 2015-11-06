@@ -401,8 +401,7 @@ void TestRaft_votes_are_majority_is_true(
     CuAssertTrue(tc, 0 == raft_votes_is_majority(1, 2));
 }
 
-void
-TestRaft_server_dont_increase_votes_for_me_when_receive_request_vote_response_is_not_granted(
+void TestRaft_server_dont_increase_votes_for_me_when_receive_request_vote_response_is_not_granted(
     CuTest * tc
     )
 {
@@ -541,38 +540,33 @@ void TestRaft_follower_becomes_follower_clears_voted_for(CuTest * tc)
 }
 
 /* 5.1 */
-void
-TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
+void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
     CuTest * tc)
 {
-    msg_appendentries_t ae;
-    msg_appendentries_response_t aer, *aerr;
-
     void *r = raft_new();
     raft_add_node(r, (void*)1, 1);
     raft_add_node(r, (void*)2, 0);
-    void *sender = sender_new(NULL);
+
     /* no leader known at this point */
     CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 
     /* term is low */
+    msg_appendentries_t ae;
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 1;
 
     /*  higher current term */
     raft_set_current_term(r, 5);
+    msg_appendentries_response_t aer;
     raft_recv_appendentries(r, 1, &ae, &aer);
 
-    aerr = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, NULL != aerr);
-    CuAssertTrue(tc, 0 == aerr->success);
+    CuAssertTrue(tc, 0 == aer.success);
     /* rejected appendentries doesn't change the current leader. */
     CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 }
 
 /* TODO: check if test case is needed */
-void
-TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
+void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     CuTest * tc)
 {
     msg_appendentries_t ae;
@@ -669,8 +663,7 @@ void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
 }
 
 /*  5.3 */
-void
-TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_idx_which_matches_prev_log_term(
+void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_idx_which_matches_prev_log_term(
     CuTest * tc)
 {
     msg_entry_t ety;
@@ -1182,8 +1175,7 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
 }
 
 /* Candidate 5.2 */
-void
-TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follower(
+void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follower(
     CuTest * tc)
 {
     msg_appendentries_t ae;
@@ -1230,8 +1222,7 @@ void TestRaft_leader_becomes_leader_does_not_clear_voted_for(CuTest * tc)
     CuAssertTrue(tc, 1 == raft_get_voted_for(r));
 }
 
-void
-TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_plus_1(
+void TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_plus_1(
     CuTest * tc)
 {
     void *r = raft_new();
@@ -1472,8 +1463,7 @@ void TestRaft_leader_sends_appendentries_when_node_has_next_idx_of_0(
 }
 
 /* 5.3 */
-void
-TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency(
+void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsistency(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
@@ -1551,8 +1541,7 @@ void T_estRaft_leader_doesnt_append_entry_if_unique_id_is_duplicate(CuTest * tc)
 }
 #endif
 
-void
-TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry(
+void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_have_entry_and_atleast_one_newer_entry(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
@@ -1598,12 +1587,13 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     aer.success = 1;
     aer.current_idx = 1;
     aer.first_idx = 1;
+    raft_recv_appendentries_response(r, 0, &aer);
     raft_recv_appendentries_response(r, 1, &aer);
-    raft_recv_appendentries_response(r, 2, &aer);
     /* leader will now have majority followers who have appended this log */
     CuAssertTrue(tc, 0 != raft_get_commit_idx(r));
     CuAssertTrue(tc, 2 != raft_get_commit_idx(r));
     CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+    raft_periodic(r, 1);
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 
     /* SECOND entry log application */
@@ -1616,10 +1606,11 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     aer.success = 1;
     aer.current_idx = 2;
     aer.first_idx = 2;
+    raft_recv_appendentries_response(r, 0, &aer);
     raft_recv_appendentries_response(r, 1, &aer);
-    raft_recv_appendentries_response(r, 2, &aer);
     /* leader will now have majority followers who have appended this log */
     CuAssertTrue(tc, 2 == raft_get_commit_idx(r));
+    raft_periodic(r, 1);
     CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
 }
 
