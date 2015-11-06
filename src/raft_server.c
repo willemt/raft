@@ -283,9 +283,19 @@ int raft_recv_appendentries(
     /* 3. If an existing entry conflicts with a new one (same index
        but different terms), delete the existing entry and all that
        follow it (§5.3) */
-    raft_entry_t* e2 = raft_get_entry_from_idx(me_, ae->prev_log_idx + 1);
-    if (e2)
-        log_delete(me->log, ae->prev_log_idx + 1);
+    int has_mismatch = 0, i;
+    for (i = 0; i < ae->n_entries; i++)
+    {
+        msg_entry_t* cmd = &ae->entries[i];
+        int index = ae->prev_log_idx + 1 + i;
+        raft_entry_t* e2 = raft_get_entry_from_idx(me_, index);
+        if (!e2)
+            break; /* reached end of log */
+        if (e2 && e2->term != cmd->term)
+            has_mismatch = 1;
+        if (has_mismatch)
+            log_delete(me->log, index);
+    }
 
     /* 4. If leaderCommit > commitIndex, set commitIndex =
         min(leaderCommit, index of most recent entry) */
@@ -303,8 +313,6 @@ int raft_recv_appendentries(
     raft_set_current_term(me_, ae->term);
     /* update current leader because we accepted appendentries from it */
     me->current_leader = node;
-
-    int i;
 
     /* append all entries to log */
     for (i = 0; i < ae->n_entries; i++)

@@ -711,8 +711,7 @@ TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_
 }
 
 /* 5.3 */
-void
-TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries(
+void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries(
     CuTest * tc)
 {
     msg_appendentries_t ae;
@@ -747,6 +746,17 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 2)));
     CuAssertTrue(tc, !strncmp(ety_appended->data.buf, str2, 3));
 
+    /* this log will be overwritten by the appendentries below */
+    char *str3 = "333";
+    ety.data.buf = str3;
+    ety.data.len = 3;
+    ety.id = 3;
+    ety.term = 1;
+    raft_append_entry(r, &ety);
+    CuAssertTrue(tc, 3 == raft_get_log_count(r));
+    CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 3)));
+    CuAssertTrue(tc, !strncmp(ety_appended->data.buf, str3, 3));
+
     /* pass a appendentry that is newer  */
     msg_entry_t mety;
 
@@ -756,10 +766,10 @@ TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries
     ae.prev_log_term = 1;
     /* include one entry */
     memset(&mety, 0, sizeof(msg_entry_t));
-    char *str3 = "333";
-    mety.data.buf = str3;
+    char *str4 = "444";
+    mety.data.buf = str4;
     mety.data.len = 3;
-    mety.id = 3;
+    mety.id = 4;
     ae.entries = &mety;
     ae.n_entries = 1;
 
