@@ -246,16 +246,6 @@ int raft_recv_appendentries(
         return 0;
     }
 
-#if 0
-    if (-1 != ae->prev_log_idx &&
-        ae->prev_log_idx < raft_get_current_idx(me_))
-    {
-        __log(me_, "AE prev_idx is less than current idx");
-        r->success = 0;
-        return 0;
-    }
-#endif
-
     /* Not the first appendentries we've received */
     /* NOTE: the log starts at 1 */
     if (0 < ae->prev_log_idx)
