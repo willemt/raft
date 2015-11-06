@@ -288,7 +288,7 @@ int raft_recv_appendentries(
             break;
     }
 
-    /* Pick up remainder in case of mismatch or missing existing entry */
+    /* Pick up remainder in case of mismatch or missing entry */
     for (; i < ae->n_entries; i++)
     {
         int e = raft_append_entry(me_, &ae->entries[i]);
