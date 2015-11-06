@@ -288,10 +288,10 @@ int raft_recv_appendentries(
         log_delete(me->log, ae->prev_log_idx + 1);
 
     /* 4. If leaderCommit > commitIndex, set commitIndex =
-        min(leaderCommit, last log index) */
+        min(leaderCommit, index of most recent entry) */
     if (raft_get_commit_idx(me_) < ae->leader_commit)
     {
-        int last_log_idx = max(raft_get_current_idx(me_) - 1, 1);
+        int last_log_idx = max(raft_get_current_idx(me_), 1);
         raft_set_commit_idx(me_, min(last_log_idx, ae->leader_commit));
         while (0 == raft_apply_entry(me_))
             ;
@@ -469,6 +469,10 @@ int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
+    /* Don't apply after the commit_idx */
+    if (me->last_applied_idx == me->commit_idx)
+        return -1;
+
     raft_entry_t* e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
     if (!e)
         return -1;
@@ -476,8 +480,6 @@ int raft_apply_entry(raft_server_t* me_)
     __log(me_, "applying log: %d, size: %d", me->last_applied_idx, e->data.len);
 
     me->last_applied_idx++;
-    if (me->commit_idx < me->last_applied_idx)
-        me->commit_idx = me->last_applied_idx;
     if (me->cb.applylog)
         me->cb.applylog(me_, me->udata, e->data.buf, e->data.len);
     return 0;

@@ -230,9 +230,6 @@ void TestRaft_server_entry_is_retrieveable_using_idx(CuTest* tc)
 
 void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
 {
-    raft_entry_t ety;
-    char *str = "aaa";
-
     void *r = raft_new();
     raft_set_commit_idx(r, 0);
     raft_set_last_applied_idx(r, 0);
@@ -240,15 +237,32 @@ void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
     raft_apply_entry(r);
     CuAssertTrue(tc, 0 == raft_get_last_applied_idx(r));
     CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
+}
 
+void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest* tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_add_node(r, (void*)3, 0);
+    raft_set_commit_idx(r, 0);
+    raft_set_last_applied_idx(r, 0);
+
+    raft_apply_entry(r);
+    CuAssertTrue(tc, 0 == raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
+
+    char *str = "aaa";
+    raft_entry_t ety;
     ety.term = 1;
     ety.id = 1;
     ety.data.buf = str;
     ety.data.len = 3;
     raft_append_entry(r, &ety);
     raft_apply_entry(r);
-    CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
-    CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+    /* Not allowed to be applied because we haven't confirmed a majority yet */
+    CuAssertTrue(tc, 0 == raft_get_last_applied_idx(r));
+    CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
 }
 
 /* If commitidx > lastApplied: increment lastApplied, apply log[lastApplied]
@@ -826,7 +840,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
 
     CuAssertTrue(tc, 1 == aer.success);
     /* set to 4 because commitIDX is lower */
-    CuAssertTrue(tc, 4 == raft_get_commit_idx(r));
+    CuAssertIntEquals(tc, 4, raft_get_commit_idx(r));
 }
 
 void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
@@ -869,7 +883,7 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
 
     CuAssertTrue(tc, 1 == aer.success);
     /* set to 3 because leaderCommit is lower */
-    CuAssertTrue(tc, 3 == raft_get_commit_idx(r));
+    CuAssertIntEquals(tc, 3, raft_get_commit_idx(r));
 }
 
 void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(
@@ -1559,6 +1573,8 @@ TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majority_ha
     raft_append_entry(r, &ety);
     ety.id = 2;
     raft_append_entry(r, &ety);
+    ety.id = 3;
+    raft_append_entry(r, &ety);
 
     memset(&aer, 0, sizeof(msg_appendentries_response_t));
 
@@ -1623,7 +1639,6 @@ void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * t
     ety.data.buf = "aaaa";
     ety.data.len = 4;
     raft_append_entry(r, &ety);
-
 
     raft_send_appendentries(r, 0);
     raft_send_appendentries(r, 1);
