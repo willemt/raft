@@ -303,8 +303,6 @@ int raft_recv_appendentries(
     {
         int last_log_idx = max(raft_get_current_idx(me_), 1);
         raft_set_commit_idx(me_, min(last_log_idx, ae->leader_commit));
-        while (0 == raft_apply_entry(me_))
-            ;
     }
 
     if (raft_is_candidate(me_))
