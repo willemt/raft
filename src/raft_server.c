@@ -115,7 +115,7 @@ void raft_become_candidate(raft_server_t* me_)
     raft_set_state(me_, RAFT_STATE_CANDIDATE);
 
     /* we need a random factor here to prevent simultaneous candidates */
-    me->timeout_elapsed = rand() % 500;
+    me->timeout_elapsed = rand() % me->election_timeout;
 
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
@@ -138,10 +138,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     if (me->state == RAFT_STATE_LEADER)
     {
         if (me->request_timeout <= me->timeout_elapsed)
-        {
             raft_send_appendentries_all(me_);
-            me->timeout_elapsed = 0;
-        }
     }
     else if (me->election_timeout <= me->timeout_elapsed)
     {
@@ -535,6 +532,7 @@ void raft_send_appendentries_all(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
+    me->timeout_elapsed = 0;
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
             raft_send_appendentries(me_, i);

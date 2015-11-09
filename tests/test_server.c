@@ -1698,6 +1698,27 @@ void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * t
     CuAssertTrue(tc, NULL == sender_poll_msg_data(sender));
 }
 
+void TestRaft_leader_recv_entry_resets_election_timeout(
+    CuTest * tc)
+{
+    void *r = raft_new();
+    raft_set_election_timeout(r, 1000);
+    raft_set_state(r, RAFT_STATE_LEADER);
+
+    raft_periodic(r, 900);
+
+    /* entry message */
+    msg_entry_t mety;
+    mety.id = 1;
+    mety.data.buf = "entry";
+    mety.data.len = strlen("entry");
+
+    /* receive entry */
+    msg_entry_response_t cr;
+    raft_recv_entry(r, 1, &mety, &cr);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
+}
+
 void TestRaft_leader_recv_entry_is_committed_returns_0_if_not_committed(CuTest * tc)
 {
     void *r = raft_new();
