@@ -481,6 +481,10 @@ int raft_node_get_next_idx(raft_node_t* node);
 
 /**
  * @return this node's user data */
+int raft_node_get_match_idx(raft_node_t* me);
+
+/**
+ * @return this node's user data */
 void* raft_node_get_udata(raft_node_t* me);
 
 /**
