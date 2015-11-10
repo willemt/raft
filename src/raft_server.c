@@ -352,13 +352,12 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
 
         raft_vote(me_, node);
         r->vote_granted = 1;
+
+        /* there must be in an election. */
+        me->current_leader = -1;
     }
     else
         r->vote_granted = 0;
-
-    /* voted for someone, therefore must be in an election. */
-    if (0 <= me->voted_for)
-        me->current_leader = -1;
 
     __log(me_, "node requested vote: %d replying: %s",
           node, r->vote_granted == 1 ? "granted" : "not granted");
