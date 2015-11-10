@@ -423,8 +423,15 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
     memcpy(&ety.data, &e->data, sizeof(raft_entry_data_t));
     raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
-        if (me->nodeid != i)
-            raft_send_appendentries(me_, i);
+        /* Only send new entries.
+         * Don't send the entry to peers who are behind, to prevent them from
+         * becomming congested. */
+        if (me->nodeid != i) {
+            int next_idx = raft_node_get_next_idx(raft_get_node(me_, i));
+            int last_log_idx = raft_get_current_idx(me_);
+            if (next_idx == last_log_idx)
+                raft_send_appendentries(me_, i);
+        }
 
     /* if we're the only node, we can consider the entry committed */
     if (1 == me->num_nodes)

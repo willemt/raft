@@ -1814,6 +1814,50 @@ void TestRaft_leader_recv_entry_is_committed_returns_neg_1_if_invalidated(CuTest
     CuAssertTrue(tc, -1 == raft_msg_entry_response_committed(r, &cr));
 }
 
+void TestRaft_leader_recv_entry_does_not_send_new_appendentries_to_slow_nodes(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+    };
+
+    void *sender = sender_new(NULL);
+    raft_set_callbacks(r, &funcs, sender);
+
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+
+    /* make the node slow */
+    raft_node_set_next_idx(raft_get_node(r, 1), 1);
+
+    /* append entries */
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 1;
+    ety.data.buf = "aaaa";
+    ety.data.len = 4;
+    raft_append_entry(r, &ety);
+
+    /* entry message */
+    msg_entry_t mety;
+    mety.id = 1;
+    mety.data.buf = "entry";
+    mety.data.len = strlen("entry");
+
+    /* receive entry */
+    msg_entry_response_t cr;
+    raft_recv_entry(r, 1, &mety, &cr);
+
+    /* check if the slow node got sent this appendentries */
+    msg_appendentries_t* ae;
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL == ae);
+}
+
 void TestRaft_leader_recv_appendentries_response_failure_does_not_set_node_nextid_to_0(
     CuTest * tc)
 {
