@@ -204,7 +204,11 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     if (me->num_nodes / 2 < votes && raft_get_commit_idx(me_) < point)
         raft_set_commit_idx(me_, point);
 
-    /* raft periodic applies committed entries lazily */
+    /* Aggressively send remaining entries */
+    if (raft_get_entry_from_idx(me_, raft_node_get_next_idx(p)))
+        raft_send_appendentries(me_, node);
+
+    /* periodic applies committed entries lazily */
 
     return 0;
 }
