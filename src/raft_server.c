@@ -191,6 +191,10 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         return 0;
     }
 
+    /* response to a repeat transmission -- ignore */
+    if (raft_node_get_match_idx(p) == r->current_idx)
+        return 0;
+
     raft_node_set_next_idx(p, r->current_idx + 1);
     raft_node_set_match_idx(p, r->current_idx);
 
