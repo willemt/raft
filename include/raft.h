@@ -173,12 +173,14 @@ typedef int (
 /** Callback for providing debug logging information.
  * This callback is optional
  * @param[in] raft The Raft server making this callback
+ * @param[in] node The node that is the subject of this log. Could be NULL.
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] buf The buffer that was logged */
 typedef void (
 *func_log_f
 )    (
     raft_server_t* raft,
+    raft_node_t* node,
     void *user_data,
     const char *buf
     );
@@ -575,6 +577,14 @@ int raft_msg_entry_response_committed(raft_server_t* me_,
 /** Get node's ID.
  * @return ID of node */
 int raft_node_get_id(raft_node_t* me_);
+
+/** Tell if we are a leader, candidate or follower.
+ * @return get state of type raft_state_e. */
+int raft_get_state(raft_server_t* me_);
+
+/** The the most recent log's term
+ * @return the last log term */
+int raft_get_last_log_term(raft_server_t* me_);
 
 /** Tell if we are a leader, candidate or follower.
  * @return get state of type raft_state_e. */
