@@ -137,7 +137,7 @@ raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
-    for (i=0; i<me->num_nodes; i++)
+    for (i = 0; i < me->num_nodes; i++)
         if (nodeid == raft_node_get_id(me->nodes[i]))
             return me->nodes[i];
 

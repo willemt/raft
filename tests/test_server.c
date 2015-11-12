@@ -1141,6 +1141,7 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     ety.data.buf = (unsigned char*)"aaa";
     raft_append_entry(r, &ety);
     ety.id = 101;
+    ety.term = 2;
     raft_append_entry(r, &ety);
 
     /* vote not granted */
@@ -1153,9 +1154,9 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     rv.term = 2;
     rv.candidate_id = 1;
     rv.last_log_idx = 1;
-    rv.last_log_term = 2;
+    rv.last_log_term = 3;
     raft_recv_requestvote(r, raft_get_node(r, 2), &rv, &rvr);
-    CuAssertTrue(tc, 1 == rvr.vote_granted);
+    CuAssertIntEquals(tc, 1, rvr.vote_granted);
 }
 
 void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
