@@ -511,6 +511,7 @@ void TestRaft_server_recv_requestvote_candidate_step_down_if_term_is_higher_than
     raft_add_node(r, (void*)2, 0);
     raft_become_candidate(r);
     raft_set_current_term(r, 1);
+    CuAssertIntEquals(tc, 0, raft_get_voted_for(r));
 
     /* current term is less than term */
     msg_requestvote_t rv;
@@ -519,7 +520,9 @@ void TestRaft_server_recv_requestvote_candidate_step_down_if_term_is_higher_than
     rv.last_log_idx = 1;
     msg_requestvote_response_t rvr;
     raft_recv_requestvote(r, 1, &rv, &rvr);
-    CuAssertTrue(tc, 1 == raft_is_follower(r));
+    CuAssertIntEquals(tc, 1, raft_is_follower(r));
+    CuAssertIntEquals(tc, 2, raft_get_current_term(r));
+    CuAssertIntEquals(tc, 1, raft_get_voted_for(r));
 }
 
 /* If votedFor is null or candidateId, and candidate's log is at
@@ -552,13 +555,13 @@ void TestRaft_follower_becomes_follower_is_follower(CuTest * tc)
     CuAssertTrue(tc, raft_is_follower(r));
 }
 
-void TestRaft_follower_becomes_follower_clears_voted_for(CuTest * tc)
+void TestRaft_follower_becomes_follower_does_not_clear_voted_for(CuTest * tc)
 {
     void *r = raft_new();
     raft_vote(r, 1);
     CuAssertTrue(tc, 1 == raft_get_voted_for(r));
     raft_become_follower(r);
-    CuAssertTrue(tc, -1 == raft_get_voted_for(r));
+    CuAssertTrue(tc, 1 == raft_get_voted_for(r));
 }
 
 /* 5.1 */
@@ -1219,8 +1222,10 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
     raft_add_node(r, (void*)2, 0);
 
     raft_set_state(r, RAFT_STATE_CANDIDATE);
+    raft_vote(r, 0);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
     CuAssertTrue(tc, -1 == raft_get_current_leader(r));
+    CuAssertTrue(tc, 0 == raft_get_current_term(r));
 
     /* receive recent appendentries */
     msg_appendentries_t ae;
@@ -1232,6 +1237,8 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
     CuAssertTrue(tc, 1 == raft_is_follower(r));
     /* after accepting a leader, it's available as the last known leader */
     CuAssertTrue(tc, 1 == raft_get_current_leader(r));
+    CuAssertTrue(tc, 1 == raft_get_current_term(r));
+    CuAssertTrue(tc, -1 == raft_get_voted_for(r));
 }
 
 /* Candidate 5.2 */
@@ -1662,16 +1669,16 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     raft_send_appendentries(r, 0);
     raft_send_appendentries(r, 1);
     /* receive mock success responses */
-    aer.term = 5;
+    aer.term = 1;
     aer.success = 1;
     aer.current_idx = 2;
     aer.first_idx = 2;
     raft_recv_appendentries_response(r, 0, &aer);
     raft_recv_appendentries_response(r, 1, &aer);
     /* leader will now have majority followers who have appended this log */
-    CuAssertTrue(tc, 2 == raft_get_commit_idx(r));
+    CuAssertIntEquals(tc, 2, raft_get_commit_idx(r));
     raft_periodic(r, 1);
-    CuAssertTrue(tc, 2 == raft_get_last_applied_idx(r));
+    CuAssertIntEquals(tc, 2, raft_get_last_applied_idx(r));
 }
 
 void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * tc)

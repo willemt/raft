@@ -126,7 +126,6 @@ void raft_become_follower(raft_server_t* me_)
 {
     __log(me_, "becoming follower");
     raft_set_state(me_, RAFT_STATE_FOLLOWER);
-    raft_vote(me_, -1);
 }
 
 int raft_periodic(raft_server_t* me_, int msec_since_last_period)
@@ -171,12 +170,19 @@ int raft_recv_appendentries_response(raft_server_t* me_,
           node, r->success == 1 ? "success" : "fail", r->current_idx,
           r->first_idx);
 
-    // TODO: should force invalid leaders to stepdown
-
     if (!raft_is_leader(me_))
         return -1;
 
     raft_node_t* p = raft_get_node(me_, node);
+
+    /* If response contains term T > currentTerm: set currentTerm = T
+       and convert to follower (§5.3) */
+    if (me->current_term < r->term)
+    {
+        raft_set_current_term(me_, r->term);
+        raft_become_follower(me_);
+        return 0;
+    }
 
     if (0 == r->success)
     {
@@ -350,7 +356,10 @@ int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     if (raft_get_current_term(me_) < vr->term)
+    {
+        raft_set_current_term(me_, vr->term);
         raft_become_follower(me_);
+    }
 
     if (__should_grant_vote(me, vr))
     {
@@ -430,7 +439,8 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
         /* Only send new entries.
          * Don't send the entry to peers who are behind, to prevent them from
          * becomming congested. */
-        if (me->nodeid != i) {
+        if (me->nodeid != i)
+        {
             int next_idx = raft_node_get_next_idx(raft_get_node(me_, i));
             int last_log_idx = raft_get_current_idx(me_);
             if (next_idx == last_log_idx)
