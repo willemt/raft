@@ -2087,7 +2087,7 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     CuAssertTrue(tc, 0 == raft_get_current_leader(r));
 
     memset(&ae, 0, sizeof(msg_appendentries_t));
-    ae.term = 5;
+    ae.term = 6;
     ae.prev_log_idx = 6;
     ae.prev_log_term = 5;
     raft_recv_appendentries(r, 1, &ae, &aer);

@@ -247,9 +247,11 @@ int raft_recv_appendentries(
 
     r->term = me->current_term;
 
-    /* Step down - we've found a leader who is legitimate */
-    if (raft_is_leader(me_) && me->current_term <= ae->term)
+    if (me->current_term < ae->term)
+    {
+        raft_set_current_term(me_, ae->term);
         raft_become_follower(me_);
+    }
 
     /* 1. Reply false if term < currentTerm (§5.1) */
     if (ae->term < me->current_term)
@@ -313,11 +315,6 @@ int raft_recv_appendentries(
         int last_log_idx = max(raft_get_current_idx(me_), 1);
         raft_set_commit_idx(me_, min(last_log_idx, ae->leader_commit));
     }
-
-    if (raft_is_candidate(me_))
-        raft_become_follower(me_);
-
-    raft_set_current_term(me_, ae->term);
 
     /* update current leader because we accepted appendentries from it */
     me->current_leader = node;
