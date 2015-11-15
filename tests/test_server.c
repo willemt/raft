@@ -401,7 +401,7 @@ void TestRaft_votes_are_majority_is_true(
     CuAssertTrue(tc, 0 == raft_votes_is_majority(1, 2));
 }
 
-void TestRaft_server_dont_increase_votes_for_me_when_receive_request_vote_response_is_not_granted(
+void TestRaft_server_recv_requestvote_response_dont_increase_votes_for_me_when_not_granted(
     CuTest * tc
     )
 {
@@ -419,7 +419,7 @@ void TestRaft_server_dont_increase_votes_for_me_when_receive_request_vote_respon
     CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 }
 
-void TestRaft_server_increase_votes_for_me_when_receive_request_vote_response(
+void TestRaft_server_recv_requestvote_response_increase_votes_for_me(
     CuTest * tc
     )
 {
@@ -1211,6 +1211,30 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     CuAssertTrue(tc, 5 == rv->term);
     CuAssertTrue(tc, 5 == rv->last_log_term);
     CuAssertTrue(tc, 1 == rv->candidate_id);
+}
+
+void TestRaft_candidate_recv_requestvote_response_becomes_follower_if_current_term_is_less_than_term(
+    CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+
+    raft_set_current_term(r, 1);
+    raft_set_state(r, RAFT_STATE_CANDIDATE);
+    raft_vote(r, 0);
+    CuAssertTrue(tc, 0 == raft_is_follower(r));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
+    CuAssertTrue(tc, 1 == raft_get_current_term(r));
+
+    msg_requestvote_response_t rvr;
+    memset(&rvr, 0, sizeof(msg_requestvote_response_t));
+    rvr.term = 2;
+    rvr.vote_granted = 0;
+    raft_recv_requestvote_response(r, 1, &rvr);
+    CuAssertTrue(tc, 1 == raft_is_follower(r));
+    CuAssertTrue(tc, 2 == raft_get_current_term(r));
+    CuAssertTrue(tc, -1 == raft_get_voted_for(r));
 }
 
 /* Candidate 5.2 */

@@ -404,9 +404,12 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
 
     assert(node < me->num_nodes);
 
-    // TODO: if invalid leader then stepdown
-    // if (r->term != raft_get_current_term(me_))
-    // return 0;
+    if (raft_get_current_term(me_) < r->term)
+    {
+        raft_set_current_term(me_, r->term);
+        raft_become_follower(me_);
+        return 0;
+    }
 
     if (1 == r->vote_granted)
     {
