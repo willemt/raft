@@ -1717,13 +1717,12 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     aer.current_idx = 1;
     aer.first_idx = 1;
     raft_recv_appendentries_response(r, 0, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
     raft_recv_appendentries_response(r, 1, &aer);
     /* leader will now have majority followers who have appended this log */
-    CuAssertTrue(tc, 0 != raft_get_commit_idx(r));
-    CuAssertTrue(tc, 2 != raft_get_commit_idx(r));
-    CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+    CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
     raft_periodic(r, 1);
-    CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
+    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
 
     /* SECOND entry log application */
     /* send appendentries -
@@ -1736,6 +1735,7 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     aer.current_idx = 2;
     aer.first_idx = 2;
     raft_recv_appendentries_response(r, 0, &aer);
+    CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
     raft_recv_appendentries_response(r, 1, &aer);
     /* leader will now have majority followers who have appended this log */
     CuAssertIntEquals(tc, 2, raft_get_commit_idx(r));
