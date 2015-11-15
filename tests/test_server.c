@@ -419,6 +419,24 @@ void TestRaft_server_recv_requestvote_response_dont_increase_votes_for_me_when_n
     CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 }
 
+void TestRaft_server_recv_requestvote_response_dont_increase_votes_for_me_when_term_is_not_equal(
+    CuTest * tc
+    )
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_set_current_term(r, 3);
+    CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
+
+    msg_requestvote_response_t rvr;
+    memset(&rvr, 0, sizeof(msg_requestvote_response_t));
+    rvr.term = 2;
+    rvr.vote_granted = 1;
+    raft_recv_requestvote_response(r, 1, &rvr);
+    CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
+}
+
 void TestRaft_server_recv_requestvote_response_increase_votes_for_me(
     CuTest * tc
     )
@@ -2166,7 +2184,7 @@ void TestRaft_leader_sends_empty_appendentries_every_request_timeout(
 void T_estRaft_leader_sends_appendentries_when_receive_entry_msg(CuTest * tc)
 #endif
 
-void TestRaft_leader_recv_voterequest_responds_without_granting(CuTest * tc)
+void TestRaft_leader_recv_requestvote_responds_without_granting(CuTest * tc)
 {
     raft_cbs_t funcs = {
         .send_appendentries = sender_appendentries,
@@ -2199,7 +2217,7 @@ void TestRaft_leader_recv_voterequest_responds_without_granting(CuTest * tc)
     CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
-void TestRaft_leader_recv_voterequest_responds_with_granting_if_term_is_higher(CuTest * tc)
+void TestRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(CuTest * tc)
 {
     raft_cbs_t funcs = {
         .send_appendentries = sender_appendentries,

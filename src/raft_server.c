@@ -407,6 +407,13 @@ int raft_recv_requestvote_response(raft_server_t* me_, int node,
         raft_become_follower(me_);
         return 0;
     }
+    else if (raft_get_current_term(me_) != r->term)
+    {
+        /* The node who voted for us would have obtained our term.
+         * Therefore this is an old message we should ignore.
+         * This happens if the network is pretty choppy. */
+        return 0;
+    }
 
     if (1 == r->vote_granted)
     {
