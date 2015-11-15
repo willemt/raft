@@ -89,13 +89,14 @@ void raft_become_leader(raft_server_t* me_)
     __log(me_, "becoming leader");
 
     raft_set_state(me_, RAFT_STATE_LEADER);
+
     for (i = 0; i < me->num_nodes; i++)
     {
         if (me->nodeid != i)
         {
-            raft_node_t* p = raft_get_node(me_, i);
-            raft_node_set_next_idx(p, raft_get_current_idx(me_) + 1);
-            raft_node_set_match_idx(p, 0);
+            raft_node_t* node = raft_get_node(me_, i);
+            raft_node_set_next_idx(node, raft_get_current_idx(me_));
+            raft_node_set_match_idx(node, 0);
             raft_send_appendentries(me_, i);
         }
     }
@@ -161,19 +162,19 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int etyidx)
 }
 
 int raft_recv_appendentries_response(raft_server_t* me_,
-                                     int node, msg_appendentries_response_t* r)
+                                     int node_idx, msg_appendentries_response_t* r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     __log(me_,
           "received appendentries response node: %d %s cidx: %d 1stidx: %d",
-          node, r->success == 1 ? "success" : "fail", r->current_idx,
+          node_idx, r->success == 1 ? "success" : "fail", r->current_idx,
           r->first_idx);
 
     if (!raft_is_leader(me_))
         return -1;
 
-    raft_node_t* p = raft_get_node(me_, node);
+    raft_node_t* node = raft_get_node(me_, node_idx);
 
     /* If response contains term T > currentTerm: set currentTerm = T
        and convert to follower (§5.3) */
@@ -188,35 +189,35 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     {
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
-        assert(0 <= raft_node_get_next_idx(p));
+        assert(0 <= raft_node_get_next_idx(node));
         // TODO can jump back to where node is different instead of iterating
-        raft_node_set_next_idx(p, raft_node_get_next_idx(p) - 1);
+        raft_node_set_next_idx(node, r->current_idx + 1);
 
         /* retry */
-        raft_send_appendentries(me_, node);
+        raft_send_appendentries(me_, node_idx);
         return 0;
     }
 
     /* response to a repeat transmission -- ignore */
-    if (raft_node_get_match_idx(p) == r->current_idx)
+    if (raft_node_get_match_idx(node) == r->current_idx)
         return 0;
 
-    raft_node_set_next_idx(p, r->current_idx + 1);
-    raft_node_set_match_idx(p, r->current_idx);
+    raft_node_set_next_idx(node, r->current_idx + 1);
+    raft_node_set_match_idx(node, r->current_idx);
 
     /* Update commit idx */
     int votes = 1; /* include me */
     int point = r->current_idx;
     int i;
     for (i = 0; i < me->num_nodes; i++) /* Check others */
-        if (i != me->nodeid && point <= raft_node_get_match_idx(p))
+        if (i != me->nodeid && point <= raft_node_get_match_idx(node))
             votes++;
     if (me->num_nodes / 2 < votes && raft_get_commit_idx(me_) < point)
         raft_set_commit_idx(me_, point);
 
     /* Aggressively send remaining entries */
-    if (raft_get_entry_from_idx(me_, raft_node_get_next_idx(p)))
-        raft_send_appendentries(me_, node);
+    if (raft_get_entry_from_idx(me_, raft_node_get_next_idx(node)))
+        raft_send_appendentries(me_, node_idx);
 
     /* periodic applies committed entries lazily */
 
@@ -253,8 +254,7 @@ int raft_recv_appendentries(
     if (ae->term < me->current_term)
     {
         __log(me_, "AE term is less than current term");
-        r->success = 0;
-        return 0;
+        goto fail;
     }
 
     /* Not the first appendentries we've received */
@@ -266,8 +266,7 @@ int raft_recv_appendentries(
         if (!e)
         {
             __log(me_, "AE no log at prev_idx %d", ae->prev_log_idx);
-            r->success = 0;
-            return 0;
+            goto fail;
         }
 
         /* 2. Reply false if log doesn't contain an entry at prevLogIndex
@@ -276,8 +275,7 @@ int raft_recv_appendentries(
         {
             __log(me_, "AE term doesn't match prev_idx (ie. %d vs %d)",
                   e->term, ae->prev_log_term);
-            r->success = 0;
-            return 0;
+            goto fail;
         }
     }
 
@@ -329,8 +327,9 @@ int raft_recv_appendentries(
     return 0;
 
 fail:
-    __log(me_, "AE failure; couldn't append entry");
     r->success = 0;
+    r->current_idx = raft_get_current_idx(me_);
+    r->first_idx = 0;
     return -1;
 }
 
@@ -445,8 +444,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
         if (me->nodeid != i)
         {
             int next_idx = raft_node_get_next_idx(raft_get_node(me_, i));
-            int last_log_idx = raft_get_current_idx(me_);
-            if (next_idx == last_log_idx)
+            if (next_idx == raft_get_current_idx(me_))
                 raft_send_appendentries(me_, i);
         }
 
@@ -502,14 +500,14 @@ int raft_apply_entry(raft_server_t* me_)
     return 0;
 }
 
-void raft_send_appendentries(raft_server_t* me_, int node)
+void raft_send_appendentries(raft_server_t* me_, int node_idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     if (!(me->cb.send_appendentries))
         return;
 
-    raft_node_t* p = raft_get_node(me_, node);
+    raft_node_t* node = raft_get_node(me_, node_idx);
 
     msg_appendentries_t ae;
     ae.term = me->current_term;
@@ -519,7 +517,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     ae.n_entries = 0;
     ae.entries = NULL;
 
-    int next_idx = raft_node_get_next_idx(p);
+    int next_idx = raft_node_get_next_idx(node);
 
     msg_entry_t mety;
 
@@ -545,13 +543,13 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     }
 
     __log(me_, "sending appendentries node: %d, %d %d %d %d",
-          node,
+          node_idx,
           ae.term,
           ae.leader_commit,
           ae.prev_log_idx,
           ae.prev_log_term);
 
-    me->cb.send_appendentries(me_, me->udata, node, &ae);
+    me->cb.send_appendentries(me_, me->udata, node_idx, &ae);
 }
 
 void raft_send_appendentries_all(raft_server_t* me_)
