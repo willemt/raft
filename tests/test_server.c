@@ -1683,6 +1683,9 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     void *r = raft_new();
     raft_add_node(r, (void*)1, 1);
     raft_add_node(r, (void*)2, 0);
+    raft_add_node(r, (void*)3, 0);
+    raft_add_node(r, (void*)4, 0);
+    raft_add_node(r, (void*)5, 0);
     raft_set_callbacks(r, &funcs, sender);
 
     /* I'm the leader */
@@ -1709,16 +1712,16 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     /* FIRST entry log application */
     /* send appendentries -
      * server will be waiting for response */
-    raft_send_appendentries(r, 0);
     raft_send_appendentries(r, 1);
+    raft_send_appendentries(r, 2);
     /* receive mock success responses */
     aer.term = 1;
     aer.success = 1;
     aer.current_idx = 1;
     aer.first_idx = 1;
-    raft_recv_appendentries_response(r, 0, &aer);
-    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
     raft_recv_appendentries_response(r, 1, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+    raft_recv_appendentries_response(r, 2, &aer);
     /* leader will now have majority followers who have appended this log */
     CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
     raft_periodic(r, 1);
@@ -1727,16 +1730,16 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     /* SECOND entry log application */
     /* send appendentries -
      * server will be waiting for response */
-    raft_send_appendentries(r, 0);
     raft_send_appendentries(r, 1);
+    raft_send_appendentries(r, 2);
     /* receive mock success responses */
     aer.term = 1;
     aer.success = 1;
     aer.current_idx = 2;
     aer.first_idx = 2;
-    raft_recv_appendentries_response(r, 0, &aer);
-    CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
     raft_recv_appendentries_response(r, 1, &aer);
+    CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
+    raft_recv_appendentries_response(r, 2, &aer);
     /* leader will now have majority followers who have appended this log */
     CuAssertIntEquals(tc, 2, raft_get_commit_idx(r));
     raft_periodic(r, 1);
