@@ -1817,7 +1817,7 @@ void TestRaft_leader_recv_appendentries_response_jumps_to_lower_next_idx(
 
     /* receive mock success responses */
     memset(&aer, 0, sizeof(msg_appendentries_response_t));
-    aer.term = 1;
+    aer.term = 2;
     aer.success = 0;
     aer.current_idx = 1;
     raft_recv_appendentries_response(r, 1, &aer);
@@ -2089,6 +2089,37 @@ void TestRaft_leader_recv_appendentries_response_increment_idx_of_node(
     aer.first_idx = 1;
     raft_recv_appendentries_response(r, 1, &aer);
     CuAssertTrue(tc, 2 == raft_node_get_next_idx(p));
+}
+
+void TestRaft_leader_recv_appendentries_response_drop_message_if_term_is_old(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+        .log                         = NULL
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_set_callbacks(r, &funcs, sender);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 2);
+
+    raft_node_t* p = raft_get_node(r, 1);
+    CuAssertTrue(tc, 1 == raft_node_get_next_idx(p));
+
+    /* receive OLD mock success responses */
+    msg_appendentries_response_t aer;
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 1;
+    aer.first_idx = 1;
+    raft_recv_appendentries_response(r, 1, &aer);
+    CuAssertTrue(tc, 1 == raft_node_get_next_idx(p));
 }
 
 void TestRaft_leader_recv_appendentries_steps_down_if_newer(

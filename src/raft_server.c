@@ -184,13 +184,14 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         raft_become_follower(me_);
         return 0;
     }
+    else if (me->current_term != r->term)
+        return 0;
 
     if (0 == r->success)
     {
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_node_get_next_idx(node));
-        // TODO can jump back to where node is different instead of iterating
         raft_node_set_next_idx(node, r->current_idx + 1);
 
         /* retry */
