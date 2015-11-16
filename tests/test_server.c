@@ -1258,15 +1258,16 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
     ety.id = 101;
     raft_append_entry(r, &ety);
     ety.id = 102;
+    ety.term = 3;
     raft_append_entry(r, &ety);
     raft_send_requestvote(r, 1);
 
     msg_requestvote_t* rv = sender_poll_msg_data(sender);
     CuAssertTrue(tc, NULL != rv);
-    CuAssertTrue(tc, 3 == rv->last_log_idx);
-    CuAssertTrue(tc, 5 == rv->term);
-    CuAssertTrue(tc, 5 == rv->last_log_term);
-    CuAssertTrue(tc, 1 == rv->candidate_id);
+    CuAssertIntEquals(tc, 3, rv->last_log_idx);
+    CuAssertIntEquals(tc, 5, rv->term);
+    CuAssertIntEquals(tc, 3, rv->last_log_term);
+    CuAssertIntEquals(tc, 1, rv->candidate_id);
 }
 
 void TestRaft_candidate_recv_requestvote_response_becomes_follower_if_current_term_is_less_than_term(
