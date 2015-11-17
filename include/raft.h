@@ -11,6 +11,13 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
+typedef enum {
+    RAFT_STATE_NONE,
+    RAFT_STATE_FOLLOWER,
+    RAFT_STATE_CANDIDATE,
+    RAFT_STATE_LEADER
+} raft_state_e;
+
 typedef struct
 {
     void *buf;
@@ -541,5 +548,9 @@ int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
  * @param[in] r The response we want to check */
 int raft_msg_entry_response_committed(raft_server_t* me_,
                                       const msg_entry_response_t* r);
+
+/** Tell if we are a leader, candidate or follower.
+ * @return get state of type raft_state_e. */
+int raft_get_state(raft_server_t* me_);
 
 #endif /* RAFT_H_ */

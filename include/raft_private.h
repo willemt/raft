@@ -12,13 +12,6 @@
  * @version 0.1
  */
 
-enum {
-    RAFT_STATE_NONE,
-    RAFT_STATE_FOLLOWER,
-    RAFT_STATE_CANDIDATE,
-    RAFT_STATE_LEADER
-};
-
 typedef struct {
     /* Persistent state: */
 
@@ -105,6 +98,7 @@ int raft_get_commit_idx(raft_server_t* me_);
 void raft_set_last_applied_idx(raft_server_t* me, int idx);
 
 void raft_set_state(raft_server_t* me_, int state);
+
 int raft_get_state(raft_server_t* me_);
 
 raft_node_t* raft_node_new(void* udata);
