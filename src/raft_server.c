@@ -162,7 +162,8 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int etyidx)
 }
 
 int raft_recv_appendentries_response(raft_server_t* me_,
-                                     int node_idx, msg_appendentries_response_t* r)
+                                     int node_idx,
+                                     msg_appendentries_response_t* r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -444,7 +445,8 @@ int raft_votes_is_majority(const int num_nodes, const int nvotes)
     return half + 1 <= nvotes;
 }
 
-int raft_recv_requestvote_response(raft_server_t* me_, int node,
+int raft_recv_requestvote_response(raft_server_t* me_,
+                                   int node,
                                    msg_requestvote_response_t* r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

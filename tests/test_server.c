@@ -270,22 +270,22 @@ void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest* tc)
 void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
     CuTest* tc)
 {
-    raft_entry_t ety;
-
     void *r = raft_new();
 
     /* must be follower */
     raft_set_state(r, RAFT_STATE_FOLLOWER);
     raft_set_current_term(r, 1);
-    raft_set_commit_idx(r, 1);
     raft_set_last_applied_idx(r, 0);
 
     /* need at least one entry */
+    raft_entry_t ety;
     ety.term = 1;
     ety.id = 1;
     ety.data.buf = "aaa";
     ety.data.len = 3;
     raft_append_entry(r, &ety);
+
+    raft_set_commit_idx(r, 1);
 
     /* let time lapse */
     raft_periodic(r, 1);
@@ -295,19 +295,16 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
 
 void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest* tc)
 {
-    raft_entry_t ety;
-    char *str = "aaa";
-
-    ety.term = 1;
-
     void *r = raft_new();
-    raft_set_commit_idx(r, 1);
     raft_set_last_applied_idx(r, 0);
 
+    raft_entry_t ety;
+    ety.term = 1;
     ety.id = 1;
-    ety.data.buf = str;
+    ety.data.buf = "aaa";
     ety.data.len = 3;
     raft_append_entry(r, &ety);
+    raft_set_commit_idx(r, 1);
     raft_apply_entry(r);
     CuAssertTrue(tc, 1 == raft_get_last_applied_idx(r));
 }
@@ -744,8 +741,6 @@ void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev
 
     /* term is different from appendentries */
     raft_set_current_term(r, 2);
-    raft_set_commit_idx(r, 1);
-    raft_set_last_applied_idx(r, 1);
     // TODO at log manually?
 
     /* log idx that server doesn't have */
@@ -1581,6 +1576,19 @@ void TestRaft_leader_sends_appendentries_with_leader_commit(
 
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
+
+    int i;
+
+    for (i=0; i<10; i++)
+    {
+        raft_entry_t ety;
+        ety.term = 1;
+        ety.id = 1;
+        ety.data.buf = "aaa";
+        ety.data.len = 3;
+        raft_append_entry(r, &ety);
+    }
+
     raft_set_commit_idx(r, 10);
 
     /* receive appendentries messages */

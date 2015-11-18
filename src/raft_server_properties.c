@@ -94,6 +94,8 @@ int raft_get_current_idx(raft_server_t* me_)
 void raft_set_commit_idx(raft_server_t* me_, int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+    assert(me->commit_idx <= idx);
+    assert(idx <= raft_get_current_idx(me_));
     me->commit_idx = idx;
 }
 
