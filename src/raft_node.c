@@ -46,7 +46,6 @@ void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
     me->next_idx = nextIdx < 1 ? 1 : nextIdx;
 }
 
-
 int raft_node_get_match_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
@@ -58,7 +57,6 @@ void raft_node_set_match_idx(raft_node_t* me_, int matchIdx)
     raft_node_private_t* me = (raft_node_private_t*)me_;
     me->match_idx = matchIdx;
 }
-
 
 void* raft_node_get_udata(raft_node_t* me_)
 {

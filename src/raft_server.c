@@ -95,7 +95,7 @@ void raft_become_leader(raft_server_t* me_)
         if (me->nodeid != i)
         {
             raft_node_t* node = raft_get_node(me_, i);
-            raft_node_set_next_idx(node, raft_get_current_idx(me_));
+            raft_node_set_next_idx(node, raft_get_current_idx(me_) + 1);
             raft_node_set_match_idx(node, 0);
             raft_send_appendentries(me_, i);
         }
@@ -192,12 +192,20 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_node_get_next_idx(node));
-        raft_node_set_next_idx(node, r->current_idx + 1);
+
+        int next_idx = raft_node_get_next_idx(node);
+        assert(0 <= next_idx);
+        if (r->current_idx < next_idx - 1)
+            raft_node_set_next_idx(node, min(r->current_idx + 1, raft_get_current_idx(me_)));
+        else
+            raft_node_set_next_idx(node, next_idx - 1);
 
         /* retry */
         raft_send_appendentries(me_, node_idx);
         return 0;
     }
+
+    assert(r->current_idx <= raft_get_current_idx(me_));
 
     /* response to a repeat transmission -- ignore */
     if (raft_node_get_match_idx(node) == r->current_idx)
@@ -258,7 +266,7 @@ int raft_recv_appendentries(
     if (ae->term < me->current_term)
     {
         __log(me_, "AE term is less than current term");
-        goto fail;
+        goto fail_with_current_idx;
     }
 
     /* Not the first appendentries we've received */
@@ -270,15 +278,22 @@ int raft_recv_appendentries(
         if (!e)
         {
             __log(me_, "AE no log at prev_idx %d", ae->prev_log_idx);
-            goto fail;
+            goto fail_with_current_idx;
         }
 
         /* 2. Reply false if log doesn't contain an entry at prevLogIndex
            whose term matches prevLogTerm (§5.3) */
+        if (raft_get_current_idx(me_) < ae->prev_log_idx)
+            goto fail_with_current_idx;
+
         if (e->term != ae->prev_log_term)
         {
             __log(me_, "AE term doesn't match prev_idx (ie. %d vs %d)",
                   e->term, ae->prev_log_term);
+            assert(me->commit_idx < ae->prev_log_idx);
+            /* Delete all the following log entries because they don't match */
+            log_delete(me->log, ae->prev_log_idx);
+            r->current_idx = ae->prev_log_idx - 1;
             goto fail;
         }
     }
@@ -286,14 +301,24 @@ int raft_recv_appendentries(
     /* 3. If an existing entry conflicts with a new one (same index
        but different terms), delete the existing entry and all that
        follow it (§5.3) */
+    if (ae->n_entries == 0 && 0 < ae->prev_log_idx && ae->prev_log_idx + 1 < raft_get_current_idx(me_))
+    {
+        assert(me->commit_idx < ae->prev_log_idx + 1);
+        log_delete(me->log, ae->prev_log_idx + 1);
+    }
+
+    r->current_idx = ae->prev_log_idx;
+
     int i;
     for (i = 0; i < ae->n_entries; i++)
     {
         msg_entry_t* ety = &ae->entries[i];
         int ety_index = ae->prev_log_idx + 1 + i;
         raft_entry_t* existing_ety = raft_get_entry_from_idx(me_, ety_index);
+        r->current_idx = ety_index;
         if (existing_ety && existing_ety->term != ety->term)
         {
+            assert(me->commit_idx < ety_index);
             log_delete(me->log, ety_index);
             break;
         }
@@ -306,7 +331,9 @@ int raft_recv_appendentries(
     {
         int e = raft_append_entry(me_, &ae->entries[i]);
         if (-1 == e)
-            goto fail;
+            goto fail_with_current_idx;
+
+        r->current_idx = ae->prev_log_idx + 1 + i;
     }
 
     /* 4. If leaderCommit > commitIndex, set commitIndex =
@@ -321,13 +348,13 @@ int raft_recv_appendentries(
     me->current_leader = node;
 
     r->success = 1;
-    r->current_idx = raft_get_current_idx(me_);
     r->first_idx = ae->prev_log_idx + 1;
     return 0;
 
+fail_with_current_idx:
+    r->current_idx = raft_get_current_idx(me_);
 fail:
     r->success = 0;
-    r->current_idx = raft_get_current_idx(me_);
     r->first_idx = 0;
     return -1;
 }
