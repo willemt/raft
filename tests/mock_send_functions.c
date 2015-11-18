@@ -52,8 +52,7 @@ static int __append_msg(
     raft_server_t* raft
     )
 {
-    msg_t* m;
-    m = malloc(sizeof(msg_t));
+    msg_t* m = malloc(sizeof(msg_t));
     m->type = type;
     m->len = len;
     m->data = malloc(len);
