@@ -218,10 +218,21 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     int votes = 1; /* include me */
     int point = r->current_idx;
     int i;
-    for (i = 0; i < me->num_nodes; i++) /* Check others */
-        if (i != me->nodeid && point <=
-                raft_node_get_match_idx(raft_get_node(me_, i)))
-            votes++;
+    for (i = 0; i < me->num_nodes; i++)
+    {
+        if (me->nodeid == i)
+            continue;
+
+        int match_idx = raft_node_get_match_idx(me->nodes[i]);
+
+        if (0 < match_idx)
+        {
+            raft_entry_t* ety = raft_get_entry_from_idx(me_, match_idx);
+            if (ety->term == me->current_term && point <= match_idx)
+                votes++;
+        }
+    }
+
     if (me->num_nodes / 2 < votes && raft_get_commit_idx(me_) < point)
         raft_set_commit_idx(me_, point);
 

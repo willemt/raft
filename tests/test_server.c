@@ -1833,6 +1833,99 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     CuAssertIntEquals(tc, 2, raft_get_last_applied_idx(r));
 }
 
+void TestRaft_leader_recv_appendentries_response_do_not_increase_commit_idx_because_of_old_terms_with_majority(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+        .log                         = NULL
+    };
+    msg_appendentries_response_t aer;
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_add_node(r, (void*)3, 0);
+    raft_add_node(r, (void*)4, 0);
+    raft_add_node(r, (void*)5, 0);
+    raft_set_callbacks(r, &funcs, sender);
+
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 2);
+    raft_set_commit_idx(r, 0);
+    raft_set_last_applied_idx(r, 0);
+
+    /* append entries - we need two */
+    raft_entry_t ety;
+    ety.term = 1;
+    ety.id = 1;
+    ety.data.buf = "aaaa";
+    ety.data.len = 4;
+    raft_append_entry(r, &ety);
+    ety.id = 2;
+    raft_append_entry(r, &ety);
+    ety.term = 2;
+    ety.id = 3;
+    raft_append_entry(r, &ety);
+
+    memset(&aer, 0, sizeof(msg_appendentries_response_t));
+
+    /* FIRST entry log application */
+    /* send appendentries -
+     * server will be waiting for response */
+    raft_send_appendentries(r, 1);
+    raft_send_appendentries(r, 2);
+    /* receive mock success responses */
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 1;
+    aer.first_idx = 1;
+    raft_recv_appendentries_response(r, 1, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+    raft_recv_appendentries_response(r, 2, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+    raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 0, raft_get_last_applied_idx(r));
+
+    /* SECOND entry log application */
+    /* send appendentries -
+     * server will be waiting for response */
+    raft_send_appendentries(r, 1);
+    raft_send_appendentries(r, 2);
+    /* receive mock success responses */
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 2;
+    aer.first_idx = 2;
+    raft_recv_appendentries_response(r, 1, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+    raft_recv_appendentries_response(r, 2, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+    raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 0, raft_get_last_applied_idx(r));
+
+    /* THIRD entry log application */
+    raft_send_appendentries(r, 1);
+    raft_send_appendentries(r, 2);
+    /* receive mock success responses
+     * let's say that the nodes have majority within leader's current term */
+    aer.term = 2;
+    aer.success = 1;
+    aer.current_idx = 3;
+    aer.first_idx = 3;
+    raft_recv_appendentries_response(r, 1, &aer);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+    raft_recv_appendentries_response(r, 2, &aer);
+    CuAssertIntEquals(tc, 3, raft_get_commit_idx(r));
+    raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
+    raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 2, raft_get_last_applied_idx(r));
+    raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 3, raft_get_last_applied_idx(r));
+}
+
 void TestRaft_leader_recv_appendentries_response_jumps_to_lower_next_idx(
     CuTest * tc)
 {
