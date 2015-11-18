@@ -444,12 +444,34 @@ void TestRaft_server_recv_requestvote_response_increase_votes_for_me(
     raft_set_current_term(r, 1);
     CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 
+    raft_become_candidate(r);
+
     msg_requestvote_response_t rvr;
     memset(&rvr, 0, sizeof(msg_requestvote_response_t));
     rvr.term = 1;
     rvr.vote_granted = 1;
     raft_recv_requestvote_response(r, 1, &rvr);
     CuAssertTrue(tc, 1 == raft_get_nvotes_for_me(r));
+}
+
+void TestRaft_server_recv_requestvote_response_must_be_candidate_to_receive(
+    CuTest * tc
+    )
+{
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_set_current_term(r, 1);
+    CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
+
+    raft_become_leader(r);
+
+    msg_requestvote_response_t rvr;
+    memset(&rvr, 0, sizeof(msg_requestvote_response_t));
+    rvr.term = 1;
+    rvr.vote_granted = 1;
+    raft_recv_requestvote_response(r, 1, &rvr);
+    CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 }
 
 /* Reply false if term < currentTerm (§5.1) */
@@ -1168,7 +1190,7 @@ void TestRaft_follower_becoming_candidate_resets_election_timeout(CuTest * tc)
 
     raft_become_candidate(r);
     /* time is selected randomly */
-    CuAssertTrue(tc, raft_get_timeout_elapsed(r) < 900);
+    CuAssertTrue(tc, raft_get_timeout_elapsed(r) < 1000);
 }
 
 void TestRaft_follower_recv_appendentries_resets_election_timeout(

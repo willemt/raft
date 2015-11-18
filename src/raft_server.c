@@ -116,6 +116,7 @@ void raft_become_candidate(raft_server_t* me_)
     raft_set_state(me_, RAFT_STATE_CANDIDATE);
 
     /* we need a random factor here to prevent simultaneous candidates */
+    /* TODO: this should probably be lower */
     me->timeout_elapsed = rand() % me->election_timeout;
 
     for (i = 0; i < me->num_nodes; i++)
@@ -454,7 +455,7 @@ int raft_recv_requestvote_response(raft_server_t* me_,
     __log(me_, "node responded to requestvote: %d status: %s",
           node, r->vote_granted == 1 ? "granted" : "not granted");
 
-    if (raft_is_leader(me_))
+    if (!raft_is_candidate(me_))
         return 0;
 
     assert(node < me->num_nodes);
