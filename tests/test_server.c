@@ -1085,8 +1085,9 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     rv.last_log_idx = 1;
     rv.last_log_term = 1;
 
-    /* server's term and idx are more up-to-date */
     raft_set_current_term(r, 1);
+
+    /* server's idx are more up-to-date */
     raft_entry_t ety;
     ety.term = 1;
     ety.id = 100;
@@ -1099,6 +1100,16 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     /* vote not granted */
     raft_recv_requestvote(r, 1, &rv, &rvr);
     CuAssertTrue(tc, 0 == rvr.vote_granted);
+
+    /* approve vote, because last_log_term is higher */
+    raft_set_current_term(r, 2);
+    memset(&rv, 0, sizeof(msg_requestvote_t));
+    rv.term = 2;
+    rv.candidate_id = 1;
+    rv.last_log_idx = 1;
+    rv.last_log_term = 2;
+    raft_recv_requestvote(r, 1, &rv, &rvr);
+    CuAssertTrue(tc, 1 == rvr.vote_granted);
 }
 
 void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)

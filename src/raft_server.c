@@ -364,18 +364,29 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
     if (vr->term < raft_get_current_term((void*)me))
         return 0;
 
+    /* TODO: if voted for is candiate return 1 (if below checks pass) */
     /* we've already voted */
     if (-1 != me->voted_for)
         return 0;
 
-    /* we have a more up-to-date log */
-    if (vr->last_log_idx < raft_get_current_idx((void*)me))
-        return 0;
+    int current_idx = raft_get_current_idx((void*)me);
 
-    return 1;
+    if (0 == current_idx)
+        return 1;
+
+    raft_entry_t* e = raft_get_entry_from_idx((void*)me, current_idx);
+    if (e->term < vr->last_log_term)
+        return 1;
+
+    if (vr->last_log_term == e->term && current_idx <= vr->last_log_idx)
+        return 1;
+
+    return 0;
 }
 
-int raft_recv_requestvote(raft_server_t* me_, int node, msg_requestvote_t* vr,
+int raft_recv_requestvote(raft_server_t* me_,
+                          int node,
+                          msg_requestvote_t* vr,
                           msg_requestvote_response_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
