@@ -520,6 +520,29 @@ void TestRaft_server_recv_requestvote_reply_true_if_term_greater_than_or_equal_t
     CuAssertTrue(tc, 1 == rvr.vote_granted);
 }
 
+void TestRaft_server_recv_requestvote_reset_timeout(
+    CuTest * tc
+    )
+{
+    msg_requestvote_t rv;
+    msg_requestvote_response_t rvr;
+
+    void *r = raft_new();
+    raft_add_node(r, (void*)1, 1);
+    raft_add_node(r, (void*)2, 0);
+    raft_set_current_term(r, 1);
+
+    raft_set_election_timeout(r, 1000);
+    raft_periodic(r, 900);
+
+    memset(&rv, 0, sizeof(msg_requestvote_t));
+    rv.term = 2;
+    rv.last_log_idx = 1;
+    raft_recv_requestvote(r, 1, &rv, &rvr);
+    CuAssertTrue(tc, 1 == rvr.vote_granted);
+    CuAssertIntEquals(tc, 0, raft_get_timeout_elapsed(r));
+}
+
 void TestRaft_server_recv_requestvote_candidate_step_down_if_term_is_higher_than_current_term(
     CuTest * tc
     )

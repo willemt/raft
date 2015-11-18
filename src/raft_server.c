@@ -412,6 +412,8 @@ int raft_recv_requestvote(raft_server_t* me_,
 
         /* there must be in an election. */
         me->current_leader = -1;
+
+        me->timeout_elapsed = 0;
     }
     else
         r->vote_granted = 0;
