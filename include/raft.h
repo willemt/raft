@@ -553,4 +553,8 @@ int raft_msg_entry_response_committed(raft_server_t* me_,
  * @return get state of type raft_state_e. */
 int raft_get_state(raft_server_t* me_);
 
+/** The the most recent log's term
+ * @return the last log term */
+int raft_get_last_log_term(raft_server_t* me_);
+
 #endif /* RAFT_H_ */
