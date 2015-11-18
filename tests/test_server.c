@@ -1374,7 +1374,7 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
 }
 
 /* Candidate 5.2 */
-void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_follower(
+void TestRaft_candidate_recv_appendentries_from_same_term_results_in_step_down(
     CuTest * tc)
 {
     msg_appendentries_t ae;
@@ -1384,25 +1384,19 @@ void TestRaft_candidate_recv_appendentries_frm_invalid_leader_doesnt_result_in_f
     raft_add_node(r, (void*)1, 1);
     raft_add_node(r, (void*)2, 0);
 
-    /* server's log is newer */
-    raft_set_current_term(r, 1);
+    raft_set_current_term(r, 2);
 
-    /*  is a candidate */
     raft_set_state(r, RAFT_STATE_CANDIDATE);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
-    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 
-    /*  invalid leader determined by "leaders" old log */
     memset(&ae, 0, sizeof(msg_appendentries_t));
-    ae.term = 1;
+    ae.term = 2;
     ae.prev_log_idx = 1;
     ae.prev_log_term = 1;
 
     /* appendentry from invalid leader doesn't make candidate become follower */
     raft_recv_appendentries(r, 1, &ae, &aer);
-    CuAssertTrue(tc, 1 == raft_is_candidate(r));
-    /* should not have changed leader after rejecting appendentry */
-    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
+    CuAssertTrue(tc, 0 == raft_is_candidate(r));
 }
 
 void TestRaft_leader_becomes_leader_is_leader(CuTest * tc)

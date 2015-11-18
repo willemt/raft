@@ -256,15 +256,19 @@ int raft_recv_appendentries(
 
     r->term = me->current_term;
 
-    if (me->current_term < ae->term)
+    if (raft_is_candidate(me_) && me->current_term == ae->term)
+    {
+        me->voted_for = -1;
+        raft_become_follower(me_);
+    }
+    else if (me->current_term < ae->term)
     {
         raft_set_current_term(me_, ae->term);
         raft_become_follower(me_);
     }
-
-    /* 1. Reply false if term < currentTerm (§5.1) */
-    if (ae->term < me->current_term)
+    else if (ae->term < me->current_term)
     {
+        /* 1. Reply false if term < currentTerm (§5.1) */
         __log(me_, "AE term is less than current term");
         goto fail_with_current_idx;
     }
