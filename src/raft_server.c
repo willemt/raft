@@ -109,7 +109,7 @@ void raft_become_candidate(raft_server_t* me_)
 
     __log(me_, NULL, "becoming candidate");
 
-    raft_set_current_term(me_, raft_get_current_term(me_) + 1); 
+    raft_set_current_term(me_, raft_get_current_term(me_) + 1);
     for (i = 0; i < me->num_nodes; i++)
         raft_node_vote_for_me(me->nodes[i], 0);
     raft_vote(me_, me->node);
@@ -220,6 +220,16 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     raft_node_set_next_idx(node, r->current_idx + 1);
     raft_node_set_match_idx(node, r->current_idx);
 
+    if (!raft_node_is_voting(node) &&
+        raft_get_current_idx(me_) <= r->current_idx + 1 &&
+        me->cb.node_has_sufficient_logs &&
+        0 == raft_node_has_sufficient_logs(node)
+        )
+    {
+        raft_node_set_has_sufficient_logs(node);
+        me->cb.node_has_sufficient_logs(me_, me->udata, node);
+    }
+
     /* Update commit idx */
     int votes = 1; /* include me */
     int point = r->current_idx;
@@ -291,7 +301,7 @@ int raft_recv_appendentries(
     {
         /* 1. Reply false if term < currentTerm (§5.1) */
         __log(me_, node, "AE term %d is less than current term %d",
-            ae->term, me->current_term);
+              ae->term, me->current_term);
         goto fail_with_current_idx;
     }
 
@@ -409,7 +419,7 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 
     return 0;
 }
-       
+
 int raft_recv_requestvote(raft_server_t* me_,
                           raft_node_t* node,
                           msg_requestvote_t* vr,
@@ -513,7 +523,7 @@ int raft_recv_entry(raft_server_t* me_, raft_node_t* node, msg_entry_t* e,
         return -1;
 
     __log(me_, node, "received entry t:%d id: %d idx: %d",
-            me->current_term, e->id, raft_get_current_idx(me_) + 1, node);
+          me->current_term, e->id, raft_get_current_idx(me_) + 1, node);
 
     raft_entry_t ety;
     ety.term = me->current_term;
@@ -581,7 +591,7 @@ int raft_apply_entry(raft_server_t* me_)
         return -1;
 
     __log(me_, NULL, "applying log: %d, id: %d size: %d",
-        me->last_applied_idx, e->id, e->data.len);
+          me->last_applied_idx, e->id, e->data.len);
 
     me->last_applied_idx++;
     if (me->cb.applylog)
@@ -633,11 +643,11 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     }
 
     __log(me_, node, "sending appendentries node: ci:%d t:%d lc:%d pli:%d plt:%d",
-        raft_get_current_idx(me_),
-        ae.term,
-        ae.leader_commit,
-        ae.prev_log_idx,
-        ae.prev_log_term);
+          raft_get_current_idx(me_),
+          ae.term,
+          ae.leader_commit,
+          ae.prev_log_idx,
+          ae.prev_log_term);
 
     me->cb.send_appendentries(me_, me->udata, node, &ae);
 

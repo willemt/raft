@@ -18,6 +18,7 @@
 
 #define RAFT_NODE_VOTED_FOR_ME 1
 #define RAFT_NODE_VOTING 1 << 1
+#define RAFT_NODE_HAS_SUFFICIENT_LOG 1 << 2
 
 typedef struct
 {
@@ -109,6 +110,18 @@ int raft_node_is_voting(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return (me->flags & RAFT_NODE_VOTING) != 0;
+}
+
+void raft_node_set_has_sufficient_logs(raft_node_t* me_)
+{
+    raft_node_private_t* me = (raft_node_private_t*)me_;
+    me->flags |= RAFT_NODE_HAS_SUFFICIENT_LOG;
+}
+
+int raft_node_has_sufficient_logs(raft_node_t* me_)
+{
+    raft_node_private_t* me = (raft_node_private_t*)me_;
+    return (me->flags & RAFT_NODE_HAS_SUFFICIENT_LOG) != 0;
 }
 
 int raft_node_get_id(raft_node_t* me_)

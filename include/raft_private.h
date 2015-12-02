@@ -90,6 +90,7 @@ int raft_apply_entry(raft_server_t* me_);
 int raft_append_entry(raft_server_t* me_, raft_entry_t* c);
 
 void raft_set_commit_idx(raft_server_t* me, int commit_idx);
+
 int raft_get_commit_idx(raft_server_t* me_);
 
 void raft_set_last_applied_idx(raft_server_t* me, int idx);
@@ -109,6 +110,10 @@ int raft_node_get_match_idx(raft_node_t* me_);
 void raft_node_vote_for_me(raft_node_t* me_, const int vote);
 
 int raft_node_has_vote_for_me(raft_node_t* me_);
+
+void raft_node_set_has_sufficient_logs(raft_node_t* me_);
+
+int raft_node_has_sufficient_logs(raft_node_t* me_);
 
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
