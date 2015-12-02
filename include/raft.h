@@ -168,6 +168,19 @@ typedef int (
     msg_appendentries_t* msg
     );
 
+/** Callback for detecting when non-voting nodes have obtained enough logs.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node
+ * @return 0 on success */
+typedef void (
+*func_node_has_sufficient_logs_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_node_t* node
+    );
+
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG
 /** Callback for providing debug logging information.
@@ -292,6 +305,9 @@ typedef struct
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. */
     func_logentry_event_f log_pop;
+
+    /** Callback for detecting when a non-voting node has sufficient logs. */
+    func_node_has_sufficient_logs_f node_has_sufficient_logs;
 
     /** Callback for catching debugging log messages
      * This callback is optional */
