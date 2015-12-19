@@ -495,9 +495,15 @@ void raft_node_set_udata(raft_node_t* me, void* user_data);
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me, int idx);
 
 /**
- * @param[in] node The node's index
- * @return node pointed to by node index */
+ * @param[in] node The node's ID
+ * @return node pointed to by node ID */
 raft_node_t* raft_get_node(raft_server_t* me_, const int id);
+
+/**
+ * Used for iterating through nodes
+ * @param[in] node The node's idx
+ * @return node pointed to by node idx */
+raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const int idx);
 
 /**
  * @return number of votes this server has received this election */
