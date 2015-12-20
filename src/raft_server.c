@@ -513,7 +513,8 @@ int raft_recv_requestvote_response(raft_server_t* me_,
     return 0;
 }
 
-int raft_recv_entry(raft_server_t* me_, raft_node_t* node, msg_entry_t* e,
+int raft_recv_entry(raft_server_t* me_,
+                    msg_entry_t* e,
                     msg_entry_response_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -522,8 +523,8 @@ int raft_recv_entry(raft_server_t* me_, raft_node_t* node, msg_entry_t* e,
     if (!raft_is_leader(me_))
         return -1;
 
-    __log(me_, node, "received entry t:%d id: %d idx: %d",
-          me->current_term, e->id, raft_get_current_idx(me_) + 1, node);
+    __log(me_, NULL, "received entry t:%d id: %d idx: %d",
+          me->current_term, e->id, raft_get_current_idx(me_) + 1);
 
     raft_entry_t ety;
     ety.term = me->current_term;

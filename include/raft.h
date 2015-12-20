@@ -435,7 +435,6 @@ int raft_recv_requestvote_response(raft_server_t* me,
  * @param[out] r The resulting response
  * @return 0 on success, -1 on failure */
 int raft_recv_entry(raft_server_t* me,
-                    raft_node_t* node,
                     msg_entry_t* ety,
                     msg_entry_response_t *r);
 

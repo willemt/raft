@@ -355,7 +355,7 @@ void TestRaft_server_recv_entry_auto_commits_if_we_are_the_only_node(CuTest * tc
 
     /* receive entry */
     msg_entry_response_t cr;
-    raft_recv_entry(r, raft_get_node(r, 1), &ety, &cr);
+    raft_recv_entry(r, &ety, &cr);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
     CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
 }
@@ -1534,7 +1534,7 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
     ety.data.len = strlen("entry");
 
     /* receive entry */
-    raft_recv_entry(r, raft_get_node(r, 2), &ety, &cr);
+    raft_recv_entry(r, &ety, &cr);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
     /* trigger response through commit */
@@ -1558,7 +1558,7 @@ void TestRaft_non_leader_recv_entry_msg_fails(CuTest * tc)
     ety.data.len = strlen("entry");
 
     /* receive entry */
-    int e = raft_recv_entry(r, raft_get_node(r, 2), &ety, &cr);
+    int e = raft_recv_entry(r, &ety, &cr);
     CuAssertTrue(tc, -1 == e);
 }
 
@@ -1758,7 +1758,7 @@ void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
     raft_set_state(r, RAFT_STATE_LEADER);
     CuAssertTrue(tc, 0 == raft_get_log_count(r));
 
-    raft_recv_entry(r, raft_get_node(r, 2), &ety, &cr);
+    raft_recv_entry(r, &ety, &cr);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 }
 
@@ -2175,7 +2175,7 @@ void TestRaft_leader_recv_entry_resets_election_timeout(
 
     /* receive entry */
     msg_entry_response_t cr;
-    raft_recv_entry(r, NULL, &mety, &cr);
+    raft_recv_entry(r, &mety, &cr);
     CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
 }
 
@@ -2197,7 +2197,7 @@ void TestRaft_leader_recv_entry_is_committed_returns_0_if_not_committed(CuTest *
 
     /* receive entry */
     msg_entry_response_t cr;
-    raft_recv_entry(r, raft_get_node(r, 2), &mety, &cr);
+    raft_recv_entry(r, &mety, &cr);
     CuAssertTrue(tc, 0 == raft_msg_entry_response_committed(r, &cr));
 
     raft_set_commit_idx(r, 1);
@@ -2222,7 +2222,7 @@ void TestRaft_leader_recv_entry_is_committed_returns_neg_1_if_invalidated(CuTest
 
     /* receive entry */
     msg_entry_response_t cr;
-    raft_recv_entry(r, raft_get_node(r, 2), &mety, &cr);
+    raft_recv_entry(r, &mety, &cr);
     CuAssertTrue(tc, 0 == raft_msg_entry_response_committed(r, &cr));
     CuAssertTrue(tc, cr.term == 1);
     CuAssertTrue(tc, cr.idx == 1);
@@ -2288,7 +2288,7 @@ void TestRaft_leader_recv_entry_does_not_send_new_appendentries_to_slow_nodes(Cu
 
     /* receive entry */
     msg_entry_response_t cr;
-    raft_recv_entry(r, NULL, &mety, &cr);
+    raft_recv_entry(r, &mety, &cr);
 
     /* check if the slow node got sent this appendentries */
     msg_appendentries_t* ae;
