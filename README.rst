@@ -44,12 +44,13 @@ We tell the Raft server what the cluster configuration is by using the ``raft_ad
 
 .. code-block:: c
 
-    raft_add_node(raft, connection_user_data, peer_is_self);
+    raft_add_node(raft, connection_user_data, node_id, peer_is_self);
 
 Where:
 
 * ``connection_user_data`` is a pointer to user data.
 * ``peer_is_self`` is boolean indicating that this is the current server's server index.
+* ``node_id`` is the unique integer ID of the node. Peers use this to identify themselves.
 
 .. [#] AKA "Raft peer"
 .. [#] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
@@ -98,7 +99,7 @@ We call ``raft_recv_entry`` when we want to append the entry to the log.
 .. code-block:: c
 
     msg_entry_response_t response;
-    e = raft_recv_entry(raft, node_idx, &entry, &response);
+    e = raft_recv_entry(raft,  &entry, &response);
 
 You should populate the ``entry`` struct with the log entry the client has sent. After the call completes the ``response`` parameter is populated and can be used by the ``raft_msg_entry_response_committed`` function to check if the log entry has been committed or not.
 
@@ -114,7 +115,7 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
 
     msg_entry_response_t response;
 
-    e = raft_recv_entry(sv->raft, sv->node_idx, &entry, &response);
+    e = raft_recv_entry(sv->raft, &entry, &response);
     if (0 != e)
         return h2oh_respond_with_error(req, 500, "BAD");
 
@@ -142,14 +143,14 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
 
 .. code-block:: c
 
-    e = raft_recv_appendentries_response(sv->raft, conn->node_idx, &m.aer);
+    e = raft_recv_appendentries_response(sv->raft, conn->node, &m.aer);
     uv_cond_signal(&sv->appendentries_received);
 
 **Redirecting the client to the leader**
 
 When we receive an entry log from the client it's possible we might not be a leader.
 
-If we aren't currently the leader of the raft cluster, we MUST send a redirect error message to the client. This is so that the client can connect directly to the leader in future connections. This enables future requests to be faster until the leader changes.
+If we aren't currently the leader of the raft cluster, we MUST send a redirect error message to the client. This is so that the client can connect directly to the leader in future connections. This enables future requests to be faster (ie. no redirects are required after the first redirect until the leader changes).
 
 We use the ``raft_get_current_leader`` function to check who is the current leader.
 
@@ -158,16 +159,15 @@ We use the ``raft_get_current_leader`` function to check who is the current lead
 .. code-block:: c
 
     /* redirect to leader if needed */
-    int leader = raft_get_current_leader(sv->raft);
+    raft_node_t* leader = raft_get_current_leader_node(sv->raft);
     if (-1 == leader)
     {
         return h2oh_respond_with_error(req, 503, "Leader unavailable");
     }
-    else if (leader != sv->node_idx)
+    else if (leader != sv->node)
     {
         /* send redirect */
-        raft_node_t* node = raft_get_node(sv->raft, leader);
-        peer_connection_t* conn = raft_node_get_udata(node);
+        peer_connection_t* conn = raft_node_get_udata(leader);
         char leader_url[LEADER_URL_LEN];
 
         static h2o_generator_t generator = { NULL, NULL };
@@ -215,7 +215,7 @@ The following callbacks MUST be implemented: ``send_requestvote``, ``send_append
 
 **send_requestvote()**
 
-For this callback we have to serialize a ``msg_requestvote_t`` struct, and then send it to the peer identified by ``node_idx``.
+For this callback we have to serialize a ``msg_requestvote_t`` struct, and then send it to the peer identified by ``node``.
 
 *Example from ticketd showing how the callback is implemented:*
 
@@ -224,11 +224,10 @@ For this callback we have to serialize a ``msg_requestvote_t`` struct, and then 
     static int __send_requestvote(
         raft_server_t* raft,
         void *udata,
-        int node_idx,
+        raft_node_t* node,
         msg_requestvote_t* m
         )
     {
-        raft_node_t* node = raft_get_node(raft, node_idx);
         peer_connection_t* conn = raft_node_get_udata(node);
 
         uv_buf_t bufs[1];
@@ -247,7 +246,7 @@ For this callback we have to serialize a ``msg_requestvote_t`` struct, and then 
 
 **send_appendentries()**
 
-For this callback we have to serialize a ``msg_appendentries_t`` struct, and then send it to the peer identified by ``node_idx``. This struct is more complicated to serialize because the ``m->entries`` array might be populated.
+For this callback we have to serialize a ``msg_appendentries_t`` struct, and then send it to the peer identified by ``node``. This struct is more complicated to serialize because the ``m->entries`` array might be populated.
 
 *Example from ticketd showing how the callback is implemented:*
 
@@ -256,13 +255,12 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
     static int __send_appendentries(
         raft_server_t* raft,
         void *user_data,
-        int node_idx,
+        raft_node_t* node,
         msg_appendentries_t* m
         )
     {
         uv_buf_t bufs[3];
 
-        raft_node_t* node = raft_get_node(raft, node_idx);
         peer_connection_t* conn = raft_node_get_udata(node);
 
         char buf[RAFT_BUFLEN], *ptr = buf;
@@ -364,14 +362,14 @@ The table below shows the structs that you need to deserialize-to or deserialize
 
     msg_appendentries_t ae;
     msg_appendentries_response_t response;
-    char buf_in[1024]. buf_out[1024];
+    char buf_in[1024], buf_out[1024];
     size_t len_in, len_out;
 
     read(socket, buf_in, &len_in);
 
     deserialize_appendentries(buf_in, len_in, &ae);
 
-    e = raft_recv_requestvote(sv->raft, conn->node_idx, &ae, &response);
+    e = raft_recv_requestvote(sv->raft, conn->node, &ae, &response);
 
     serialize_appendentries_response(&response, buf_out, &len_out);
 
