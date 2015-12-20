@@ -685,6 +685,13 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     return me->nodes[me->num_nodes - 1];
 }
 
+raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self)
+{
+    raft_node_t* node = raft_add_node(me_, udata, id, is_self);
+    raft_node_set_voting(node, 0);
+    return node;
+}
+
 int raft_get_nvotes_for_me(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

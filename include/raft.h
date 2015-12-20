@@ -347,6 +347,10 @@ raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_se
 
 #define raft_add_peer raft_add_node
 
+/** Add a node which does not participate in voting.
+ * Parameters are identical to raft_add_node */
+raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self);
+
 /** Set election timeout.
  * The amount of time that needs to elapse before we assume the leader is down
  * @param[in] msec Election timeout in milliseconds */
