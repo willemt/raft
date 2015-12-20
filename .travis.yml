@@ -1,6 +1,6 @@
 language: c
 before_install:
-  - sudo pip install cpp-coveralls --use-mirrors
+  - sudo pip install cpp-coveralls
 script:
   - make tests
 after_success:
