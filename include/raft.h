@@ -171,8 +171,7 @@ typedef int (
 /** Callback for detecting when non-voting nodes have obtained enough logs.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The node
- * @return 0 on success */
+ * @param[in] node The node */
 typedef void (
 *func_node_has_sufficient_logs_f
 )   (
