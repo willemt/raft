@@ -21,7 +21,7 @@ typedef struct {
 
     /* The candidate the server voted for in its current term,
      * or Nil if it hasn't voted for any.  */
-    raft_node_t* voted_for;
+    int voted_for;
 
     /* the log which is replicated */
     void* log;

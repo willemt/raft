@@ -581,6 +581,7 @@ void TestRaft_server_recv_requestvote_candidate_step_down_if_term_is_higher_than
     /* current term is less than term */
     msg_requestvote_t rv;
     memset(&rv, 0, sizeof(msg_requestvote_t));
+    rv.candidate_id = 2;
     rv.term = 2;
     rv.last_log_idx = 1;
     msg_requestvote_response_t rvr;
@@ -588,6 +589,30 @@ void TestRaft_server_recv_requestvote_candidate_step_down_if_term_is_higher_than
     CuAssertIntEquals(tc, 1, raft_is_follower(r));
     CuAssertIntEquals(tc, 2, raft_get_current_term(r));
     CuAssertIntEquals(tc, 2, raft_get_voted_for(r));
+}
+
+void TestRaft_server_recv_requestvote_depends_on_candidate_id(
+    CuTest * tc
+    )
+{
+    void *r = raft_new();
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_become_candidate(r);
+    raft_set_current_term(r, 1);
+    CuAssertIntEquals(tc, 1, raft_get_voted_for(r));
+
+    /* current term is less than term */
+    msg_requestvote_t rv;
+    memset(&rv, 0, sizeof(msg_requestvote_t));
+    rv.candidate_id = 3;
+    rv.term = 2;
+    rv.last_log_idx = 1;
+    msg_requestvote_response_t rvr;
+    raft_recv_requestvote(r, NULL, &rv, &rvr);
+    CuAssertIntEquals(tc, 1, raft_is_follower(r));
+    CuAssertIntEquals(tc, 2, raft_get_current_term(r));
+    CuAssertIntEquals(tc, 3, raft_get_voted_for(r));
 }
 
 /* If votedFor is null or candidateId, and candidate's log is at
