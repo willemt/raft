@@ -596,8 +596,11 @@ int raft_get_last_log_term(raft_server_t* me_);
  * are counted in majorities. */
 void raft_node_set_voting(raft_node_t* node, int voting);
 
-/* Tell if a node is a voting node or not.
+/** Tell if a node is a voting node or not.
  * @return 1 if this is a voting node. Otherwise 0. */
 int raft_node_is_voting(raft_node_t* me_);
+
+/** Apply all entries up to the commit index */
+void raft_apply_all(raft_server_t* me_);
 
 #endif /* RAFT_H_ */

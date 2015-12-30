@@ -731,3 +731,9 @@ int raft_msg_entry_response_committed(raft_server_t* me_,
         return -1;
     return r->idx <= raft_get_commit_idx(me_);
 }
+
+void raft_apply_all(raft_server_t* me_)
+{
+    while (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
+        raft_apply_entry(me_);
+}
