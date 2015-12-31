@@ -593,7 +593,7 @@ int raft_node_get_id(raft_node_t* me_);
  * @return get state of type raft_state_e. */
 int raft_get_state(raft_server_t* me_);
 
-/** The the most recent log's term
+/** The most recent log's term
  * @return the last log term */
 int raft_get_last_log_term(raft_server_t* me_);
 
@@ -601,7 +601,7 @@ int raft_get_last_log_term(raft_server_t* me_);
  * @return get state of type raft_state_e. */
 int raft_get_state(raft_server_t* me_);
 
-/** The the most recent log's term
+/** The most recent log's term
  * @return the last log term */
 int raft_get_last_log_term(raft_server_t* me_);
 
@@ -616,5 +616,10 @@ int raft_node_is_voting(raft_node_t* me_);
 
 /** Apply all entries up to the commit index */
 void raft_apply_all(raft_server_t* me_);
+
+/** Become leader
+ * WARNING: this is a dangerous function call. It could lead to your cluster
+ * losing it's consensus guarantees. */
+void raft_become_leader(raft_server_t* me);
 
 #endif /* RAFT_H_ */
