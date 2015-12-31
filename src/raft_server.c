@@ -280,7 +280,7 @@ int raft_recv_appendentries(
               ae->prev_log_term,
               ae->n_entries);
 
-    printf("%p %p\n", node, raft_get_current_leader_node(me_));
+    printf("recv ae %p %p\n", node, raft_get_current_leader_node(me_));
 
     r->term = me->current_term;
 
