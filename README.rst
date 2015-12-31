@@ -22,6 +22,16 @@ Building
 
    make tests
 
+Quality Assurance
+=================
+
+We use the following methods to ensure that the library is safe:
+
+* A `simulator <https://github.com/willemt/virtraft>`_ is used to test the Raft invariants on unreliable networks
+* All bugs have regression tests
+* Many unit tests
+* `Usage <https://github.com/willemt/ticketd>`_
+
 How to integrate with this library
 ==================================
 
