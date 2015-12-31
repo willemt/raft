@@ -466,6 +466,10 @@ int raft_get_current_term(raft_server_t* me);
 int raft_get_current_idx(raft_server_t* me);
 
 /**
+ * @return commit index */
+int raft_get_commit_idx(raft_server_t* me_);
+
+/**
  * @return 1 if follower; 0 otherwise */
 int raft_is_follower(raft_server_t* me);
 
