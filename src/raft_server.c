@@ -49,6 +49,7 @@ raft_server_t* raft_new()
     me->request_timeout = 200;
     me->election_timeout = 1000;
     me->log = log_new();
+    me->node_with_voting_cfg_change = NULL;
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
     me->current_leader = NULL;
     return (raft_server_t*)me;
@@ -734,7 +735,7 @@ void raft_apply_all(raft_server_t* me_)
 
 int raft_recv_voting_cfg_change_entry(raft_server_t* me_,
                                       raft_node_t* node,
-                                      msg_entry_t* e,
+                                      msg_entry_t* ety,
                                       msg_entry_response_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -742,7 +743,7 @@ int raft_recv_voting_cfg_change_entry(raft_server_t* me_,
     if (me->node_with_voting_cfg_change)
         return -1;
 
-    int e = raft_recv_entry(me_, e, r);
+    int e = raft_recv_entry(me_, ety, r);
     if (e < 0)
         return -1;
 

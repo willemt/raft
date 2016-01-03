@@ -56,6 +56,8 @@ typedef struct {
 
     /* my node ID */
     raft_node_t* node;
+
+    raft_node_t* node_with_voting_cfg_change;
 } raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);
