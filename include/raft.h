@@ -169,6 +169,7 @@ typedef int (
     );
 
 /** Callback for detecting when non-voting nodes have obtained enough logs.
+ * This triggers only when there are no pending configuration changes.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node */
