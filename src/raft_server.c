@@ -167,9 +167,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(node);
-    assert(node != me->node);
-
     __log(me_, node,
           "received appendentries response %s ci:%d rci:%d 1stidx:%d",
           r->success == 1 ? "SUCCESS" : "fail",
@@ -189,6 +186,10 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         return 0;
     }
     else if (me->current_term != r->term)
+        return 0;
+
+    /* stop processing, this is a node we don't have in our configuration */
+    if (!node)
         return 0;
 
     if (0 == r->success)
@@ -279,8 +280,6 @@ int raft_recv_appendentries(
               ae->prev_log_idx,
               ae->prev_log_term,
               ae->n_entries);
-
-    printf("recv ae %p %p\n", node, raft_get_current_leader_node(me_));
 
     r->term = me->current_term;
 
@@ -468,9 +467,6 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(node);
-    assert(node != me->node);
-
     __log(me_, node, "node responded to requestvote status: %s",
           r->vote_granted == 1 ? "granted" : "not granted");
 
@@ -498,7 +494,8 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 
     if (1 == r->vote_granted)
     {
-        raft_node_vote_for_me(node, 1);
+        if (node)
+            raft_node_vote_for_me(node, 1);
         int votes = raft_get_nvotes_for_me(me_);
         if (raft_votes_is_majority(me->num_nodes, votes))
             raft_become_leader(me_);
