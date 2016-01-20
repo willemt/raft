@@ -60,8 +60,6 @@ typedef struct {
 
 void raft_election_start(raft_server_t* me);
 
-void raft_become_leader(raft_server_t* me);
-
 void raft_become_candidate(raft_server_t* me);
 
 void raft_become_follower(raft_server_t* me);

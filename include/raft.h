@@ -616,4 +616,9 @@ int raft_node_is_voting(raft_node_t* me_);
 /** Apply all entries up to the commit index */
 void raft_apply_all(raft_server_t* me_);
 
+/** Become leader
+ * WARNING: this is a dangerous function call. It could lead to your cluster
+ * losing it's consensus guarantees. */
+void raft_become_leader(raft_server_t* me);
+
 #endif /* RAFT_H_ */
