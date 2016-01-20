@@ -692,6 +692,30 @@ raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, i
     return node;
 }
 
+void raft_remove_node(raft_server_t* me_, raft_node_t* node)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    raft_node_t* new_array, *new_node;
+
+    new_array = (raft_node_t*)calloc((me->num_nodes - 1), sizeof(raft_node_t*));
+    new_node = new_array;
+
+    for (int i = 0; i<me->num_nodes; i++)
+    {
+        if (me->nodes[i] == node)
+            continue;
+        *new_node = me->nodes[i];
+        new_node++;
+    }
+
+    me->num_nodes--;
+    free(me->nodes);
+    me->nodes = new_array;
+
+    free(node);
+}
+
 int raft_get_nvotes_for_me(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

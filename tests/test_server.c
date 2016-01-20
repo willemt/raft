@@ -61,6 +61,19 @@ void TestRaft_server_voting_results_in_voting(CuTest * tc)
     CuAssertTrue(tc, 9 == raft_get_voted_for(r));
 }
 
+void TestRaft_server_remove_node(CuTest * tc)
+{
+    void *r = raft_new();
+    void* n1 = raft_add_node(r, NULL, 1, 0);
+    void* n2 = raft_add_node(r, NULL, 9, 0);
+
+    raft_remove_node(r, n1);
+    CuAssertTrue(tc, NULL == raft_get_node(r, 1));
+    CuAssertTrue(tc, NULL != raft_get_node(r, 9));
+    raft_remove_node(r, n2);
+    CuAssertTrue(tc, NULL == raft_get_node(r, 9));
+}
+
 void TestRaft_election_start_increments_term(CuTest * tc)
 {
     void *r = raft_new();

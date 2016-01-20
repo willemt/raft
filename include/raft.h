@@ -350,6 +350,10 @@ raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_se
  * Parameters are identical to raft_add_node */
 raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self);
 
+/** Remove node.
+ * @param node The node to be removed. */
+void raft_remove_node(raft_server_t* me_, raft_node_t* node);
+
 /** Set election timeout.
  * The amount of time that needs to elapse before we assume the leader is down
  * @param[in] msec Election timeout in milliseconds */
