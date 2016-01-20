@@ -179,6 +179,10 @@ int raft_recv_appendentries_response(raft_server_t* me_,
           r->current_idx,
           r->first_idx);
 
+    /* Stale response -- ignore */
+    if (r->current_idx <= raft_node_get_match_idx(node))
+        return 0;
+
     if (!raft_is_leader(me_))
         return -1;
 
@@ -212,10 +216,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     }
 
     assert(r->current_idx <= raft_get_current_idx(me_));
-
-    /* response to a repeat transmission -- ignore */
-    if (raft_node_get_match_idx(node) == r->current_idx)
-        return 0;
 
     raft_node_set_next_idx(node, r->current_idx + 1);
     raft_node_set_match_idx(node, r->current_idx);
