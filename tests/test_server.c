@@ -693,6 +693,7 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
     /*  appendentry has newer term, so we change our currentterm */
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertTrue(tc, 1 == aer.success);
+    CuAssertTrue(tc, 2 == aer.term);
     /* term has been updated */
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
     /* and leader has been updated */

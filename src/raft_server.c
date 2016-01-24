@@ -295,6 +295,7 @@ int raft_recv_appendentries(
     else if (me->current_term < ae->term)
     {
         raft_set_current_term(me_, ae->term);
+        r->term = ae->term;
         raft_become_follower(me_);
     }
     else if (ae->term < me->current_term)
