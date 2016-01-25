@@ -61,6 +61,17 @@ void TestRaft_server_voting_results_in_voting(CuTest * tc)
     CuAssertTrue(tc, 9 == raft_get_voted_for(r));
 }
 
+void TestRaft_server_add_node_makes_non_voting_node_voting(CuTest * tc)
+{
+    void *r = raft_new();
+    void* n1 = raft_add_non_voting_node(r, NULL, 9, 0);
+
+    CuAssertTrue(tc, !raft_node_is_voting(n1));
+    raft_add_node(r, NULL, 9, 0);
+    CuAssertTrue(tc, raft_node_is_voting(n1));
+    CuAssertIntEquals(tc, 1, raft_get_num_nodes(r));
+}
+
 void TestRaft_server_remove_node(CuTest * tc)
 {
     void *r = raft_new();

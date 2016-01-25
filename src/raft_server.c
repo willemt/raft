@@ -666,10 +666,13 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    /* TODO: does not yet support dynamic membership changes */
-    if (me->current_term != 0 && me->timeout_elapsed != 0 &&
-        me->election_timeout != 0)
-        return NULL;
+    /* set to voting if node already exists */
+    raft_node_t* node = raft_get_node(me_, id);
+    if (node)
+    {
+        raft_node_set_voting(node, 1);
+        return node;
+    }
 
     me->num_nodes++;
     me->nodes = (raft_node_t*)realloc(me->nodes, sizeof(raft_node_t*) * me->num_nodes);
