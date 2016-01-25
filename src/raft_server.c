@@ -167,9 +167,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(node);
-    assert(node != me->node);
-
     __log(me_, node,
           "received appendentries response %s ci:%d rci:%d 1stidx:%d",
           r->success == 1 ? "SUCCESS" : "fail",
@@ -193,6 +190,10 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         return 0;
     }
     else if (me->current_term != r->term)
+        return 0;
+
+    /* stop processing, this is a node we don't have in our configuration */
+    if (!node)
         return 0;
 
     if (0 == r->success)
@@ -267,9 +268,6 @@ int raft_recv_appendentries(
     )
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-
-    assert(node);
-    assert(node != me->node);
 
     me->timeout_elapsed = 0;
 
@@ -528,7 +526,8 @@ int raft_recv_entry(raft_server_t* me_,
     raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
     {
-        if (me->node == me->nodes[i] || !raft_node_is_voting(me->nodes[i]))
+        if (me->node == me->nodes[i] || !me->nodes[i] ||
+            !raft_node_is_voting(me->nodes[i]))
             continue;
 
         /* Only send new entries.

@@ -694,6 +694,18 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
     CuAssertTrue(tc, -1 == raft_get_current_leader(r));
 }
 
+void TestRaft_follower_recv_appendentries_does_not_need_node(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    msg_appendentries_t ae = {};
+    ae.term = 1;
+    msg_appendentries_response_t aer;
+    raft_recv_appendentries(r, NULL, &ae, &aer);
+    CuAssertTrue(tc, 1 == aer.success);
+}
+
 /* TODO: check if test case is needed */
 void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     CuTest * tc)
