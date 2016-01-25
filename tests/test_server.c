@@ -340,7 +340,7 @@ void TestRaft_server_periodic_elapses_election_timeout(CuTest * tc)
     CuAssertTrue(tc, 100 == raft_get_timeout_elapsed(r));
 }
 
-void TestRaft_server_election_timeout_promotes_us_to_leader_if_there_is_only_1_node(CuTest * tc)
+void TestRaft_server_election_timeout_does_no_promote_us_to_leader_if_there_is_only_1_node(CuTest * tc)
 {
     void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
@@ -349,7 +349,7 @@ void TestRaft_server_election_timeout_promotes_us_to_leader_if_there_is_only_1_n
     /* clock over (ie. 1000 + 1), causing new election */
     raft_periodic(r, 1001);
 
-    CuAssertTrue(tc, 1 == raft_is_leader(r));
+    CuAssertTrue(tc, 0 == raft_is_leader(r));
 }
 
 void TestRaft_server_recv_entry_auto_commits_if_we_are_the_only_node(CuTest * tc)
