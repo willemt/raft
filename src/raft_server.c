@@ -522,6 +522,7 @@ int raft_recv_entry(raft_server_t* me_,
     raft_entry_t ety;
     ety.term = me->current_term;
     ety.id = e->id;
+    ety.type = e->type;
     memcpy(&ety.data, &e->data, sizeof(raft_entry_data_t));
     raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
@@ -623,6 +624,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     {
         mety.term = ety->term;
         mety.id = ety->id;
+        mety.type = ety->type;
         mety.data.len = ety->data.len;
         mety.data.buf = ety->data.buf;
         ae.entries = &mety;

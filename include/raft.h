@@ -18,6 +18,14 @@ typedef enum {
     RAFT_STATE_LEADER
 } raft_state_e;
 
+typedef enum {
+    RAFT_LOGTYPE_NORMAL,
+    RAFT_LOGTYPE_ADD_NONVOTING_NODE,
+    RAFT_LOGTYPE_ADD_NODE,
+    RAFT_LOGTYPE_REMOVE_NODE,
+    RAFT_LOGTYPE_NUM,
+} raft_logtype_e;
+
 typedef struct
 {
     void *buf;
@@ -33,6 +41,9 @@ typedef struct
 
     /** the entry's unique ID */
     unsigned int id;
+
+    /** type of entry */
+    int type;
 
     raft_entry_data_t data;
 } raft_entry_t;
