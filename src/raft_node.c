@@ -103,7 +103,6 @@ void raft_node_set_voting(raft_node_t* me_, int voting)
         me->flags |= RAFT_NODE_VOTING;
     else
         me->flags &= ~RAFT_NODE_VOTING;
-
 }
 
 int raft_node_is_voting(raft_node_t* me_)

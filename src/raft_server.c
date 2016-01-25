@@ -482,9 +482,10 @@ int raft_recv_requestvote_response(raft_server_t* me_,
           r->vote_granted == 1 ? "granted" : "not granted");
 
     if (!raft_is_candidate(me_))
+    {
         return 0;
-
-    if (raft_get_current_term(me_) < r->term)
+    }
+    else if (raft_get_current_term(me_) < r->term)
     {
         raft_set_current_term(me_, r->term);
         raft_become_follower(me_);
@@ -588,7 +589,9 @@ int raft_apply_entry(raft_server_t* me_)
     if (me->last_applied_idx == me->commit_idx)
         return -1;
 
-    raft_entry_t* e = raft_get_entry_from_idx(me_, me->last_applied_idx + 1);
+    int log_idx = me->last_applied_idx + 1;
+
+    raft_entry_t* e = raft_get_entry_from_idx(me_, log_idx);
     if (!e)
         return -1;
 
@@ -698,7 +701,6 @@ void raft_remove_node(raft_server_t* me_, raft_node_t* node)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     raft_node_t* new_array, *new_node;
-
     new_array = (raft_node_t*)calloc((me->num_nodes - 1), sizeof(raft_node_t*));
     new_node = new_array;
 
