@@ -44,7 +44,7 @@ raft_server_t* raft_new()
     if (!me)
         return NULL;
     me->current_term = 0;
-    me->voted_for = NULL;
+    me->voted_for = -1;
     me->timeout_elapsed = 0;
     me->request_timeout = 200;
     me->election_timeout = 1000;
@@ -289,7 +289,7 @@ int raft_recv_appendentries(
 
     if (raft_is_candidate(me_) && me->current_term == ae->term)
     {
-        me->voted_for = NULL;
+        me->voted_for = -1;
         raft_become_follower(me_);
     }
     else if (me->current_term < ae->term)
@@ -403,7 +403,7 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 
     /* TODO: if voted for is candiate return 1 (if below checks pass) */
     /* we've already voted */
-    if (me->voted_for)
+    if (0 < me->voted_for)
         return 0;
 
     int current_idx = raft_get_current_idx((void*)me);
@@ -428,9 +428,6 @@ int raft_recv_requestvote(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(node);
-    assert(node != me->node);
-
     if (raft_get_current_term(me_) < vr->term)
     {
         raft_set_current_term(me_, vr->term);
@@ -443,7 +440,7 @@ int raft_recv_requestvote(raft_server_t* me_,
          * Both states would have voted for themselves */
         assert(!(raft_is_leader(me_) || raft_is_candidate(me_)));
 
-        raft_vote(me_, node);
+        raft_vote_for_nodeid(me_, vr->candidate_id);
         r->vote_granted = 1;
 
         /* there must be in an election. */
@@ -475,9 +472,6 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(node);
-    assert(node != me->node);
-
     __log(me_, node, "node responded to requestvote status: %s",
           r->vote_granted == 1 ? "granted" : "not granted");
 
@@ -506,7 +500,8 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 
     if (1 == r->vote_granted)
     {
-        raft_node_vote_for_me(node, 1);
+        if (node)
+            raft_node_vote_for_me(node, 1);
         int votes = raft_get_nvotes_for_me(me_);
         if (raft_votes_is_majority(me->num_nodes, votes))
             raft_become_leader(me_);
@@ -729,7 +724,7 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
             if (raft_node_has_vote_for_me(me->nodes[i]))
                 votes += 1;
 
-    if (me->voted_for == me->node)
+    if (me->voted_for == raft_get_nodeid(me_))
         votes += 1;
 
     return votes;
@@ -737,13 +732,16 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
 
 void raft_vote(raft_server_t* me_, raft_node_t* node)
 {
+    raft_vote_for_nodeid(me_, node ? raft_node_get_id(node) : -1);
+}
+
+void raft_vote_for_nodeid(raft_server_t* me_, const int nodeid)
+{
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    assert(!me->voted_for || node != me->voted_for);
-
-    me->voted_for = node;
+    me->voted_for = nodeid;
     if (me->cb.persist_vote)
-        me->cb.persist_vote(me_, me->udata, raft_node_get_id(node));
+        me->cb.persist_vote(me_, me->udata, nodeid);
 }
 
 int raft_msg_entry_response_committed(raft_server_t* me_,

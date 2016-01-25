@@ -66,9 +66,7 @@ int raft_get_log_count(raft_server_t* me_)
 int raft_get_voted_for(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    if (me->voted_for)
-        return raft_node_get_id(me->voted_for);
-    return -1;
+    return me->voted_for;
 }
 
 void raft_set_current_term(raft_server_t* me_, const int term)
@@ -77,7 +75,7 @@ void raft_set_current_term(raft_server_t* me_, const int term)
     if (me->current_term < term)
     {
         me->current_term = term;
-        me->voted_for = NULL;
+        me->voted_for = -1;
         if (me->cb.persist_term)
             me->cb.persist_term(me_, me->udata, term);
     }

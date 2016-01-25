@@ -564,6 +564,11 @@ int raft_get_my_id(raft_server_t* me);
  * @param[in] node The server to vote for */
 void raft_vote(raft_server_t* me_, raft_node_t* node);
 
+/** Vote for a server.
+ * This should be used to reload persistent state, ie. the voted-for field.
+ * @param[in] nodeid The server to vote for by nodeid */
+void raft_vote_for_nodeid(raft_server_t* me_, const int nodeid);
+
 /** Set the current term.
  * This should be used to reload persistent state, ie. the current_term field.
  * @param[in] term The new current term */
