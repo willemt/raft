@@ -176,7 +176,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
           r->first_idx);
 
     /* Stale response -- ignore */
-    if (r->current_idx <= raft_node_get_match_idx(node))
+    if (r->current_idx != 0 && r->current_idx <= raft_node_get_match_idx(node))
         return 0;
 
     if (!raft_is_leader(me_))
