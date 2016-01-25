@@ -201,16 +201,14 @@ typedef void (
 /** Callback for applying this log entry to the state machine.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] data Data to be applied to the log
- * @param[in] len Length in bytes of data to be applied
+ * @param[in] ety Log entry to be applied
  * @return 0 on success */
 typedef int (
 *func_applylog_f
 )   (
     raft_server_t* raft,
     void *user_data,
-    const unsigned char *log_data,
-    const int log_len
+    raft_entry_t* ety
     );
 
 /** Callback for saving who we voted for to disk.

@@ -592,7 +592,7 @@ int raft_apply_entry(raft_server_t* me_)
 
     me->last_applied_idx++;
     if (me->cb.applylog)
-        me->cb.applylog(me_, me->udata, e->data.buf, e->data.len);
+        me->cb.applylog(me_, me->udata, e);
     return 0;
 }
 
