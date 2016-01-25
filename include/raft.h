@@ -180,6 +180,7 @@ typedef int (
     );
 
 /** Callback for detecting when non-voting nodes have obtained enough logs.
+ * This triggers only when there are no pending configuration changes.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node */
@@ -634,5 +635,15 @@ void raft_apply_all(raft_server_t* me_);
  * WARNING: this is a dangerous function call. It could lead to your cluster
  * losing it's consensus guarantees. */
 void raft_become_leader(raft_server_t* me);
+
+/** Determine if entry is voting configuration change.
+ * @param[in] ety The entry to query.
+ * @return 1 if this is a voting configuration change. */
+int raft_entry_is_voting_cfg_change(raft_entry_t* ety);
+
+/** Determine if entry is configuration change.
+ * @param[in] ety The entry to query.
+ * @return 1 if this is a configuration change. */
+int raft_entry_is_cfg_change(raft_entry_t* ety);
 
 #endif /* RAFT_H_ */

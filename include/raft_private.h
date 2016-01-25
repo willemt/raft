@@ -56,6 +56,9 @@ typedef struct {
 
     /* my node ID */
     raft_node_t* node;
+
+    /* the log which has a voting cfg change, otherwise -1 */
+    int voting_cfg_change_log_idx;
 } raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);

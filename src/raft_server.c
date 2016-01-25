@@ -49,6 +49,7 @@ raft_server_t* raft_new()
     me->request_timeout = 200;
     me->election_timeout = 1000;
     me->log = log_new();
+    me->voting_cfg_change_log_idx = -1;
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
     me->current_leader = NULL;
     return (raft_server_t*)me;
@@ -220,6 +221,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     raft_node_set_match_idx(node, r->current_idx);
 
     if (!raft_node_is_voting(node) &&
+        -1 == me->voting_cfg_change_log_idx &&
         raft_get_current_idx(me_) <= r->current_idx + 1 &&
         me->cb.node_has_sufficient_logs &&
         0 == raft_node_has_sufficient_logs(node)
@@ -513,6 +515,11 @@ int raft_recv_entry(raft_server_t* me_,
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
+    /* Only one voting cfg change at a time */
+    if (raft_entry_is_voting_cfg_change(e))
+        if (-1 != me->voting_cfg_change_log_idx)
+            return -1;
+
     if (!raft_is_leader(me_))
         return -1;
 
@@ -546,6 +553,10 @@ int raft_recv_entry(raft_server_t* me_,
     r->id = e->id;
     r->idx = raft_get_current_idx(me_);
     r->term = me->current_term;
+
+    if (raft_entry_is_voting_cfg_change(e))
+        me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
+
     return 0;
 }
 
@@ -571,6 +582,10 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
 int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    if (raft_entry_is_voting_cfg_change(ety))
+        me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
+
     return log_append_entry(me->log, ety);
 }
 
@@ -594,6 +609,11 @@ int raft_apply_entry(raft_server_t* me_)
     me->last_applied_idx++;
     if (me->cb.applylog)
         me->cb.applylog(me_, me->udata, e);
+
+    /* voting cfg change is now complete */
+    if (log_idx == me->voting_cfg_change_log_idx)
+        me->voting_cfg_change_log_idx = -1;
+
     return 0;
 }
 
@@ -660,7 +680,7 @@ void raft_send_appendentries_all(raft_server_t* me_)
 
     me->timeout_elapsed = 0;
     for (i = 0; i < me->num_nodes; i++)
-        if (me->node != me->nodes[i] && raft_node_is_voting(me->nodes[i]))
+        if (me->node != me->nodes[i])
             raft_send_appendentries(me_, me->nodes[i]);
 }
 
@@ -763,4 +783,18 @@ void raft_apply_all(raft_server_t* me_)
 {
     while (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
         raft_apply_entry(me_);
+}
+
+int raft_entry_is_voting_cfg_change(raft_entry_t* ety)
+{
+    return RAFT_LOGTYPE_ADD_NODE == ety->type ||
+           RAFT_LOGTYPE_REMOVE_NODE == ety->type;
+}
+
+int raft_entry_is_cfg_change(raft_entry_t* ety)
+{
+    return (
+        RAFT_LOGTYPE_ADD_NODE == ety->type ||
+        RAFT_LOGTYPE_ADD_NONVOTING_NODE == ety->type ||
+        RAFT_LOGTYPE_REMOVE_NODE == ety->type);
 }
