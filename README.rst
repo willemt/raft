@@ -170,16 +170,15 @@ We use the ``raft_get_current_leader`` function to check who is the current lead
 
     /* redirect to leader if needed */
     raft_node_t* leader = raft_get_current_leader_node(sv->raft);
-    if (-1 == leader)
+    if (!leader)
     {
         return h2oh_respond_with_error(req, 503, "Leader unavailable");
     }
-    else if (leader != sv->node)
+    else if (raft_node_get_id(leader) != sv->node_id)
     {
         /* send redirect */
         peer_connection_t* conn = raft_node_get_udata(leader);
         char leader_url[LEADER_URL_LEN];
-
         static h2o_generator_t generator = { NULL, NULL };
         static h2o_iovec_t body = { .base = "", .len = 0 };
         req->res.status = 301;
@@ -247,9 +246,8 @@ For this callback we have to serialize a ``msg_requestvote_t`` struct, and then 
             .rv                = *m
         };
         __peer_msg_serialize(tpl_map("S(I$(IIII))", &msg), bufs, buf);
-        conn->write.data = conn;
-        e = uv_write(&conn->write, conn->stream, bufs, 1, __peer_write_cb);
-        if (-1 == e)
+        int e = uv_try_write(conn->stream, bufs, 1);
+        if (e < 0)
             uv_fatal(e);
         return 0;
     }
@@ -295,7 +293,11 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
             };
 
             /* list of entries */
-            tpl_node *tn = tpl_map("IIB", &m->entries[0].id, &m->entries[0].term, &tb);
+            tpl_node *tn = tpl_map("IIIB",
+                &m->entries[0].id,
+                &m->entries[0].term,
+                &m->entries[0].type,
+                &tb);
             size_t sz;
             tpl_pack(tn, 0);
             tpl_dump(tn, TPL_GETSIZE, &sz);
@@ -303,9 +305,8 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
             assert(0 == e);
             bufs[1].len = sz;
             bufs[1].base = ptr;
-
-            e = uv_write(&conn->write, conn->stream, bufs, 2, __peer_write_cb);
-            if (-1 == e)
+            e = uv_try_write(conn->stream, bufs, 2);
+            if (e < 0)
                 uv_fatal(e);
 
             tpl_free(tn);
@@ -313,8 +314,8 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
         else
         {
             /* keep alive appendentries only */
-            e = uv_write(&conn->write, conn->stream, bufs, 1, __peer_write_cb);
-            if (-1 == e)
+            e = uv_try_write(conn->stream, bufs, 1);
+            if (e < 0)
                 uv_fatal(e);
         }
 
@@ -324,7 +325,7 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
 
 **applylog()**
 
-This callback is all what is needed to interface the FSM with the Raft library.
+This callback is all what is needed to interface the FSM with the Raft library. Depending on your application, you might want to save the commit_idx to disk inside this callback.
 
 **persist_vote() & persist_term()**
 
@@ -388,5 +389,4 @@ The table below shows the structs that you need to deserialize-to or deserialize
 Todo
 ====
 
-- Member changes
 - Log compaction
