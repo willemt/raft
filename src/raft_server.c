@@ -159,7 +159,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int etyidx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    return log_get_from_idx(me->log, etyidx);
+    return log_get_at_idx(me->log, etyidx);
 }
 
 int raft_recv_appendentries_response(raft_server_t* me_,
@@ -625,6 +625,12 @@ int raft_apply_entry(raft_server_t* me_)
     return 0;
 }
 
+raft_entry_t* raft_get_entries_from_idx(raft_server_t* me_, int idx, int* n_etys)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    return log_get_from_idx(me->log, idx, n_etys);
+}
+
 int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -645,20 +651,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
 
     int next_idx = raft_node_get_next_idx(node);
 
-    msg_entry_t mety;
-
-    raft_entry_t* ety = raft_get_entry_from_idx(me_, next_idx);
-    if (ety)
-    {
-        mety.term = ety->term;
-        mety.id = ety->id;
-        mety.type = ety->type;
-        mety.data.len = ety->data.len;
-        mety.data.buf = ety->data.buf;
-        ae.entries = &mety;
-        // TODO: we want to send more than 1 at a time
-        ae.n_entries = 1;
-    }
+    ae.entries = raft_get_entries_from_idx(me_, next_idx, &ae.n_entries);
 
     /* previous log is the log just before the new logs */
     if (1 < next_idx)

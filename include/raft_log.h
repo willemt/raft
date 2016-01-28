@@ -33,7 +33,9 @@ void log_empty(log_t * me_);
  * @return oldest entry */
 void *log_poll(log_t * me_);
 
-raft_entry_t* log_get_from_idx(log_t* me_, int idx);
+raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys);
+
+raft_entry_t* log_get_at_idx(log_t* me_, int idx);
 
 /**
  * @return youngest entry */

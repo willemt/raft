@@ -47,7 +47,7 @@ void TestLog_get_at_idx(CuTest * tc)
     CuAssertTrue(tc, 3 == log_count(l));
 
     CuAssertTrue(tc, 3 == log_count(l));
-    CuAssertTrue(tc, e2.id == log_get_from_idx(l, 2)->id);
+    CuAssertTrue(tc, e2.id == log_get_at_idx(l, 2)->id);
 }
 
 void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
@@ -58,7 +58,7 @@ void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
     l = log_new();
     e1.id = 1;
     CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
-    CuAssertTrue(tc, NULL == log_get_from_idx(l, 2));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
 }
 
 static int __log_pop(
@@ -99,13 +99,13 @@ void TestLog_delete(CuTest * tc)
     CuAssertTrue(tc, ((raft_entry_t*)llqueue_poll(queue))->id == e3.id);
 
     CuAssertTrue(tc, 2 == log_count(l));
-    CuAssertTrue(tc, NULL == log_get_from_idx(l, 3));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
     log_delete(l, 2);
     CuAssertTrue(tc, 1 == log_count(l));
-    CuAssertTrue(tc, NULL == log_get_from_idx(l, 2));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
     log_delete(l, 1);
     CuAssertTrue(tc, 0 == log_count(l));
-    CuAssertTrue(tc, NULL == log_get_from_idx(l, 1));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
 }
 
 void TestLog_delete_onwards(CuTest * tc)
@@ -125,9 +125,9 @@ void TestLog_delete_onwards(CuTest * tc)
     /* even 3 gets deleted */
     log_delete(l, 2);
     CuAssertTrue(tc, 1 == log_count(l));
-    CuAssertTrue(tc, e1.id == log_get_from_idx(l, 1)->id);
-    CuAssertTrue(tc, NULL == log_get_from_idx(l, 2));
-    CuAssertTrue(tc, NULL == log_get_from_idx(l, 3));
+    CuAssertTrue(tc, e1.id == log_get_at_idx(l, 1)->id);
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
 }
 
 void TestLog_peektail(CuTest * tc)
