@@ -394,18 +394,26 @@ fail:
     return -1;
 }
 
+int raft_already_voted(raft_server_t* me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    return -1 != me->voted_for;
+}
+
 static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 {
     if (vr->term < raft_get_current_term((void*)me))
         return 0;
 
     /* TODO: if voted for is candiate return 1 (if below checks pass) */
-    /* we've already voted */
-    if (0 < me->voted_for)
+    if (raft_already_voted((void*)me))
         return 0;
+
+    /* Below we check if log is more up-to-date... */
 
     int current_idx = raft_get_current_idx((void*)me);
 
+    /* Our log is definitely not more up-to-date if it's empty! */
     if (0 == current_idx)
         return 1;
 
