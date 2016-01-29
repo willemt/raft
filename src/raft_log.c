@@ -118,12 +118,12 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
 
     i = (me->front + idx - me->base) % me->size;
 
-    assert(i <= me->back);
+    int logs_till_end_of_log;
 
-    int logs_till_end_of_log = me->back - i;
-
-    /* idx - me->front - me->base; */
-    /* i =  */
+    if (i < me->back)
+        logs_till_end_of_log = me->back - i;
+    else
+        logs_till_end_of_log = me->size - i;
 
     *n_etys = logs_till_end_of_log;
     return &me->entries[i];
