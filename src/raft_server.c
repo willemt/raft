@@ -722,7 +722,8 @@ void raft_remove_node(raft_server_t* me_, raft_node_t* node)
     new_array = (raft_node_t*)calloc((me->num_nodes - 1), sizeof(raft_node_t*));
     new_node = new_array;
 
-    for (int i = 0; i<me->num_nodes; i++)
+    int i;
+    for (i = 0; i<me->num_nodes; i++)
     {
         if (me->nodes[i] == node)
             continue;
