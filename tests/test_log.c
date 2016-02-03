@@ -70,7 +70,7 @@ static int __log_pop(
 {
     raft_entry_t* copy = malloc(sizeof(*entry));
     memcpy(copy, entry, sizeof(*entry));
-    llqueue_offer((void*)raft, copy);
+    llqueue_offer(user_data, copy);
     return 0;
 }
 
@@ -80,12 +80,14 @@ void TestLog_delete(CuTest * tc)
     raft_entry_t e1, e2, e3;
 
     void* queue = llqueue_new();
+    void *r = raft_new();
 
     l = log_new();
     raft_cbs_t funcs = {
         .log_pop = __log_pop
     };
-    log_set_callbacks(l, &funcs, queue);
+    raft_set_callbacks(r, &funcs, queue);
+    log_set_callbacks(l, &funcs, r);
 
     e1.id = 1;
     CuAssertTrue(tc, 0 == log_append_entry(l, &e1));
