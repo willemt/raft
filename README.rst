@@ -28,6 +28,7 @@ Quality Assurance
 We use the following methods to ensure that the library is safe:
 
 * A `simulator <https://github.com/willemt/virtraft>`_ is used to test the Raft invariants on unreliable networks
+* `Fuzzing/property-based-testing <https://github.com/willemt/virtraft/blob/master/tests/test_fuzzer.py>`_ via `Hypothesis <https://github.com/DRMacIver/hypothesis/>`_
 * All bugs have regression tests
 * Many unit tests
 * `Usage <https://github.com/willemt/ticketd>`_
