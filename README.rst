@@ -389,6 +389,7 @@ The table below shows the structs that you need to deserialize-to or deserialize
 
 Membership changes
 ------------------
+Membership changes are managed on the Raft log. You need two log entries to add a server to the cluster. While to remove you only need one log entry. There are two log entries for adding a server because we need to ensure that the new server's log is up to date before it can take part in voting.
 
 **Adding a node**
 
