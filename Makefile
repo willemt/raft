@@ -18,6 +18,7 @@ SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
+CFLAGS += -fsanitize=address
 else
 SHAREDFLAGS = -shared
 SHAREDEXT = so
