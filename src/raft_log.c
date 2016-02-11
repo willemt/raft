@@ -71,6 +71,8 @@ static void __ensurecapacity(log_private_t * me)
 log_t* log_new()
 {
     log_private_t* me = (log_private_t*)calloc(1, sizeof(log_private_t));
+    if (!me)
+        return NULL;
     me->size = INITIAL_CAPACITY;
     me->count = 0;
     me->back = in(me)->front = 0;
