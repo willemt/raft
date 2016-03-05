@@ -7,6 +7,9 @@ echo '/*
 This source file is the amalgamated version of the original.
 Please see github.com/willemt/raft for the original version.
 '
+git log | head -n1 | sed 's/commit/HEAD commit:/g'
+echo '
+'
 cat LICENSE
 echo '
 */
