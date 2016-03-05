@@ -33,6 +33,23 @@ We use the following methods to ensure that the library is safe:
 * Many unit tests
 * `Usage <https://github.com/willemt/ticketd>`_
 
+Single file amalgamation
+========================
+
+The source has been amalgamated into a single ``raft.h`` header file.
+Use `clib <https://github.com/clibs/clib>`_ to download the source into your project's ``deps`` folder, ie:
+
+.. code-block:: bash
+
+    brew install clib
+    clib install willemt/raft_amalgamation
+
+The file is stored in the ``deps`` folder like below:
+
+.. code-block:: bash
+
+    deps/raft/raft.h
+
 How to integrate with this library
 ==================================
 

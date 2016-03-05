@@ -56,6 +56,10 @@ tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_no
 	./tests_main
 	gcov raft_server.c
 
+.PHONY: amalgamation
+amalgamation:
+	./scripts/amalgamate.sh > raft.h
+
 clean:
 	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
 	if [ -f "libcraft.$(SHAREDEXT)" ]; then rm libcraft.$(SHAREDEXT); fi;\
