@@ -71,6 +71,24 @@ void raft_free(raft_server_t* me_)
     free(me_);
 }
 
+void raft_clear(raft_server_t* me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    me->current_term = 0;
+    me->voted_for = -1;
+    me->timeout_elapsed = 0;
+    me->voting_cfg_change_log_idx = -1;
+    raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
+    me->current_leader = NULL;
+    me->commit_idx = 0;
+    me->last_applied_idx = 0;
+    me->num_nodes = 0;
+    me->node = NULL;
+    me->voting_cfg_change_log_idx = 0;
+    log_clear(me->log);
+}
+
 void raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

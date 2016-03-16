@@ -87,6 +87,15 @@ void log_set_callbacks(log_t* me_, raft_cbs_t* funcs, void* raft)
     me->cb = funcs;
 }
 
+void log_clear(log_t* me_)
+{
+    log_private_t* me = (log_private_t*)me_;
+    me->count = 0;
+    me->back = 0;
+    me->front = 0;
+    me->base = 0;
+}
+
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
     log_private_t* me = (log_private_t*)me_;

@@ -327,6 +327,9 @@ raft_server_t* raft_new();
  * Frees all memory */
 void raft_free(raft_server_t* me);
 
+/** De-initialise Raft server. */
+void raft_clear(raft_server_t* me);
+
 /** Set callbacks and user data.
  *
  * @param[in] funcs Callbacks
