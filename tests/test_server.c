@@ -2298,6 +2298,27 @@ void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * t
     CuAssertTrue(tc, NULL == sender_poll_msg_data(sender));
 }
 
+void TestRaft_leader_recv_appendentries_response_without_node_fails(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_add_node(r, NULL, 3, 0);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+
+    /* receive mock success responses */
+    msg_appendentries_response_t aer;
+    memset(&aer, 0, sizeof(msg_appendentries_response_t));
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 0;
+    aer.first_idx = 0;
+    CuAssertIntEquals(tc, -1, raft_recv_appendentries_response(r, NULL, &aer));
+}
+
 void TestRaft_leader_recv_entry_resets_election_timeout(
     CuTest * tc)
 {

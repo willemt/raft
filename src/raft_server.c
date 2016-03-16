@@ -192,6 +192,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
           r->current_idx,
           r->first_idx);
 
+    if (!node)
+        return -1;
+
     /* Stale response -- ignore */
     if (r->current_idx != 0 && r->current_idx <= raft_node_get_match_idx(node))
         return 0;
