@@ -166,29 +166,11 @@ void TestRaft_server_append_entry_means_entry_gets_current_term(CuTest* tc)
     CuAssertTrue(tc, 1 == raft_get_current_idx(r));
 }
 
-static int __raft_logentry_offer(
-    raft_server_t* raft,
-    void *udata,
-    raft_entry_t *ety,
-    int ety_idx
-    )
-{
-    ety->data.buf = udata;
-    return 0;
-}
-
 void TestRaft_server_append_entry_is_retrievable(CuTest * tc)
 {
-    raft_cbs_t funcs = {
-        .log_offer = __raft_logentry_offer,
-    };
-
-    char *data = "xxx";
-
     void *r = raft_new();
     raft_set_state(r, RAFT_STATE_CANDIDATE);
 
-    raft_set_callbacks(r, &funcs, data);
     raft_set_current_term(r, 5);
     raft_entry_t ety = {};
     ety.term = 1;
@@ -407,7 +389,7 @@ void TestRaft_server_recv_entry_fails_if_there_is_already_a_voting_change(CuTest
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
     ety.id = 2;
-    CuAssertTrue(tc, -1 == raft_recv_entry(r, &ety, &cr));
+    CuAssertTrue(tc, RAFT_ERR_ONE_VOTING_CHANGE_ONLY == raft_recv_entry(r, &ety, &cr));
     CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
 }
 
@@ -1655,7 +1637,7 @@ void TestRaft_non_leader_recv_entry_msg_fails(CuTest * tc)
 
     /* receive entry */
     int e = raft_recv_entry(r, &ety, &cr);
-    CuAssertTrue(tc, -1 == e);
+    CuAssertTrue(tc, RAFT_ERR_NOT_LEADER == e);
 }
 
 /* 5.3 */

@@ -384,7 +384,12 @@ int raft_recv_appendentries(
         int e = raft_append_entry(me_, &ae->entries[i]);
         if (-1 == e)
             goto fail_with_current_idx;
-
+        else if (RAFT_ERR_SHUTDOWN == e)
+        {
+            r->success = 0;
+            r->first_idx = 0;
+            return RAFT_ERR_SHUTDOWN;
+        }
         r->current_idx = ae->prev_log_idx + 1 + i;
     }
 
@@ -543,10 +548,10 @@ int raft_recv_entry(raft_server_t* me_,
     /* Only one voting cfg change at a time */
     if (raft_entry_is_voting_cfg_change(e))
         if (-1 != me->voting_cfg_change_log_idx)
-            return -1;
+            return RAFT_ERR_ONE_VOTING_CHANGE_ONLY;
 
     if (!raft_is_leader(me_))
-        return -1;
+        return RAFT_ERR_NOT_LEADER;
 
     __log(me_, NULL, "received entry t:%d id: %d idx: %d",
           me->current_term, e->id, raft_get_current_idx(me_) + 1);
@@ -624,16 +629,20 @@ int raft_apply_entry(raft_server_t* me_)
 
     int log_idx = me->last_applied_idx + 1;
 
-    raft_entry_t* e = raft_get_entry_from_idx(me_, log_idx);
-    if (!e)
+    raft_entry_t* ety = raft_get_entry_from_idx(me_, log_idx);
+    if (!ety)
         return -1;
 
     __log(me_, NULL, "applying log: %d, id: %d size: %d",
-          me->last_applied_idx, e->id, e->data.len);
+          me->last_applied_idx, ety->id, ety->data.len);
 
     me->last_applied_idx++;
     if (me->cb.applylog)
-        me->cb.applylog(me_, me->udata, e);
+    {
+        int e = me->cb.applylog(me_, me->udata, ety);
+        if (RAFT_ERR_SHUTDOWN == e)
+            return RAFT_ERR_SHUTDOWN;
+    }
 
     /* voting cfg change is now complete */
     if (log_idx == me->voting_cfg_change_log_idx)
@@ -796,10 +805,16 @@ int raft_msg_entry_response_committed(raft_server_t* me_,
     return r->idx <= raft_get_commit_idx(me_);
 }
 
-void raft_apply_all(raft_server_t* me_)
+int raft_apply_all(raft_server_t* me_)
 {
     while (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
-        raft_apply_entry(me_);
+    {
+        int e = raft_apply_entry(me_);
+        if (RAFT_ERR_SHUTDOWN == e)
+            return RAFT_ERR_SHUTDOWN;
+    }
+
+    return 0;
 }
 
 int raft_entry_is_voting_cfg_change(raft_entry_t* ety)
