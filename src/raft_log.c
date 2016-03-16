@@ -6,7 +6,6 @@
  * @file
  * @brief ADT for managing Raft log entries (aka entries)
  * @author Willem Thiart himself@willemthiart.com
- * @version 0.1
  */
 
 #include <stdlib.h>

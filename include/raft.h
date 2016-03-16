@@ -5,7 +5,6 @@
  *
  * @file
  * @author Willem Thiart himself@willemthiart.com
- * @version 0.1
  */
 
 #ifndef RAFT_H_

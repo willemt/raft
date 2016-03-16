@@ -1,4 +1,3 @@
-
 #ifndef RAFT_PRIVATE_H_
 #define RAFT_PRIVATE_H_
 
@@ -9,7 +8,6 @@
  *
  * @file
  * @author Willem Thiart himself@willemthiart.com
- * @version 0.1
  */
 
 typedef struct {
