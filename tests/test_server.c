@@ -192,6 +192,7 @@ static int __raft_logentry_offer(
     int ety_idx
     )
 {
+    CuAssertIntEquals(udata, ety_idx, 0);
     ety->data.buf = udata;
     return 0;
 }
@@ -202,10 +203,9 @@ void TestRaft_server_append_entry_user_can_set_data_buf(CuTest * tc)
         .log_offer = __raft_logentry_offer,
     };
 
-    char *data = "xxx";
     void *r = raft_new();
     raft_set_state(r, RAFT_STATE_CANDIDATE);
-    raft_set_callbacks(r, &funcs, data);
+    raft_set_callbacks(r, &funcs, tc);
     raft_set_current_term(r, 5);
     raft_entry_t ety = {};
     ety.term = 1;

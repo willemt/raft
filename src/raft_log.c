@@ -109,7 +109,7 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     if (me->cb && me->cb->log_offer)
     {
         void* ud = raft_get_udata(me->raft);
-        e = me->cb->log_offer(me->raft, ud, c, me->back - 1);
+        e = me->cb->log_offer(me->raft, ud, c, me->back);
         if (e == RAFT_ERR_SHUTDOWN)
             return e;
     }
