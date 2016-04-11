@@ -99,19 +99,26 @@ void log_clear(log_t* me_)
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
     log_private_t* me = (log_private_t*)me_;
+    int e = 0;
 
     if (0 == c->id)
         return -1;
 
     __ensurecapacity(me);
 
+    if (me->cb && me->cb->log_offer)
+    {
+        void* ud = raft_get_udata(me->raft);
+        e = me->cb->log_offer(me->raft, ud, c, me->back - 1);
+        if (e == RAFT_ERR_SHUTDOWN)
+            return e;
+    }
+
     memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
     me->count++;
     me->back++;
 
-    if (me->cb && me->cb->log_offer)
-        return me->cb->log_offer(me->raft, raft_get_udata(me->raft), c, me->back - 1);
-    return 0;
+    return e;
 }
 
 raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
