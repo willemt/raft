@@ -483,6 +483,10 @@ int raft_get_election_timeout(raft_server_t* me);
 int raft_get_num_nodes(raft_server_t* me);
 
 /**
+ * @return number of voting nodes that this server has */
+int raft_get_num_voting_nodes(raft_server_t* me_);
+
+/**
  * @return number of items within log */
 int raft_get_log_count(raft_server_t* me);
 

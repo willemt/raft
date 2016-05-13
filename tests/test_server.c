@@ -1981,6 +1981,57 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     CuAssertIntEquals(tc, 2, raft_get_last_applied_idx(r));
 }
 
+void TestRaft_leader_recv_appendentries_response_increase_commit_idx_using_voting_nodes_majority(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+        .log                         = NULL
+    };
+    msg_appendentries_response_t aer;
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_add_node(r, NULL, 3, 0);
+    raft_add_non_voting_node(r, NULL, 4, 0);
+    raft_add_non_voting_node(r, NULL, 5, 0);
+    raft_set_callbacks(r, &funcs, sender);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+    /* the last applied idx will became 1, and then 2 */
+    raft_set_last_applied_idx(r, 0);
+
+    /* append entries - we need two */
+    raft_entry_t ety = {};
+    ety.term = 1;
+    ety.id = 1;
+    ety.data.buf = "aaaa";
+    ety.data.len = 4;
+    raft_append_entry(r, &ety);
+
+    memset(&aer, 0, sizeof(msg_appendentries_response_t));
+
+    /* FIRST entry log application */
+    /* send appendentries -
+     * server will be waiting for response */
+    raft_send_appendentries(r, raft_get_node(r, 2));
+    /* receive mock success responses */
+    aer.term = 1;
+    aer.success = 1;
+    aer.current_idx = 1;
+    aer.first_idx = 1;
+    raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
+    CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
+    /* leader will now have majority followers who have appended this log */
+    raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
+}
+
 void TestRaft_leader_recv_appendentries_response_duplicate_does_not_decrement_match_idx(
     CuTest * tc)
 {

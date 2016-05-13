@@ -275,7 +275,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         }
     }
 
-    if (me->num_nodes / 2 < votes && raft_get_commit_idx(me_) < point)
+    if (raft_get_num_voting_nodes(me_) / 2 < votes && raft_get_commit_idx(me_) < point)
         raft_set_commit_idx(me_, point);
 
     /* Aggressively send remaining entries */
