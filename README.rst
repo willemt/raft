@@ -78,7 +78,7 @@ Where:
 
 * ``connection_user_data`` is a pointer to user data.
 * ``peer_is_self`` is boolean indicating that this is the current server's server index.
-* ``node_id`` is the unique integer ID of the node. Peers use this to identify themselves.
+* ``node_id`` is the unique integer ID of the node. Peers use this to identify themselves. This SHOULD be a random integer.
 
 .. [#] AKA "Raft peer"
 .. [#] We have to also include the Raft server itself in the raft_add_node calls. When we call raft_add_node for the Raft server, we set peer_is_self to 1. 
@@ -407,6 +407,8 @@ The table below shows the structs that you need to deserialize-to or deserialize
 Membership changes
 ------------------
 Membership changes are managed on the Raft log. You need two log entries to add a server to the cluster. While to remove you only need one log entry. There are two log entries for adding a server because we need to ensure that the new server's log is up to date before it can take part in voting.
+
+It's highly recommended that when a node is added to the cluster that its node ID is random. This is especially important if the server was once connected to the cluster.
 
 **Adding a node**
 
