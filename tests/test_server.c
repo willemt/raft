@@ -22,6 +22,14 @@ void TestRaft_server_voted_for_records_who_we_voted_for(CuTest * tc)
     CuAssertTrue(tc, 2 == raft_get_voted_for(r));
 }
 
+void TestRaft_server_get_my_node(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_node_t* me = raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    CuAssertTrue(tc, me == raft_get_my_node(r));
+}
+
 void TestRaft_server_idx_starts_at_1(CuTest * tc)
 {
     void *r = raft_new();

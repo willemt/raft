@@ -476,6 +476,10 @@ int raft_recv_entry(raft_server_t* me,
 int raft_get_nodeid(raft_server_t* me);
 
 /**
+ * @return the server's node */
+raft_node_t* raft_get_my_node(raft_server_t *me_);
+
+/**
  * @return currently configured election timeout in milliseconds */
 int raft_get_election_timeout(raft_server_t* me);
 
