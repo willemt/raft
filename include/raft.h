@@ -186,7 +186,8 @@ typedef int (
  * This triggers only when there are no pending configuration changes.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The node */
+ * @param[in] node The node
+ * @return 0 does not want to be notified again; otherwise -1 */
 typedef void (
 *func_node_has_sufficient_logs_f
 )   (
@@ -361,7 +362,7 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
  * @param[in] id The integer ID of this node
  *  This is used for identifying clients across sessions.
  * @param[in] is_self Set to 1 if this "node" is this server
- * @return 0 on success; otherwise -1 */
+ * @return node on success; otherwise NULL */
 raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_self);
 
 #define raft_add_peer raft_add_node
@@ -402,7 +403,7 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  *   memory permanent (ie. via malloc) OR re-assign the memory within the
  *   log_offer callback.
  *
- * @param[in] node Index of the node who sent us this message
+ * @param[in] node The node who sent us this message
  * @param[in] ae The appendentries message
  * @param[out] r The resulting response
  * @return 0 on success */
@@ -412,7 +413,7 @@ int raft_recv_appendentries(raft_server_t* me,
                             msg_appendentries_response_t *r);
 
 /** Receive a response from an appendentries message we sent.
- * @param[in] node Index of the node who sent us this message
+ * @param[in] node The node who sent us this message
  * @param[in] r The appendentries response message
  * @return 0 on success */
 int raft_recv_appendentries_response(raft_server_t* me,
@@ -420,7 +421,7 @@ int raft_recv_appendentries_response(raft_server_t* me,
                                      msg_appendentries_response_t* r);
 
 /** Receive a requestvote message.
- * @param[in] node Index of the node who sent us this message
+ * @param[in] node The node who sent us this message
  * @param[in] vr The requestvote message
  * @param[out] r The resulting response
  * @return 0 on success */
@@ -457,7 +458,7 @@ int raft_recv_requestvote_response(raft_server_t* me,
  *      <li>if the server is not the leader
  * </ul>
  *
- * @param[in] node Index of the node who sent us this message
+ * @param[in] node The node who sent us this message
  * @param[in] ety The entry message
  * @param[out] r The resulting response
  * @return
@@ -471,7 +472,7 @@ int raft_recv_entry(raft_server_t* me,
                     msg_entry_response_t *r);
 
 /**
- * @return the server's node ID */
+ * @return server's node ID; -1 if it doesn't know what it is */
 int raft_get_nodeid(raft_server_t* me);
 
 /**
