@@ -139,9 +139,11 @@ void raft_become_candidate(raft_server_t* me_)
     me->current_leader = NULL;
     raft_set_state(me_, RAFT_STATE_CANDIDATE);
 
-    /* we need a random factor here to prevent simultaneous candidates */
-    /* TODO: this should probably be lower */
-    me->timeout_elapsed = rand() % me->election_timeout;
+    /* We need a random factor here to prevent simultaneous candidates.
+     * If the randomness is always positive it's possible that a fast node
+     * would deadlock the cluster by always gaining a headstart. To prevent
+     * this, we allow a negative randomness as a potential handicap. */
+    me->timeout_elapsed = me->election_timeout - 2 * (rand() % me->election_timeout);
 
     for (i = 0; i < me->num_nodes; i++)
         if (me->node != me->nodes[i] && raft_node_is_voting(me->nodes[i]))
