@@ -192,6 +192,11 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int etyidx)
     return log_get_at_idx(me->log, etyidx);
 }
 
+int raft_voting_change_is_in_progress(raft_server_t* me_)
+{
+    return ((raft_server_private_t*)me_)->voting_cfg_change_log_idx != -1;
+}
+
 int raft_recv_appendentries_response(raft_server_t* me_,
                                      raft_node_t* node,
                                      msg_appendentries_response_t* r)
@@ -562,7 +567,7 @@ int raft_recv_entry(raft_server_t* me_,
 
     /* Only one voting cfg change at a time */
     if (raft_entry_is_voting_cfg_change(e))
-        if (-1 != me->voting_cfg_change_log_idx)
+        if (raft_voting_change_is_in_progress(me_))
             return RAFT_ERR_ONE_VOTING_CHANGE_ONLY;
 
     if (!raft_is_leader(me_))
