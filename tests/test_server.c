@@ -1579,10 +1579,10 @@ void TestRaft_candidate_recv_appendentries_from_same_term_results_in_step_down(
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
-    raft_set_current_term(r, 2);
-
-    raft_set_state(r, RAFT_STATE_CANDIDATE);
+    raft_set_current_term(r, 1);
+    raft_become_candidate(r);
     CuAssertTrue(tc, 0 == raft_is_follower(r));
+    CuAssertIntEquals(tc, 1, raft_get_voted_for(r));
 
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 2;
@@ -1591,6 +1591,19 @@ void TestRaft_candidate_recv_appendentries_from_same_term_results_in_step_down(
 
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertTrue(tc, 0 == raft_is_candidate(r));
+
+    /* The election algorithm requires that votedFor always contains the node
+     * voted for in the current term (if any), which is why it is persisted.
+     * By resetting that to -1 we have the following problem:
+     *
+     *  Node self, other1 and other2 becomes candidates
+     *  Node other1 wins election
+     *  Node self gets appendentries
+     *  Node self resets votedFor
+     *  Node self gets requestvote from other2
+     *  Node self votes for Other2
+    */
+    CuAssertIntEquals(tc, 1, raft_get_voted_for(r));
 }
 
 void TestRaft_leader_becomes_leader_is_leader(CuTest * tc)

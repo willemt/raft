@@ -320,7 +320,6 @@ int raft_recv_appendentries(
 
     if (raft_is_candidate(me_) && me->current_term == ae->term)
     {
-        me->voted_for = -1;
         raft_become_follower(me_);
     }
     else if (me->current_term < ae->term)
