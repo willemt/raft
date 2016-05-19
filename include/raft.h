@@ -214,19 +214,6 @@ typedef void (
     );
 #endif
 
-/** Callback for applying this log entry to the state machine.
- * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
- * @param[in] ety Log entry to be applied
- * @return 0 on success */
-typedef int (
-*func_applylog_f
-)   (
-    raft_server_t* raft,
-    void *user_data,
-    raft_entry_t* ety
-    );
-
 /** Callback for saving who we voted for to disk.
  * For safety reasons this callback MUST flush the change to disk.
  * @param[in] raft The Raft server making this callback
@@ -245,9 +232,10 @@ typedef int (
  *
  * This callback is used for:
  * <ul>
- *      <li>Adding entries to the log (ie. offer)
- *      <li>Removing the first entry from the log (ie. polling)
- *      <li>Removing the last entry from the log (ie. popping)
+ *      <li>Adding entries to the log (ie. offer)</li>
+ *      <li>Removing the first entry from the log (ie. polling)</li>
+ *      <li>Removing the last entry from the log (ie. popping)</li>
+ *      <li>Applying entries</li>
  * </ul>
  *
  * For safety reasons this callback MUST flush the change to disk.
@@ -255,8 +243,9 @@ typedef int (
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] entry The entry that the event is happening to.
- *    The user is allowed to change the memory pointed to in the
- *    raft_entry_data_t struct. This MUST be done if the memory is temporary.
+ *    For offering, polling, and popping, the user is allowed to change the
+ *    memory pointed to in the raft_entry_data_t struct. This MUST be done if
+ *    the memory is temporary.
  * @param[in] entry_idx The entries index in the log
  * @return 0 on success */
 typedef int (
@@ -279,7 +268,7 @@ typedef struct
     /** Callback for finite state machine application
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_applylog_f applylog;
+    func_logentry_event_f applylog;
 
     /** Callback for persisting vote data
      * For safety reasons this callback MUST flush the change to disk. */

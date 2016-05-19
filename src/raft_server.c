@@ -659,7 +659,7 @@ int raft_apply_entry(raft_server_t* me_)
     me->last_applied_idx++;
     if (me->cb.applylog)
     {
-        int e = me->cb.applylog(me_, me->udata, ety);
+        int e = me->cb.applylog(me_, me->udata, ety, me->last_applied_idx - 1);
         if (RAFT_ERR_SHUTDOWN == e)
             return RAFT_ERR_SHUTDOWN;
     }
