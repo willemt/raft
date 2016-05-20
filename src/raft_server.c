@@ -94,6 +94,16 @@ void raft_clear(raft_server_t* me_)
     log_clear(me->log);
 }
 
+void raft_delete_entry_from_idx(raft_server_t* me_, int idx)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    if (idx <= me->voting_cfg_change_log_idx)
+        me->voting_cfg_change_log_idx = -1;
+
+    log_delete(me->log, idx);
+}
+
 void raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -364,7 +374,7 @@ int raft_recv_appendentries(
                   e->term, ae->prev_log_term, raft_get_current_idx(me_), ae->prev_log_idx);
             assert(me->commit_idx < ae->prev_log_idx);
             /* Delete all the following log entries because they don't match */
-            log_delete(me->log, ae->prev_log_idx);
+            raft_delete_entry_from_idx(me_, ae->prev_log_idx);
             r->current_idx = ae->prev_log_idx - 1;
             goto fail;
         }
@@ -376,7 +386,7 @@ int raft_recv_appendentries(
     if (ae->n_entries == 0 && 0 < ae->prev_log_idx && ae->prev_log_idx + 1 < raft_get_current_idx(me_))
     {
         assert(me->commit_idx < ae->prev_log_idx + 1);
-        log_delete(me->log, ae->prev_log_idx + 1);
+        raft_delete_entry_from_idx(me_, ae->prev_log_idx + 1);
     }
 
     r->current_idx = ae->prev_log_idx;
@@ -384,14 +394,14 @@ int raft_recv_appendentries(
     int i;
     for (i = 0; i < ae->n_entries; i++)
     {
-        msg_entry_t* ety = &ae->entries[i];
+        raft_entry_t* ety = &ae->entries[i];
         int ety_index = ae->prev_log_idx + 1 + i;
         raft_entry_t* existing_ety = raft_get_entry_from_idx(me_, ety_index);
         r->current_idx = ety_index;
         if (existing_ety && existing_ety->term != ety->term)
         {
             assert(me->commit_idx < ety_index);
-            log_delete(me->log, ety_index);
+            raft_delete_entry_from_idx(me_, ety_index);
             break;
         }
         else if (!existing_ety)
