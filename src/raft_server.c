@@ -454,6 +454,14 @@ int raft_already_voted(raft_server_t* me_)
 
 static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 {
+    /* TODO: 4.2.3 Raft Dissertation:
+     * if a server receives a RequestVote request within the minimum election
+     * timeout of hearing from a current leader, it does not update its term or
+     * grant its vote */
+
+    if (!raft_node_is_voting(raft_get_my_node((void*)me)))
+        return 0;
+
     if (vr->term < raft_get_current_term((void*)me))
         return 0;
 
