@@ -615,8 +615,8 @@ int raft_recv_entry(raft_server_t* me_,
     }
 
     /* if we're the only node, we can consider the entry committed */
-    if (1 == me->num_nodes)
-        me->commit_idx = raft_get_current_idx(me_);
+    if (1 == raft_get_num_voting_nodes(me_))
+        raft_set_commit_idx(me_, raft_get_current_idx(me_));
 
     r->id = e->id;
     r->idx = raft_get_current_idx(me_);
