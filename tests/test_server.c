@@ -126,22 +126,6 @@ void TestRaft_server_starts_with_request_timeout_of_200ms(CuTest * tc)
     CuAssertTrue(tc, 200 == raft_get_request_timeout(r));
 }
 
-void TestRaft_server_entry_append_cant_append_if_id_is_zero(CuTest* tc)
-{
-    raft_entry_t ety = {};
-    char *str = "aaa";
-
-    ety.data.buf = str;
-    ety.data.len = 3;
-    ety.id = 0;
-    ety.term = 1;
-
-    void *r = raft_new();
-    CuAssertTrue(tc, 0 == raft_get_current_idx(r));
-    raft_append_entry(r, &ety);
-    CuAssertTrue(tc, 0 == raft_get_current_idx(r));
-}
-
 void TestRaft_server_entry_append_increases_logidx(CuTest* tc)
 {
     raft_entry_t ety = {};
