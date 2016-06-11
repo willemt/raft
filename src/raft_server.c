@@ -517,8 +517,22 @@ int raft_recv_requestvote(raft_server_t* me_,
         me->timeout_elapsed = 0;
     }
     else
-        r->vote_granted = 0;
+    {
+        /* It's possible the candidate node has been removed from the cluster but
+         * hasn't received the appendentries that confirms the removal. Therefore
+         * the node is partitioned and still thinks its part of the cluster. It
+         * will eventually send a requestvote. This is error response tells the
+         * node that it might be removed. */
+        if (!node)
+        {
+            r->vote_granted = RAFT_REQUESTVOTE_ERR_UNKNOWN_NODE;
+            goto done;
+        }
+        else
+            r->vote_granted = 0;
+    }
 
+done:
     __log(me_, node, "node requested vote: %d replying: %s",
           node,
           r->vote_granted == 1 ? "granted" :
@@ -570,13 +584,27 @@ int raft_recv_requestvote_response(raft_server_t* me_,
           me->current_term,
           r->term);
 
-    if (1 == r->vote_granted)
+    switch (r->vote_granted)
     {
-        if (node)
-            raft_node_vote_for_me(node, 1);
-        int votes = raft_get_nvotes_for_me(me_);
-        if (raft_votes_is_majority(me->num_nodes, votes))
-            raft_become_leader(me_);
+        case RAFT_REQUESTVOTE_ERR_GRANTED:
+            if (node)
+                raft_node_vote_for_me(node, 1);
+            int votes = raft_get_nvotes_for_me(me_);
+            if (raft_votes_is_majority(raft_get_num_voting_nodes(me_), votes))
+                raft_become_leader(me_);
+            break;
+
+        case RAFT_REQUESTVOTE_ERR_NOT_GRANTED:
+            break;
+
+        case RAFT_REQUESTVOTE_ERR_UNKNOWN_NODE:
+            if (raft_node_is_voting(raft_get_my_node(me_)) &&
+                me->connected == RAFT_NODE_STATUS_DISCONNECTING)
+                return RAFT_ERR_SHUTDOWN;
+            break;
+
+        default:
+            assert(0);
     }
 
     return 0;
@@ -686,6 +714,15 @@ int raft_apply_entry(raft_server_t* me_)
         int e = me->cb.applylog(me_, me->udata, ety, me->last_applied_idx - 1);
         if (RAFT_ERR_SHUTDOWN == e)
             return RAFT_ERR_SHUTDOWN;
+    }
+
+    /* Membership Change: confirm connection with cluster */
+    if (RAFT_LOGTYPE_ADD_NODE == ety->type)
+    {
+        int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, log_idx);
+        raft_node_set_has_sufficient_logs(raft_get_node(me_, node_id));
+        if (node_id == raft_get_nodeid(me_))
+            me->connected = RAFT_NODE_STATUS_CONNECTED;
     }
 
     /* voting cfg change is now complete */

@@ -10,9 +10,13 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
-#define RAFT_ERR_NOT_LEADER             -2
-#define RAFT_ERR_ONE_VOTING_CHANGE_ONLY -3
-#define RAFT_ERR_SHUTDOWN -4
+#define RAFT_ERR_NOT_LEADER                  -2
+#define RAFT_ERR_ONE_VOTING_CHANGE_ONLY      -3
+#define RAFT_ERR_SHUTDOWN                    -4
+
+#define RAFT_REQUESTVOTE_ERR_GRANTED          1
+#define RAFT_REQUESTVOTE_ERR_NOT_GRANTED      0
+#define RAFT_REQUESTVOTE_ERR_UNKNOWN_NODE    -1
 
 typedef enum {
     RAFT_STATE_NONE,
@@ -296,6 +300,11 @@ typedef struct
      *  time to free the memory. */
     func_logentry_event_f log_pop;
 
+    /** Callback for determining which node this configuration log entry
+     * affects. This call only applies to configuration change log entries.
+     * @return the node ID of the node */
+    func_logentry_event_f log_get_node_id;
+
     /** Callback for detecting when a non-voting node has sufficient logs. */
     func_node_has_sufficient_logs_f node_has_sufficient_logs;
 
@@ -433,7 +442,9 @@ int raft_recv_requestvote(raft_server_t* me,
 /** Receive a response from a requestvote message we sent.
  * @param[in] node The node this response was sent by
  * @param[in] r The requestvote response message
- * @return 0 on success */
+ * @return
+ *  0 on success;
+ *  RAFT_ERR_SHUTDOWN server should be shutdown; */
 int raft_recv_requestvote_response(raft_server_t* me,
                                    raft_node_t* node,
                                    msg_requestvote_response_t* r);

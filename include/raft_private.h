@@ -1,6 +1,13 @@
 #ifndef RAFT_PRIVATE_H_
 #define RAFT_PRIVATE_H_
 
+enum {
+    RAFT_NODE_STATUS_DISCONNECTED,
+    RAFT_NODE_STATUS_CONNECTED,
+    RAFT_NODE_STATUS_CONNECTING,
+    RAFT_NODE_STATUS_DISCONNECTING
+};
+
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
@@ -57,6 +64,10 @@ typedef struct {
 
     /* the log which has a voting cfg change, otherwise -1 */
     int voting_cfg_change_log_idx;
+
+    /* our membership with the cluster is confirmed (ie. configuration log was
+     * committed) */
+    int connected;
 } raft_server_private_t;
 
 void raft_election_start(raft_server_t* me);
