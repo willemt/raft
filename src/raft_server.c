@@ -125,7 +125,7 @@ void raft_become_leader(raft_server_t* me_)
     raft_set_state(me_, RAFT_STATE_LEADER);
     for (i = 0; i < me->num_nodes; i++)
     {
-        if (me->node == me->nodes[i] || !raft_node_is_voting(me->nodes[i]))
+        if (me->node == me->nodes[i])
             continue;
 
         raft_node_t* node = me->nodes[i];
