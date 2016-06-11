@@ -188,7 +188,7 @@ typedef int (
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node
  * @return 0 does not want to be notified again; otherwise -1 */
-typedef void (
+typedef int (
 *func_node_has_sufficient_logs_f
 )   (
     raft_server_t* raft,

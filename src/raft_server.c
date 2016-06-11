@@ -276,8 +276,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         0 == raft_node_has_sufficient_logs(node)
         )
     {
-        raft_node_set_has_sufficient_logs(node);
-        me->cb.node_has_sufficient_logs(me_, me->udata, node);
+        int e = me->cb.node_has_sufficient_logs(me_, me->udata, node);
+        if (0 == e)
+            raft_node_set_has_sufficient_logs(node);
     }
 
     /* Update commit idx */
