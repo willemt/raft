@@ -123,4 +123,8 @@ int raft_node_has_sufficient_logs(raft_node_t* me_);
 
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
+void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
+
+void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
+
 #endif /* RAFT_PRIVATE_H_ */

@@ -107,6 +107,7 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     {
         void* ud = raft_get_udata(me->raft);
         e = me->cb->log_offer(me->raft, ud, c, me->back);
+        raft_offer_log(me->raft, c, me->back);
         if (e == RAFT_ERR_SHUTDOWN)
             return e;
     }
@@ -184,6 +185,7 @@ void log_delete(log_t* me_, int idx)
         if (me->cb && me->cb->log_pop)
             me->cb->log_pop(me->raft, raft_get_udata(me->raft),
                             &me->entries[me->back - 1], me->back);
+        raft_pop_log(me->raft, &me->entries[me->back - 1], me->back);
         me->back--;
         me->count--;
     }
