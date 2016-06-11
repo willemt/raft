@@ -792,18 +792,23 @@ void raft_remove_node(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    raft_node_t* new_array, *new_node;
+    raft_node_t* new_array, *new_nodes;
     new_array = (raft_node_t*)calloc((me->num_nodes - 1), sizeof(raft_node_t*));
-    new_node = new_array;
+    new_nodes = new_array;
 
-    int i;
+    int i, found = 0;
     for (i = 0; i<me->num_nodes; i++)
     {
         if (me->nodes[i] == node)
+        {
+            found = 1;
             continue;
-        *new_node = me->nodes[i];
-        new_node++;
+        }
+        *new_nodes = me->nodes[i];
+        new_nodes++;
     }
+
+    assert(found);
 
     me->num_nodes--;
     free(me->nodes);
