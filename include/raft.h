@@ -384,7 +384,10 @@ void raft_set_request_timeout(raft_server_t* me, int msec);
 
 /** Process events that are dependent on time passing.
  * @param[in] msec_elapsed Time in milliseconds since the last call
- * @return 0 on success */
+ * @return
+ *  0 on success;
+ *  -1 on failure;
+ *  RAFT_ERR_SHUTDOWN when server should be shutdown */
 int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /** Receive an appendentries message.
