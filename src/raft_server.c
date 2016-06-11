@@ -185,7 +185,8 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     }
     else if (me->election_timeout <= me->timeout_elapsed)
     {
-        if (1 < me->num_nodes)
+        if (1 < raft_get_num_voting_nodes(me_) &&
+            raft_node_is_voting(raft_get_my_node(me_)))
             raft_election_start(me_);
     }
 
