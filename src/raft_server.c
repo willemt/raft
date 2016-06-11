@@ -270,7 +270,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     raft_node_set_match_idx(node, r->current_idx);
 
     if (!raft_node_is_voting(node) &&
-        -1 == me->voting_cfg_change_log_idx &&
+        !raft_voting_change_is_in_progress(me_) &&
         raft_get_current_idx(me_) <= r->current_idx + 1 &&
         me->cb.node_has_sufficient_logs &&
         0 == raft_node_has_sufficient_logs(node)
@@ -323,8 +323,7 @@ int raft_recv_appendentries(
     me->timeout_elapsed = 0;
 
     if (0 < ae->n_entries)
-        __log(me_, node, "recvd appendentries from: %lx, t:%d ci:%d lc:%d pli:%d plt:%d #%d",
-              node,
+        __log(me_, node, "recvd appendentries t:%d ci:%d lc:%d pli:%d plt:%d #%d",
               ae->term,
               raft_get_current_idx(me_),
               ae->leader_commit,
@@ -449,8 +448,7 @@ fail:
 
 int raft_already_voted(raft_server_t* me_)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    return -1 != me->voted_for;
+    return ((raft_server_private_t*)me_)->voted_for != -1;
 }
 
 static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
@@ -495,6 +493,9 @@ int raft_recv_requestvote(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
+    if (!node)
+        node = raft_get_node(me_, vr->candidate_id);
+
     if (raft_get_current_term(me_) < vr->term)
     {
         raft_set_current_term(me_, vr->term);
@@ -519,7 +520,9 @@ int raft_recv_requestvote(raft_server_t* me_,
         r->vote_granted = 0;
 
     __log(me_, node, "node requested vote: %d replying: %s",
-          node, r->vote_granted == 1 ? "granted" : "not granted");
+          node,
+          r->vote_granted == 1 ? "granted" :
+          r->vote_granted == 0 ? "not granted" : "unknown");
 
     r->term = raft_get_current_term(me_);
     return 0;
@@ -540,7 +543,8 @@ int raft_recv_requestvote_response(raft_server_t* me_,
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     __log(me_, node, "node responded to requestvote status: %s",
-          r->vote_granted == 1 ? "granted" : "not granted");
+          r->vote_granted == 1 ? "granted" :
+          r->vote_granted == 0 ? "not granted" : "unknown");
 
     if (!raft_is_candidate(me_))
     {
@@ -560,8 +564,9 @@ int raft_recv_requestvote_response(raft_server_t* me_,
         return 0;
     }
 
-    __log(me_, node, "node responded to requestvote: %d status: %s ct:%d rt:%d",
-          node, r->vote_granted == 1 ? "granted" : "not granted",
+    __log(me_, node, "node responded to requestvote status:%s ct:%d rt:%d",
+          r->vote_granted == 1 ? "granted" :
+          r->vote_granted == 0 ? "not granted" : "unknown",
           me->current_term,
           r->term);
 
@@ -725,8 +730,9 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
             ae.prev_log_term = prev_ety->term;
     }
 
-    __log(me_, node, "sending appendentries node: ci:%d t:%d lc:%d pli:%d plt:%d",
+    __log(me_, node, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
           raft_get_current_idx(me_),
+          raft_get_commit_idx(me_),
           ae.term,
           ae.leader_commit,
           ae.prev_log_idx,
