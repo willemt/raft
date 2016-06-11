@@ -80,6 +80,36 @@ void TestRaft_server_add_node_makes_non_voting_node_voting(CuTest * tc)
     CuAssertIntEquals(tc, 1, raft_get_num_nodes(r));
 }
 
+void TestRaft_server_add_node_with_already_existing_id_is_not_allowed(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, NULL, 9, 0);
+    raft_add_node(r, NULL, 11, 0);
+
+    CuAssertTrue(tc, NULL == raft_add_node(r, NULL, 9, 0));
+    CuAssertTrue(tc, NULL == raft_add_node(r, NULL, 11, 0));
+}
+
+void TestRaft_server_add_non_voting_node_with_already_existing_id_is_not_allowed(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_non_voting_node(r, NULL, 9, 0);
+    raft_add_non_voting_node(r, NULL, 11, 0);
+
+    CuAssertTrue(tc, NULL == raft_add_non_voting_node(r, NULL, 9, 0));
+    CuAssertTrue(tc, NULL == raft_add_non_voting_node(r, NULL, 11, 0));
+}
+
+void TestRaft_server_add_non_voting_node_with_already_existing_voting_id_is_not_allowed(CuTest * tc)
+{
+    void *r = raft_new();
+    raft_add_node(r, NULL, 9, 0);
+    raft_add_node(r, NULL, 11, 0);
+
+    CuAssertTrue(tc, NULL == raft_add_non_voting_node(r, NULL, 9, 0));
+    CuAssertTrue(tc, NULL == raft_add_non_voting_node(r, NULL, 11, 0));
+}
+
 void TestRaft_server_remove_node(CuTest * tc)
 {
     void *r = raft_new();

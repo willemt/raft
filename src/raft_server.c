@@ -755,8 +755,14 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     raft_node_t* node = raft_get_node(me_, id);
     if (node)
     {
-        raft_node_set_voting(node, 1);
-        return node;
+        if (!raft_node_is_voting(node))
+        {
+            raft_node_set_voting(node, 1);
+            return node;
+        }
+        else
+            /* we shouldn't add a node twice */
+            return NULL;
     }
 
     me->num_nodes++;
@@ -771,7 +777,13 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
 
 raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self)
 {
+    if (raft_get_node(me_, id))
+        return NULL;
+
     raft_node_t* node = raft_add_node(me_, udata, id, is_self);
+    if (!node)
+        return NULL;
+
     raft_node_set_voting(node, 0);
     return node;
 }

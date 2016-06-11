@@ -339,6 +339,8 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
  * @note This library does not yet support membership changes.
  *  Once raft_periodic has been run this will fail.
  *
+ * If a voting node already exists the call will fail.
+ *
  * @note The order this call is made is important.
  *  This call MUST be made in the same order as the other raft nodes.
  *  This is because the node ID is assigned depending on when this call is made
@@ -351,13 +353,19 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
  * @param[in] id The integer ID of this node
  *  This is used for identifying clients across sessions.
  * @param[in] is_self Set to 1 if this "node" is this server
- * @return node on success; otherwise NULL */
+ * @return
+ *  node if it was successfully added;
+ *  NULL if the node already exists */
 raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_self);
 
 #define raft_add_peer raft_add_node
 
 /** Add a node which does not participate in voting.
- * Parameters are identical to raft_add_node */
+ * If a node already exists the call will fail.
+ * Parameters are identical to raft_add_node
+ * @return
+ *  node if it was successfully added;
+ *  NULL if the node already exists */
 raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self);
 
 /** Remove node.
