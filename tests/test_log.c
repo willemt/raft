@@ -322,7 +322,10 @@ void TestLog_poll(CuTest * tc)
     CuAssertTrue(tc, NULL != ety);
     CuAssertIntEquals(tc, 2, log_count(l));
     CuAssertIntEquals(tc, ety->id, 1);
+    CuAssertIntEquals(tc, 1, log_get_base(l));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
+    CuAssertTrue(tc, NULL != log_get_at_idx(l, 2));
+    CuAssertTrue(tc, NULL != log_get_at_idx(l, 3));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
 
     /* remove 2nd */
@@ -331,7 +334,9 @@ void TestLog_poll(CuTest * tc)
     CuAssertTrue(tc, NULL != ety);
     CuAssertIntEquals(tc, 1, log_count(l));
     CuAssertIntEquals(tc, ety->id, 2);
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
+    CuAssertTrue(tc, NULL != log_get_at_idx(l, 3));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
 
     /* remove 3rd */
@@ -340,6 +345,8 @@ void TestLog_poll(CuTest * tc)
     CuAssertTrue(tc, NULL != ety);
     CuAssertIntEquals(tc, 0, log_count(l));
     CuAssertIntEquals(tc, ety->id, 3);
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
 }
@@ -378,6 +385,46 @@ void T_estlog_cant_append_duplicates(CuTest * tc)
     CuAssertTrue(tc, 1 == log_count(l));
 }
 #endif
+
+void TestLog_load_from_snapshot(CuTest * tc)
+{
+    void *l;
+    raft_entry_t e1, e2, e3;
+
+    memset(&e1, 0, sizeof(raft_entry_t));
+    memset(&e2, 0, sizeof(raft_entry_t));
+    memset(&e3, 0, sizeof(raft_entry_t));
+
+    l = log_new();
+    CuAssertIntEquals(tc, 0, log_get_current_idx(l));
+    CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
+    CuAssertIntEquals(tc, 10, log_get_current_idx(l));
+
+    /* this is just a marker
+     * it should never be sent to any nodes because it is part of a snapshot */
+    CuAssertIntEquals(tc, 1, log_count(l));
+}
+
+void TestLog_load_from_snapshot_clears_log(CuTest * tc)
+{
+    void *l;
+    raft_entry_t e1, e2, e3;
+
+    memset(&e1, 0, sizeof(raft_entry_t));
+    memset(&e2, 0, sizeof(raft_entry_t));
+    memset(&e3, 0, sizeof(raft_entry_t));
+
+    l = log_new();
+
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
+    CuAssertIntEquals(tc, 2, log_count(l));
+    CuAssertIntEquals(tc, 2, log_get_current_idx(l));
+
+    CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
+    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 10, log_get_current_idx(l));
+}
 
 void TestLog_front_pushes_across_boundary(CuTest * tc)
 {

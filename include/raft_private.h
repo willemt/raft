@@ -1,3 +1,12 @@
+/**
+ * Copyright (c) 2013, Willem-Hendrik Thiart
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file. 
+ *
+ * @file
+ * @author Willem Thiart himself@willemthiart.com
+ */
+
 #ifndef RAFT_PRIVATE_H_
 #define RAFT_PRIVATE_H_
 
@@ -7,15 +16,6 @@ enum {
     RAFT_NODE_STATUS_CONNECTING,
     RAFT_NODE_STATUS_DISCONNECTING
 };
-
-/**
- * Copyright (c) 2013, Willem-Hendrik Thiart
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file. 
- *
- * @file
- * @author Willem Thiart himself@willemthiart.com
- */
 
 typedef struct {
     /* Persistent state: */
@@ -44,7 +44,7 @@ typedef struct {
 
     /* amount of time left till timeout */
     int timeout_elapsed;
-
+ 
     raft_node_t* nodes;
     int num_nodes;
 
@@ -66,9 +66,15 @@ typedef struct {
     /* the log which has a voting cfg change, otherwise -1 */
     int voting_cfg_change_log_idx;
 
-    /* our membership with the cluster is confirmed (ie. configuration log was
+    /* Our membership with the cluster is confirmed (ie. configuration log was
      * committed) */
     int connected;
+
+    int snapshot_in_progress;
+
+    /* Last compacted snapshot */
+    int snapshot_last_idx;
+    int snapshot_last_term;
 } raft_server_private_t;
 
 int raft_election_start(raft_server_t* me);
@@ -118,12 +124,18 @@ int raft_node_has_vote_for_me(raft_node_t* me_);
 
 void raft_node_set_has_sufficient_logs(raft_node_t* me_);
 
-int raft_node_has_sufficient_logs(raft_node_t* me_);
-
 int raft_votes_is_majority(const int nnodes, const int nvotes);
+
+void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
 
 void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
 
-void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
+int raft_get_num_snapshottable_logs(raft_server_t* me_);
+
+int raft_node_is_active(raft_node_t* me_);
+
+void raft_node_set_voting_committed(raft_node_t* me_, int voting);
+
+int raft_node_set_addition_committed(raft_node_t* me_, int committed);
 
 #endif /* RAFT_PRIVATE_H_ */

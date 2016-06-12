@@ -75,6 +75,30 @@ static int __ensurecapacity(log_private_t * me)
     return 0;
 }
 
+int log_load_from_snapshot(log_t *me_, int idx, int term)
+{
+    log_private_t* me = (log_private_t*)me_;
+
+    log_clear(me_);
+
+    raft_entry_t ety;
+    ety.data.len = 0;
+    ety.id = 1;
+    ety.term = term;
+    ety.type = RAFT_LOGTYPE_SNAPSHOT;
+
+    int e = log_append_entry(me_, &ety);
+    if (e != 0)
+    {
+        assert(0);
+        return e;
+    }
+
+    me->base = idx - 1;
+
+    return 0;
+}
+
 log_t* log_alloc(int initial_size)
 {
     log_private_t* me = (log_private_t*)calloc(1, sizeof(log_private_t));
@@ -112,7 +136,8 @@ void log_clear(log_t* me_)
     me->base = 0;
 }
 
-int log_append_entry(log_t* me_, raft_entry_t* c)
+/** TODO: rename log_append */
+int log_append_entry(log_t* me_, raft_entry_t* ety)
 {
     log_private_t* me = (log_private_t*)me_;
     int idx = me->base + me->count + 1;
@@ -122,7 +147,7 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     if (e != 0)
         return e;
 
-    memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
+    memcpy(&me->entries[me->back], ety, sizeof(raft_entry_t));
 
     if (me->cb && me->cb->log_offer)
     {
@@ -177,7 +202,7 @@ raft_entry_t* log_get_at_idx(log_t* me_, int idx)
     if (idx == 0)
         return NULL;
 
-    if (idx < me->base)
+    if (idx <= me->base)
         return NULL;
 
     if (me->base + me->count < idx)
@@ -186,12 +211,8 @@ raft_entry_t* log_get_at_idx(log_t* me_, int idx)
     /* idx starts at 1 */
     idx -= 1;
 
-    if (idx - me->base < me->front)
-        return NULL;
-
     i = (me->front + idx - me->base) % me->size;
     return &me->entries[i];
-
 }
 
 int log_count(log_t* me_)
@@ -287,4 +308,9 @@ int log_get_current_idx(log_t* me_)
 {
     log_private_t* me = (log_private_t*)me_;
     return log_count(me_) + me->base;
+}
+
+int log_get_base(log_t* me_)
+{
+    return ((log_private_t*)me_)->base;
 }

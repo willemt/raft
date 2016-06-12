@@ -428,7 +428,27 @@ It's highly recommended that when a node is added to the cluster that its node I
 
 3. Once the ``RAFT_LOGTYPE_REMOVE_NODE`` configuration change log is applied in the ``applylog`` callback we shutdown the server if it is to be removed.
 
-Todo
-====
+Log Compaction
+--------------
+The log compaction method supported is called "Snapshotting for memory-based state machines" (Ongaro, 2014)
 
-- Log compaction
+This library does not send snapshots (ie. there are NO send_snapshot, recv_snapshot callbacks to implement). The user has to send the snapshot outside of this library.  The implementor has to serialize and deserialize the snapshot.
+
+The process works like this:
+
+1. Begin snapshotting with ``raft_begin_snapshot``.
+2. Save the current membership details to the snapshot.
+3. Save the finite state machine to the snapshot.
+4. End snapshotting with ``raft_end_snapshot``.
+5. When the ``send_snapshot`` callback fires, the user must propogate the snapshot to the other node.
+6. Once the peer has the snapshot, they call ``raft_begin_load_snapshot``.
+7. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
+8. Peer call s``raft_node_set_voting`` to nodes as per the snapshot's membership info.
+9. Peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
+10. Finally, peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
+
+When a node receives a snapshot it could reuse that snapshot itself for other nodes.
+
+References
+==========
+Ongaro, D. (2014). Consensus: bridging theory and practice. Retrieved from https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf

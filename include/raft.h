@@ -14,6 +14,9 @@
 #define RAFT_ERR_ONE_VOTING_CHANGE_ONLY      -3
 #define RAFT_ERR_SHUTDOWN                    -4
 #define RAFT_ERR_NOMEM                       -5
+#define RAFT_ERR_NEEDS_SNAPSHOT              -6
+#define RAFT_ERR_SNAPSHOT_IN_PROGRESS        -7
+#define RAFT_ERR_SNAPSHOT_ALREADY_LOADED     -8
 #define RAFT_ERR_LAST                        -100
 
 #define RAFT_REQUESTVOTE_ERR_GRANTED          1
@@ -59,6 +62,7 @@ typedef enum {
      * Removing nodes is a 2 step process: first demote, then remove.
      */
     RAFT_LOGTYPE_REMOVE_NODE,
+    RAFT_LOGTYPE_SNAPSHOT,
     /**
      * Users can piggyback the entry mechanism by specifying log types that
      * are higher than RAFT_LOGTYPE_NUM.
@@ -220,6 +224,22 @@ typedef int (
     msg_appendentries_t* msg
     );
 
+/** 
+ * Log compaction
+ * Callback for telling the user to send a snapshot.
+ *
+ * @param[in] raft Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node Node's ID that needs a snapshot sent to
+ **/
+typedef int (
+*func_send_snapshot_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_node_t* node
+    );
+
 /** Callback for detecting when non-voting nodes have obtained enough logs.
  * This triggers only when there are no pending configuration changes.
  * @param[in] raft The Raft server making this callback
@@ -319,6 +339,9 @@ typedef struct
 
     /** Callback for sending appendentries messages */
     func_send_appendentries_f send_appendentries;
+
+    /** Callback for notifying user that a node needs a snapshot sent */
+    func_send_snapshot_f send_snapshot;
 
     /** Callback for finite state machine application
      * Return 0 on success.
@@ -464,7 +487,10 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  * @param[in] node The node who sent us this message
  * @param[in] ae The appendentries message
  * @param[out] r The resulting response
- * @return 0 on success */
+ * @return
+ *  0 on success
+ *  RAFT_ERR_NEEDS_SNAPSHOT
+ *  */
 int raft_recv_appendentries(raft_server_t* me,
                             raft_node_t* node,
                             msg_appendentries_t* ae,
@@ -710,6 +736,10 @@ void raft_node_set_voting(raft_node_t* node, int voting);
  * @return 1 if this is a voting node. Otherwise 0. */
 int raft_node_is_voting(raft_node_t* me_);
 
+/** Check if a node has sufficient logs to be able to join the cluster.
+ **/
+int raft_node_has_sufficient_logs(raft_node_t* me_);
+
 /** Apply all entries up to the commit index
  * @return
  *  0 on success;
@@ -734,5 +764,110 @@ int raft_entry_is_voting_cfg_change(raft_entry_t* ety);
  * @param[in] ety The entry to query.
  * @return 1 if this is a configuration change. */
 int raft_entry_is_cfg_change(raft_entry_t* ety);
+
+raft_entry_t *raft_get_last_applied_entry(raft_server_t *me_);
+
+/** Begin snapshotting.
+ *
+ * While snapshotting, raft will:
+ *  - not apply log entries
+ *  - not start elections
+ *
+ * @return 0 on success
+ *
+ **/
+int raft_begin_snapshot(raft_server_t *me_);
+
+/** Stop snapshotting.
+ *
+ * The user MUST include membership changes inside the snapshot. This means
+ * that membership changes are included in the size of the snapshot. For peers
+ * that load the snapshot, the user needs to deserialize the snapshot to
+ * obtain the membership changes.
+ *
+ * The user MUST compact the log up to the commit index. This means all
+ * log entries up to the commit index MUST be deleted (aka polled).
+ *
+ * @return
+ *  0 on success
+ *  -1 on failure
+ **/
+int raft_end_snapshot(raft_server_t *me_);
+
+/** Get the entry index of the entry that was snapshotted
+ **/
+int raft_get_snapshot_entry_idx(raft_server_t *me_);
+
+/** Check is a snapshot is in progress
+ **/
+int raft_snapshot_is_in_progress(raft_server_t *me_);
+
+/** Remove the first log entry.
+ * This should be used for compacting logs.
+ * @return 0 on success
+ **/
+int raft_poll_entry(raft_server_t* me_, raft_entry_t **ety);
+
+/** Get last applied entry
+ **/
+raft_entry_t *raft_get_last_applied_entry(raft_server_t *me_);
+
+int raft_get_first_entry_idx(raft_server_t* me_);
+
+/** Start loading snapshot
+ *
+ * This is usually the result of a snapshot being loaded.
+ * We need to send an appendentries response.
+ *
+ * @param[in] last_included_term Term of the last log of the snapshot
+ * @param[in] last_included_index Index of the last log of the snapshot 
+ *
+ * @return
+ *  0 on success
+ *  -1 on failure
+ *  RAFT_ERR_SNAPSHOT_ALREADY_LOADED
+ **/
+int raft_begin_load_snapshot(raft_server_t *me_,
+                       int last_included_term,
+		       int last_included_index);
+
+/** Stop loading snapshot.
+ *
+ * @return
+ *  0 on success
+ *  -1 on failure
+ **/
+int raft_end_load_snapshot(raft_server_t *me_);
+
+int raft_get_snapshot_last_idx(raft_server_t *me_);
+
+int raft_get_snapshot_last_term(raft_server_t *me_);
+
+void raft_set_snapshot_metadata(raft_server_t *me_, int term, int idx);
+
+/** Check if a node is active.
+ * Active nodes could become voting nodes.
+ * This should be used for creating the membership snapshot.
+ **/
+int raft_node_is_active(raft_node_t* me_);
+
+/** Make the node active.
+ *
+ * The user sets this to 1 between raft_begin_load_snapshot and
+ * raft_end_load_snapshot.
+ *
+ * @param[in] active Set a node as active if this is 1
+ **/
+void raft_node_set_active(raft_node_t* me_, int active);
+
+/** Check if a node's voting status has been committed.
+ * This should be used for creating the membership snapshot.
+ **/
+int raft_node_is_voting_committed(raft_node_t* me_);
+
+/** Check if a node's membership to the cluster has been committed.
+ * This should be used for creating the membership snapshot.
+ **/
+int raft_node_is_addition_committed(raft_node_t* me_);
 
 #endif /* RAFT_H_ */
