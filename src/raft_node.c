@@ -16,9 +16,9 @@
 
 #include "raft.h"
 
-#define RAFT_NODE_VOTED_FOR_ME 1
-#define RAFT_NODE_VOTING 1 << 1
-#define RAFT_NODE_HAS_SUFFICIENT_LOG 1 << 2
+#define RAFT_NODE_VOTED_FOR_ME       1
+#define RAFT_NODE_VOTING             (1 << 1)
+#define RAFT_NODE_HAS_SUFFICIENT_LOG (1 << 2)
 
 typedef struct
 {
