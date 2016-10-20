@@ -249,8 +249,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     {
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
-        assert(0 <= raft_node_get_next_idx(node));
-
         int next_idx = raft_node_get_next_idx(node);
         assert(0 <= next_idx);
         if (r->current_idx < next_idx - 1)
