@@ -650,14 +650,6 @@ int raft_get_state(raft_server_t* me_);
  * @return the last log term */
 int raft_get_last_log_term(raft_server_t* me_);
 
-/** Tell if we are a leader, candidate or follower.
- * @return get state of type raft_state_e. */
-int raft_get_state(raft_server_t* me_);
-
-/** The the most recent log's term
- * @return the last log term */
-int raft_get_last_log_term(raft_server_t* me_);
-
 /** Turn a node into a voting node.
  * Voting nodes can take part in elections and in-regards to commiting entries,
  * are counted in majorities. */
