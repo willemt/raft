@@ -544,10 +544,6 @@ int raft_get_request_timeout(raft_server_t* me);
 int raft_get_last_applied_idx(raft_server_t* me);
 
 /**
- * @return 1 if node is leader; 0 otherwise */
-int raft_node_is_leader(raft_node_t* node);
-
-/**
  * @return the node's next index */
 int raft_node_get_next_idx(raft_node_t* node);
 
@@ -600,10 +596,6 @@ raft_node_t* raft_get_current_leader_node(raft_server_t* me);
 /**
  * @return callback user data */
 void* raft_get_udata(raft_server_t* me);
-
-/**
- * @return this server's node ID */
-int raft_get_my_id(raft_server_t* me);
 
 /** Vote for a server.
  * This should be used to reload persistent state, ie. the voted-for field.
