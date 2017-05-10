@@ -103,16 +103,17 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
 
     __ensurecapacity(me);
 
+    memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
+
     if (me->cb && me->cb->log_offer)
     {
         void* ud = raft_get_udata(me->raft);
-        e = me->cb->log_offer(me->raft, ud, c, me->back);
-        raft_offer_log(me->raft, c, me->back);
+        e = me->cb->log_offer(me->raft, ud, &me->entries[me->back], me->back);
+        raft_offer_log(me->raft, &me->entries[me->back], me->back);
         if (e == RAFT_ERR_SHUTDOWN)
             return e;
     }
 
-    memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
     me->count++;
     me->back++;
 
