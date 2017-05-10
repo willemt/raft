@@ -626,12 +626,8 @@ int raft_recv_entry(raft_server_t* me_,
     __log(me_, NULL, "received entry t:%d id: %d idx: %d",
           me->current_term, e->id, raft_get_current_idx(me_) + 1);
 
-    raft_entry_t ety;
-    ety.term = me->current_term;
-    ety.id = e->id;
-    ety.type = e->type;
-    memcpy(&ety.data, &e->data, sizeof(raft_entry_data_t));
-    raft_append_entry(me_, &ety);
+    e->term = me->current_term;
+    raft_append_entry(me_, e);
     for (i = 0; i < me->num_nodes; i++)
     {
         if (me->node == me->nodes[i] || !me->nodes[i] ||

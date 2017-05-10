@@ -224,6 +224,7 @@ void TestRaft_server_append_entry_user_can_set_data_buf(CuTest * tc)
     raft_cbs_t funcs = {
         .log_offer = __raft_logentry_offer,
     };
+    char *buf = "aaa";
 
     void *r = raft_new();
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -233,11 +234,14 @@ void TestRaft_server_append_entry_user_can_set_data_buf(CuTest * tc)
     ety.term = 1;
     ety.id = 100;
     ety.data.len = 4;
-    ety.data.buf = (unsigned char*)"aaa";
+    ety.data.buf = buf;
     raft_append_entry(r, &ety);
+    /* User's input entry is intact. */
+    CuAssertTrue(tc, ety.data.buf == buf);
     raft_entry_t* kept =  raft_get_entry_from_idx(r, 1);
     CuAssertTrue(tc, NULL != kept->data.buf);
-    CuAssertTrue(tc, kept->data.buf == ety.data.buf);
+    /* Data buf is the one set by log_offer. */
+    CuAssertTrue(tc, kept->data.buf == tc);
 }
 
 #if 0
