@@ -51,7 +51,7 @@ typedef struct {
     int election_timeout;
     int request_timeout;
 
-    /* what this node thinks is the node ID of the current leader, or -1 if
+    /* what this node thinks is the node ID of the current leader, or NULL if
      * there isn't a known current leader. */
     raft_node_t* current_leader;
 

@@ -2793,6 +2793,38 @@ void TestRaft_leader_recv_appendentries_response_drop_message_if_term_is_old(
     CuAssertTrue(tc, 1 == raft_node_get_next_idx(p));
 }
 
+void TestRaft_leader_recv_appendentries_response_steps_down_if_term_is_newer(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries          = sender_appendentries,
+        .log                         = NULL
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_set_callbacks(r, &funcs, sender);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 2);
+
+    raft_node_t* p = raft_get_node(r, 2);
+    CuAssertTrue(tc, 1 == raft_node_get_next_idx(p));
+
+    /* receive NEW mock failed responses */
+    msg_appendentries_response_t aer;
+    aer.term = 3;
+    aer.success = 0;
+    aer.current_idx = 2;
+    aer.first_idx = 0;
+    raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
+    CuAssertTrue(tc, 1 == raft_is_follower(r));
+    CuAssertTrue(tc, -1 == raft_get_current_leader(r));
+}
+
 void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     CuTest * tc)
 {
@@ -2805,7 +2837,7 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 5);
-    /* check that node 0 considers itself the leader */
+    /* check that node 1 considers itself the leader */
     CuAssertTrue(tc, 1 == raft_is_leader(r));
     CuAssertTrue(tc, 1 == raft_get_current_leader(r));
 
@@ -2815,10 +2847,10 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     ae.prev_log_term = 5;
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
 
-    /* after more recent appendentries from node 1, node 0 should
-     * consider node 1 the leader. */
+    /* after more recent appendentries from node 2, node 1 should
+     * consider node 2 the leader. */
     CuAssertTrue(tc, 1 == raft_is_follower(r));
-    CuAssertTrue(tc, 1 == raft_get_current_leader(r));
+    CuAssertTrue(tc, 2 == raft_get_current_leader(r));
 }
 
 void TestRaft_leader_recv_appendentries_steps_down_if_newer_term(
