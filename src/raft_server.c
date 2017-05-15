@@ -238,6 +238,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     {
         raft_set_current_term(me_, r->term);
         raft_become_follower(me_);
+        me->current_leader = NULL;
         return 0;
     }
     else if (me->current_term != r->term)
@@ -353,6 +354,9 @@ int raft_recv_appendentries(
         goto fail_with_current_idx;
     }
 
+    /* update current leader because ae->term is up to date */
+    me->current_leader = node;
+
     /* Not the first appendentries we've received */
     /* NOTE: the log starts at 1 */
     if (0 < ae->prev_log_idx)
@@ -434,9 +438,6 @@ int raft_recv_appendentries(
         raft_set_commit_idx(me_, min(last_log_idx, ae->leader_commit));
     }
 
-    /* update current leader because we accepted appendentries from it */
-    me->current_leader = node;
-
     r->success = 1;
     r->first_idx = ae->prev_log_idx + 1;
     return 0;
@@ -503,6 +504,7 @@ int raft_recv_requestvote(raft_server_t* me_,
     {
         raft_set_current_term(me_, vr->term);
         raft_become_follower(me_);
+        me->current_leader = NULL;
     }
 
     if (__should_grant_vote(me, vr))
@@ -571,6 +573,7 @@ int raft_recv_requestvote_response(raft_server_t* me_,
     {
         raft_set_current_term(me_, r->term);
         raft_become_follower(me_);
+        me->current_leader = NULL;
         return 0;
     }
     else if (raft_get_current_term(me_) != r->term)
