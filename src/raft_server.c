@@ -279,26 +279,27 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     }
 
     /* Update commit idx */
-    int votes = 1; /* include me */
     int point = r->current_idx;
-    int i;
-    for (i = 0; i < me->num_nodes; i++)
+    if (point)
     {
-        if (me->node == me->nodes[i] || !raft_node_is_voting(me->nodes[i]))
-            continue;
-
-        int match_idx = raft_node_get_match_idx(me->nodes[i]);
-
-        if (0 < match_idx)
+        raft_entry_t* ety = raft_get_entry_from_idx(me_, point);
+        if (raft_get_commit_idx(me_) < point && ety->term == me->current_term)
         {
-            raft_entry_t* ety = raft_get_entry_from_idx(me_, match_idx);
-            if (ety->term == me->current_term && point <= match_idx)
-                votes++;
+            int i, votes = 1;
+            for (i = 0; i < me->num_nodes; i++)
+            {
+                if (me->node != me->nodes[i] &&
+                    raft_node_is_voting(me->nodes[i]) &&
+                    point <= raft_node_get_match_idx(me->nodes[i]))
+                {
+                    votes++;
+                }
+            }
+
+            if (raft_get_num_voting_nodes(me_) / 2 < votes)
+                raft_set_commit_idx(me_, point);
         }
     }
-
-    if (raft_get_num_voting_nodes(me_) / 2 < votes && raft_get_commit_idx(me_) < point)
-        raft_set_commit_idx(me_, point);
 
     /* Aggressively send remaining entries */
     if (raft_get_entry_from_idx(me_, raft_node_get_next_idx(node)))
