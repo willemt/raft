@@ -346,9 +346,6 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
 
 /** Add node.
  *
- * @note This library does not yet support membership changes.
- *  Once raft_periodic has been run this will fail.
- *
  * If a voting node already exists the call will fail.
  *
  * @note The order this call is made is important.
