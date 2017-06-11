@@ -23,6 +23,7 @@ void raft_set_election_timeout(raft_server_t* me_, int millisec)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     me->election_timeout = millisec;
+    raft_randomize_election_timeout(me_);
 }
 
 void raft_set_request_timeout(raft_server_t* me_, int millisec)

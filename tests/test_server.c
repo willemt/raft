@@ -14,6 +14,11 @@
 
 // TODO: leader doesn't timeout and cause election
 
+static int max_election_timeout(int election_timeout)
+{
+	return 2 * election_timeout;
+}
+
 void TestRaft_server_voted_for_records_who_we_voted_for(CuTest * tc)
 {
     void *r = raft_new();
@@ -1348,8 +1353,8 @@ void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
-    /*  1.001 seconds have passed */
-    raft_periodic(r, 1001);
+    /*  max election timeout have passed */
+    raft_periodic(r, max_election_timeout(1000) + 1);
 
     /* is a candidate now */
     CuAssertTrue(tc, 1 == raft_is_candidate(r));
@@ -1514,8 +1519,8 @@ void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(
     raft_become_candidate(r);
     CuAssertTrue(tc, 1 == raft_get_current_term(r));
 
-    /* clock over (ie. 1000 + 1), causing new election */
-    raft_periodic(r, 1001);
+    /* clock over (ie. max election timeout + 1), causing new election */
+    raft_periodic(r, max_election_timeout(1000) + 1);
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
 
     /*  receiving this vote gives the server majority */

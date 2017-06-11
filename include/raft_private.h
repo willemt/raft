@@ -49,6 +49,7 @@ typedef struct {
     int num_nodes;
 
     int election_timeout;
+    int election_timeout_rand;
     int request_timeout;
 
     /* what this node thinks is the node ID of the current leader, or NULL if
@@ -79,6 +80,8 @@ void raft_become_follower(raft_server_t* me);
 void raft_vote(raft_server_t* me, raft_node_t* node);
 
 void raft_set_current_term(raft_server_t* me,int term);
+
+void raft_randomize_election_timeout(raft_server_t* me_);
 
 /**
  * @return 0 on error */
