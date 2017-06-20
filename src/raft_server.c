@@ -98,6 +98,8 @@ void raft_delete_entry_from_idx(raft_server_t* me_, int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
+    assert(me->commit_idx < idx);
+
     if (idx <= me->voting_cfg_change_log_idx)
         me->voting_cfg_change_log_idx = -1;
 
@@ -371,7 +373,6 @@ int raft_recv_appendentries(
         {
             __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d",
                   e->term, ae->prev_log_term, raft_get_current_idx(me_), ae->prev_log_idx);
-            assert(me->commit_idx < ae->prev_log_idx);
             /* Delete all the following log entries because they don't match */
             raft_delete_entry_from_idx(me_, ae->prev_log_idx);
             r->current_idx = ae->prev_log_idx - 1;
@@ -382,10 +383,14 @@ int raft_recv_appendentries(
     /* 3. If an existing entry conflicts with a new one (same index
        but different terms), delete the existing entry and all that
        follow it (§5.3) */
-    if (ae->n_entries == 0 && 0 < ae->prev_log_idx && ae->prev_log_idx + 1 < raft_get_current_idx(me_))
+    if (0 < ae->prev_log_idx && ae->prev_log_idx + 1 < raft_get_current_idx(me_))
     {
-        assert(me->commit_idx < ae->prev_log_idx + 1);
-        raft_delete_entry_from_idx(me_, ae->prev_log_idx + 1);
+        /* Heartbeats shouldn't cause logs to be deleted. Heartbeats might be 
+         * sent before the leader received the last appendentries response */
+        if (ae->n_entries != 0 &&
+                /* this is an old out-of-order appendentry message */
+                me->commit_idx < ae->prev_log_idx + 1)
+            raft_delete_entry_from_idx(me_, ae->prev_log_idx + 1);
     }
 
     r->current_idx = ae->prev_log_idx;
@@ -397,9 +402,8 @@ int raft_recv_appendentries(
         int ety_index = ae->prev_log_idx + 1 + i;
         raft_entry_t* existing_ety = raft_get_entry_from_idx(me_, ety_index);
         r->current_idx = ety_index;
-        if (existing_ety && existing_ety->term != ety->term)
+        if (existing_ety && existing_ety->term != ety->term && me->commit_idx < ety_index)
         {
-            assert(me->commit_idx < ety_index);
             raft_delete_entry_from_idx(me_, ety_index);
             break;
         }

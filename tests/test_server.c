@@ -1349,17 +1349,21 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_current_idx_greater_
     raft_entry_t *ety_appended;
     
     __create_mock_entries_for_conflict_tests(tc, r, strs);
+    CuAssertIntEquals(tc, 3, raft_get_log_count(r));
 
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 2;
     ae.prev_log_idx = 1;
     ae.prev_log_term = 1;
-    ae.entries = NULL;
-    ae.n_entries = 0;
+    msg_entry_t e[1];
+    memset(&e, 0, sizeof(msg_entry_t) * 1);
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
 
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertTrue(tc, 1 == aer.success);
-    CuAssertTrue(tc, 1 == raft_get_log_count(r));
+    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 1)));
     CuAssertTrue(tc, !strncmp(ety_appended->data.buf, strs[0], 3));
 }
@@ -1665,6 +1669,169 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     rv.last_log_term = 3;
     raft_recv_requestvote(r, raft_get_node(r, 2), &rv, &rvr);
     CuAssertIntEquals(tc, 1, rvr.vote_granted);
+}
+
+void TestRaft_follower_recv_appendentries_heartbeat_does_not_overwrite_logs(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t aer;
+
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 1;
+    /* include entries */
+    msg_entry_t e[4];
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* The server sends a follow up AE
+     * NOTE: the server has received a response from the last AE so
+     * prev_log_idx has been incremented */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 2;
+    e[1].term = 1;
+    e[1].id = 3;
+    e[2].term = 1;
+    e[2].id = 4;
+    e[3].term = 1;
+    e[3].id = 5;
+    ae.entries = e;
+    ae.n_entries = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* receive a heartbeat
+     * NOTE: the leader hasn't received the response to the last AE so it can 
+     * only assume prev_Log_idx is still 1 */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_term = 1;
+    ae.prev_log_idx = 1;
+    /* receipt of appendentries changes commit idx */
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 5, raft_get_current_idx(r));
+}
+
+void TestRaft_follower_recv_appendentries_does_not_deleted_commited_entries(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t aer;
+
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 1;
+    /* include entries */
+    msg_entry_t e[5];
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* Follow up AE. Node responded with success */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 2;
+    e[1].term = 1;
+    e[1].id = 3;
+    e[2].term = 1;
+    e[2].id = 4;
+    e[3].term = 1;
+    e[3].id = 5;
+    ae.entries = e;
+    ae.n_entries = 4;
+    ae.leader_commit = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* The server sends a follow up AE */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 5);
+    e[0].term = 1;
+    e[0].id = 2;
+    e[1].term = 1;
+    e[1].id = 3;
+    e[2].term = 1;
+    e[2].id = 4;
+    e[3].term = 1;
+    e[3].id = 5;
+    e[4].term = 1;
+    e[4].id = 6;
+    ae.entries = e;
+    ae.n_entries = 5;
+    ae.leader_commit = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 6, raft_get_current_idx(r));
+    CuAssertIntEquals(tc, 4, raft_get_commit_idx(r));
+
+    /* The server sends a follow up AE.
+     * This appendentry forces the node to check if it's going to delete
+     * commited logs */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 3;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 5);
+    e[0].id = 1;
+    e[0].id = 5;
+    e[1].term = 1;
+    e[1].id = 6;
+    e[2].term = 1;
+    e[2].id = 7;
+    ae.entries = e;
+    ae.n_entries = 3;
+    ae.leader_commit = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 6, raft_get_current_idx(r));
 }
 
 void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
