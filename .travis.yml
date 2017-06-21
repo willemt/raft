@@ -5,3 +5,14 @@ script:
   - make tests
 after_success:
   - coveralls --verbose --exclude include --exclude tests --exclude CLinkedListQueue
+env:
+  global:
+    secure: "hiF+fRPdXNqvBCptHfx233VjPzTUy4BKfgj1zgd5sUbrsb4V9LP7cnfoyg9G6+4KWfCdTUB1wi0yTe+rwlHdRDWALKqTVIGdj9Px2qySJOaI3qnAPiYcSJ2si+WNwnmlEO1Yh3gdMagi590Y7cGBk//sk72ieVo1OBNOtUTBjCA="
+addons:
+  coverity_scan:
+    project:
+      name: willemt/raft
+      description: Build submitted via Travis CI
+    notification_email: himself@willemthiart.com
+    build_command: make
+    branch_pattern: coverity_scan
