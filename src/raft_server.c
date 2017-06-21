@@ -680,8 +680,7 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     rv.last_log_term = raft_get_last_log_term(me_);
     rv.candidate_id = raft_get_nodeid(me_);
     assert(me->cb.send_requestvote);
-    me->cb.send_requestvote(me_, me->udata, node, &rv);
-    return 0;
+    return me->cb.send_requestvote(me_, me->udata, node, &rv);
 }
 
 int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
@@ -774,20 +773,26 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
           ae.prev_log_term);
 
     assert(me->cb.send_appendentries);
-    me->cb.send_appendentries(me_, me->udata, node, &ae);
-
-    return 0;
+    return me->cb.send_appendentries(me_, me->udata, node, &ae);
 }
 
-void raft_send_appendentries_all(raft_server_t* me_)
+int raft_send_appendentries_all(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    int i;
+    int i, e;
 
     me->timeout_elapsed = 0;
     for (i = 0; i < me->num_nodes; i++)
+    {
         if (me->node != me->nodes[i])
-            raft_send_appendentries(me_, me->nodes[i]);
+        {
+            e = raft_send_appendentries(me_, me->nodes[i]);
+            if (0 != e)
+                return e;
+        }
+    }
+
+    return 0;
 }
 
 raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)

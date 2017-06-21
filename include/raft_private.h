@@ -86,7 +86,7 @@ int raft_send_requestvote(raft_server_t* me, raft_node_t* node);
 
 int raft_send_appendentries(raft_server_t* me, raft_node_t* node);
 
-void raft_send_appendentries_all(raft_server_t* me_);
+int raft_send_appendentries_all(raft_server_t* me_);
 
 /**
  * Apply entry at lastApplied + 1. Entry becomes 'committed'.
