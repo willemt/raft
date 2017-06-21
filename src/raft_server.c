@@ -243,10 +243,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     else if (me->current_term != r->term)
         return 0;
 
-    /* stop processing, this is a node we don't have in our configuration */
-    if (!node)
-        return 0;
-
     if (0 == r->success)
     {
         /* If AppendEntries fails because of log inconsistency:
