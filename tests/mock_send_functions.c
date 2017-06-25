@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include "CuTest.h"
 
 #include "linked_list_queue.h"
 
