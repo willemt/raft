@@ -909,8 +909,8 @@ int raft_apply_all(raft_server_t* me_)
     while (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
     {
         int e = raft_apply_entry(me_);
-        if (RAFT_ERR_SHUTDOWN == e)
-            return RAFT_ERR_SHUTDOWN;
+        if (0 != e)
+            return e;
     }
 
     return 0;
