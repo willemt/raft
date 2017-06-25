@@ -46,4 +46,5 @@ target_link_libraries(all_tests
 set_target_properties(all_tests
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${TESTS_DIR}
+    FOLDER "tests"
 )
