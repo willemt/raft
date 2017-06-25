@@ -741,7 +741,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     assert(node);
     assert(node != me->node);
 
-    msg_appendentries_t ae = {};
+    msg_appendentries_t ae = {0};
     ae.term = me->current_term;
     ae.leader_commit = raft_get_commit_idx(me_);
     ae.prev_log_idx = 0;
