@@ -19,9 +19,59 @@ static int max_election_timeout(int election_timeout)
 	return 2 * election_timeout;
 }
 
+static int __raft_persist_term(
+    raft_server_t* raft,
+    void *udata,
+    const int val
+    )
+{
+    return 0;
+}
+
+static int __raft_persist_vote(
+    raft_server_t* raft,
+    void *udata,
+    const int val
+    )
+{
+    return 0;
+}
+
+int __raft_applylog(
+    raft_server_t* raft,
+    void *udata,
+    raft_entry_t *ety,
+    int idx
+    )
+{
+    return 0;
+}
+
+int __raft_send_requestvote(raft_server_t* raft,
+                            void* udata,
+                            raft_node_t* node,
+                            msg_requestvote_t* msg)
+{
+    return 0;
+}
+
+int __raft_send_appendentries(raft_server_t* raft,
+                              void* udata,
+                              raft_node_t* node,
+                              msg_appendentries_t* msg)
+{
+    return 0;
+}
+
+raft_cbs_t generic_funcs = {
+    .persist_term = __raft_persist_term,
+    .persist_vote = __raft_persist_vote,
+};
+
 void TestRaft_server_voted_for_records_who_we_voted_for(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_add_node(r, NULL, 2, 0);
     raft_vote(r, raft_get_node(r, 2));
     CuAssertTrue(tc, 2 == raft_get_voted_for(r));
@@ -58,6 +108,7 @@ void TestRaft_server_currentterm_defaults_to_0(CuTest * tc)
 void TestRaft_server_set_currentterm_sets_term(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_set_current_term(r, 5);
     CuAssertTrue(tc, 5 == raft_get_current_term(r));
 }
@@ -65,6 +116,7 @@ void TestRaft_server_set_currentterm_sets_term(CuTest * tc)
 void TestRaft_server_voting_results_in_voting(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_add_node(r, NULL, 1, 0);
     raft_add_node(r, NULL, 9, 0);
 
@@ -131,6 +183,7 @@ void TestRaft_server_remove_node(CuTest * tc)
 void TestRaft_election_start_increments_term(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_set_current_term(r, 1);
     raft_election_start(r);
     CuAssertTrue(tc, 2 == raft_get_current_term(r));
@@ -196,6 +249,7 @@ void TestRaft_server_append_entry_means_entry_gets_current_term(CuTest* tc)
 void TestRaft_server_append_entry_is_retrievable(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_set_state(r, RAFT_STATE_CANDIDATE);
 
     raft_set_current_term(r, 5);
@@ -228,6 +282,7 @@ void TestRaft_server_append_entry_user_can_set_data_buf(CuTest * tc)
 {
     raft_cbs_t funcs = {
         .log_offer = __raft_logentry_offer,
+        .persist_term = __raft_persist_term,
     };
     char *buf = "aaa";
 
@@ -346,7 +401,13 @@ void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest* tc)
 void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
     CuTest* tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .applylog = __raft_applylog,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
 
     /* must be follower */
     raft_set_state(r, RAFT_STATE_FOLLOWER);
@@ -371,7 +432,12 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
 
 void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest* tc)
 {
+    raft_cbs_t funcs = {
+        .applylog = __raft_applylog,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
     raft_set_last_applied_idx(r, 0);
 
     raft_entry_t ety = {};
@@ -401,7 +467,15 @@ void TestRaft_server_periodic_elapses_election_timeout(CuTest * tc)
 
 void TestRaft_server_election_timeout_does_not_promote_us_to_leader_if_there_is_are_more_than_1_nodes(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_election_timeout(r, 1000);
@@ -452,7 +526,13 @@ void TestRaft_server_election_timeout_does_promote_us_to_leader_if_there_is_only
 
 void TestRaft_server_election_timeout_does_promote_us_to_leader_if_there_is_only_1_voting_node(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_non_voting_node(r, NULL, 2, 0);
     raft_set_election_timeout(r, 1000);
@@ -556,7 +636,14 @@ void TestRaft_server_recv_requestvote_response_dont_increase_votes_for_me_when_n
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -575,7 +662,14 @@ void TestRaft_server_recv_requestvote_response_dont_increase_votes_for_me_when_t
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 3);
@@ -593,7 +687,16 @@ void TestRaft_server_recv_requestvote_response_increase_votes_for_me(
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -617,7 +720,15 @@ void TestRaft_server_recv_requestvote_response_must_be_candidate_to_receive(
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -638,9 +749,16 @@ void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term
     CuTest * tc
     )
 {
-    msg_requestvote_response_t rvr;
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
 
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    msg_requestvote_response_t rvr;
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 2);
@@ -658,9 +776,17 @@ void TestRaft_leader_recv_requestvote_does_not_step_down(
     CuTest * tc
     )
 {
-    msg_requestvote_response_t rvr;
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_appendentries = __raft_send_appendentries,
+    };
 
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    msg_requestvote_response_t rvr;
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -684,7 +810,14 @@ void TestRaft_server_recv_requestvote_reply_true_if_term_greater_than_or_equal_t
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -705,7 +838,14 @@ void TestRaft_server_recv_requestvote_reset_timeout(
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -725,7 +865,15 @@ void TestRaft_server_recv_requestvote_candidate_step_down_if_term_is_higher_than
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_become_candidate(r);
@@ -749,7 +897,15 @@ void TestRaft_server_recv_requestvote_depends_on_candidate_id(
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_become_candidate(r);
@@ -775,7 +931,14 @@ void TestRaft_server_recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_
     CuTest * tc
     )
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 0, 0);
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
@@ -808,7 +971,14 @@ void TestRaft_follower_becomes_follower_is_follower(CuTest * tc)
 
 void TestRaft_follower_becomes_follower_does_not_clear_voted_for(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
 
     raft_vote(r, raft_get_node(r, 1));
@@ -821,7 +991,13 @@ void TestRaft_follower_becomes_follower_does_not_clear_voted_for(CuTest * tc)
 void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentterm(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     /* no leader known at this point */
@@ -844,7 +1020,13 @@ void TestRaft_follower_recv_appendentries_reply_false_if_term_less_than_currentt
 
 void TestRaft_follower_recv_appendentries_does_not_need_node(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     msg_appendentries_t ae = {};
@@ -858,10 +1040,16 @@ void TestRaft_follower_recv_appendentries_does_not_need_node(CuTest * tc)
 void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_currentterm(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -888,10 +1076,16 @@ void TestRaft_follower_recv_appendentries_updates_currentterm_if_term_gt_current
 void TestRaft_follower_recv_appendentries_does_not_log_if_no_entries_are_specified(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -914,12 +1108,18 @@ void TestRaft_follower_recv_appendentries_does_not_log_if_no_entries_are_specifi
 
 void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_entry_t ety = {};
     msg_appendentries_response_t aer;
     char *str = "aaa";
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -956,13 +1156,19 @@ void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
 void TestRaft_follower_recv_appendentries_reply_false_if_doesnt_have_log_at_prev_log_idx_which_matches_prev_log_term(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_entry_t ety = {};
     char *str = "aaa";
 
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1037,10 +1243,16 @@ static raft_entry_t* __create_mock_entries_for_conflict_tests(
 void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries_via_prev_log_idx(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1080,10 +1292,16 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
 void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries_via_prev_log_idx_at_idx_0(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1120,10 +1338,16 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
 void TestRaft_follower_recv_appendentries_delete_entries_if_current_idx_greater_than_prev_log_idx(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1133,17 +1357,21 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_current_idx_greater_
     raft_entry_t *ety_appended;
     
     __create_mock_entries_for_conflict_tests(tc, r, strs);
+    CuAssertIntEquals(tc, 3, raft_get_log_count(r));
 
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 2;
     ae.prev_log_idx = 1;
     ae.prev_log_term = 1;
-    ae.entries = NULL;
-    ae.n_entries = 0;
+    msg_entry_t e[1];
+    memset(&e, 0, sizeof(msg_entry_t) * 1);
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
 
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertTrue(tc, 1 == aer.success);
-    CuAssertTrue(tc, 1 == raft_get_log_count(r));
+    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
     CuAssertTrue(tc, NULL != (ety_appended = raft_get_entry_from_idx(r, 1)));
     CuAssertTrue(tc, !strncmp(ety_appended->data.buf, strs[0], 3));
 }
@@ -1153,7 +1381,13 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_current_idx_greater_
 void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -1181,7 +1415,13 @@ void TestRaft_follower_recv_appendentries_add_new_entries_not_already_in_log(
 void TestRaft_follower_recv_appendentries_does_not_add_dupe_entries_already_in_log(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -1221,7 +1461,13 @@ void TestRaft_follower_recv_appendentries_does_not_add_dupe_entries_already_in_l
 void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1264,7 +1510,13 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_prevLogIdx(
 void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1307,7 +1559,13 @@ void TestRaft_follower_recv_appendentries_set_commitidx_to_LeaderCommit(
 void TestRaft_follower_recv_appendentries_failure_includes_current_idx(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
@@ -1345,7 +1603,14 @@ void TestRaft_follower_recv_appendentries_failure_includes_current_idx(
 void TestRaft_follower_becomes_candidate_when_election_timeout_occurs(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
 
     /*  1 second election timeout */
     raft_set_election_timeout(r, 1000);
@@ -1367,7 +1632,14 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1407,9 +1679,179 @@ void TestRaft_follower_dont_grant_vote_if_candidate_has_a_less_complete_log(
     CuAssertIntEquals(tc, 1, rvr.vote_granted);
 }
 
+void TestRaft_follower_recv_appendentries_heartbeat_does_not_overwrite_logs(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t aer;
+
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 1;
+    /* include entries */
+    msg_entry_t e[4];
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* The server sends a follow up AE
+     * NOTE: the server has received a response from the last AE so
+     * prev_log_idx has been incremented */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 2;
+    e[1].term = 1;
+    e[1].id = 3;
+    e[2].term = 1;
+    e[2].id = 4;
+    e[3].term = 1;
+    e[3].id = 5;
+    ae.entries = e;
+    ae.n_entries = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* receive a heartbeat
+     * NOTE: the leader hasn't received the response to the last AE so it can 
+     * only assume prev_Log_idx is still 1 */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_term = 1;
+    ae.prev_log_idx = 1;
+    /* receipt of appendentries changes commit idx */
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 5, raft_get_current_idx(r));
+}
+
+void TestRaft_follower_recv_appendentries_does_not_deleted_commited_entries(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+
+    msg_appendentries_t ae;
+    msg_appendentries_response_t aer;
+
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 1;
+    /* include entries */
+    msg_entry_t e[5];
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 1;
+    ae.entries = e;
+    ae.n_entries = 1;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* Follow up AE. Node responded with success */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 4);
+    e[0].term = 1;
+    e[0].id = 2;
+    e[1].term = 1;
+    e[1].id = 3;
+    e[2].term = 1;
+    e[2].id = 4;
+    e[3].term = 1;
+    e[3].id = 5;
+    ae.entries = e;
+    ae.n_entries = 4;
+    ae.leader_commit = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    /* The server sends a follow up AE */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 1;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 5);
+    e[0].term = 1;
+    e[0].id = 2;
+    e[1].term = 1;
+    e[1].id = 3;
+    e[2].term = 1;
+    e[2].id = 4;
+    e[3].term = 1;
+    e[3].id = 5;
+    e[4].term = 1;
+    e[4].id = 6;
+    ae.entries = e;
+    ae.n_entries = 5;
+    ae.leader_commit = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 6, raft_get_current_idx(r));
+    CuAssertIntEquals(tc, 4, raft_get_commit_idx(r));
+
+    /* The server sends a follow up AE.
+     * This appendentry forces the node to check if it's going to delete
+     * commited logs */
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    ae.prev_log_idx = 3;
+    ae.prev_log_term = 1;
+    /* include entries */
+    memset(&e, 0, sizeof(msg_entry_t) * 5);
+    e[0].id = 1;
+    e[0].id = 5;
+    e[1].term = 1;
+    e[1].id = 6;
+    e[2].term = 1;
+    e[2].id = 7;
+    ae.entries = e;
+    ae.n_entries = 3;
+    ae.leader_commit = 4;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 6, raft_get_current_idx(r));
+}
+
 void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_become_candidate(r);
     CuAssertTrue(tc, raft_is_candidate(r));
 }
@@ -1417,7 +1859,14 @@ void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
 /* Candidate 5.2 */
 void TestRaft_follower_becoming_candidate_increments_current_term(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     CuAssertTrue(tc, 0 == raft_get_current_term(r));
     raft_become_candidate(r);
     CuAssertTrue(tc, 1 == raft_get_current_term(r));
@@ -1426,7 +1875,14 @@ void TestRaft_follower_becoming_candidate_increments_current_term(CuTest * tc)
 /* Candidate 5.2 */
 void TestRaft_follower_becoming_candidate_votes_for_self(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     CuAssertTrue(tc, -1 == raft_get_voted_for(r));
     raft_become_candidate(r);
@@ -1437,7 +1893,14 @@ void TestRaft_follower_becoming_candidate_votes_for_self(CuTest * tc)
 /* Candidate 5.2 */
 void TestRaft_follower_becoming_candidate_resets_election_timeout(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_set_election_timeout(r, 1000);
     CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
 
@@ -1452,7 +1915,14 @@ void TestRaft_follower_becoming_candidate_resets_election_timeout(CuTest * tc)
 void TestRaft_follower_recv_appendentries_resets_election_timeout(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_set_election_timeout(r, 1000);
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 1);
@@ -1473,6 +1943,8 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
         .send_requestvote = sender_requestvote,
     };
     msg_requestvote_t* rv;
@@ -1505,12 +1977,20 @@ void TestRaft_follower_becoming_candidate_requests_votes_from_other_servers(
 void TestRaft_candidate_election_timeout_and_no_leader_results_in_new_election(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_requestvote_response_t vr;
     memset(&vr, 0, sizeof(msg_requestvote_response_t));
     vr.term = 0;
     vr.vote_granted = 1;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_election_timeout(r, 1000);
@@ -1533,7 +2013,16 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 {
     msg_requestvote_response_t vr;
 
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_add_node(r, NULL, 3, 0);
@@ -1565,10 +2054,17 @@ void TestRaft_candidate_receives_majority_of_votes_becomes_leader(CuTest * tc)
 void TestRaft_candidate_will_not_respond_to_voterequest_if_it_has_already_voted(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_requestvote_t rv;
     msg_requestvote_response_t rvr;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1586,7 +2082,9 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
 {
     raft_cbs_t funcs = {
         .send_requestvote = sender_requestvote,
-        .log              = NULL
+        .log              = NULL,
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
     };
 
     void *sender = sender_new(NULL);
@@ -1622,7 +2120,14 @@ void TestRaft_candidate_requestvote_includes_logidx(CuTest * tc)
 void TestRaft_candidate_recv_requestvote_response_becomes_follower_if_current_term_is_less_than_term(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1647,7 +2152,14 @@ void TestRaft_candidate_recv_requestvote_response_becomes_follower_if_current_te
 void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1675,10 +2187,18 @@ void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
 void TestRaft_candidate_recv_appendentries_from_same_term_results_in_step_down(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+        .send_requestvote = __raft_send_requestvote,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -1718,7 +2238,14 @@ void TestRaft_leader_becomes_leader_is_leader(CuTest * tc)
 
 void TestRaft_leader_becomes_leader_does_not_clear_voted_for(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .persist_vote = __raft_persist_vote,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_vote(r, raft_get_node(r, 1));
     CuAssertTrue(tc, 1 == raft_get_voted_for(r));
@@ -1729,7 +2256,13 @@ void TestRaft_leader_becomes_leader_does_not_clear_voted_for(CuTest * tc)
 void TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog_idx_plus_1(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_add_node(r, NULL, 3, 0);
@@ -1778,9 +2311,15 @@ void TestRaft_leader_when_it_becomes_a_leader_sends_empty_appendentries(
  * Note: commit means it's been appended to the log, not applied to the FSM */
 void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest * tc)
 {
-    msg_entry_response_t cr;
+    raft_cbs_t funcs = {
+        .send_appendentries = __raft_send_appendentries,
+    };
 
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    msg_entry_response_t cr;
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -2006,14 +2545,19 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
  * set commitidx = N (§5.2, §5.4).  */
 void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
 {
-    msg_entry_response_t cr;
+    raft_cbs_t funcs = {
+        .send_appendentries = __raft_send_appendentries,
+    };
 
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    msg_entry_response_t cr;
     msg_entry_t ety = {};
     ety.id = 1;
     ety.data.buf = "entry";
     ety.data.len = strlen("entry");
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_set_state(r, RAFT_STATE_LEADER);
@@ -2059,6 +2603,8 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .applylog = __raft_applylog,
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2135,6 +2681,8 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_using_votin
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .applylog = __raft_applylog,
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2186,6 +2734,7 @@ void TestRaft_leader_recv_appendentries_response_duplicate_does_not_decrement_ma
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2248,6 +2797,8 @@ void TestRaft_leader_recv_appendentries_response_do_not_increase_commit_idx_beca
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .applylog = __raft_applylog,
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2342,6 +2893,7 @@ void TestRaft_leader_recv_appendentries_response_jumps_to_lower_next_idx(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2409,6 +2961,7 @@ void TestRaft_leader_recv_appendentries_response_decrements_to_lower_next_idx(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2488,6 +3041,7 @@ void TestRaft_leader_recv_appendentries_response_decrements_to_lower_next_idx(
 void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
     };
 
@@ -2534,7 +3088,13 @@ void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * t
 
 void TestRaft_leader_recv_appendentries_response_without_node_fails(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_add_node(r, NULL, 3, 0);
@@ -2576,7 +3136,14 @@ void TestRaft_leader_recv_entry_resets_election_timeout(
 
 void TestRaft_leader_recv_entry_is_committed_returns_0_if_not_committed(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -2601,7 +3168,14 @@ void TestRaft_leader_recv_entry_is_committed_returns_0_if_not_committed(CuTest *
 
 void TestRaft_leader_recv_entry_is_committed_returns_neg_1_if_invalidated(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .send_appendentries = __raft_send_appendentries,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -2654,6 +3228,7 @@ void TestRaft_leader_recv_entry_does_not_send_new_appendentries_to_slow_nodes(Cu
     raft_add_node(r, NULL, 2, 0);
 
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
     };
 
@@ -2695,6 +3270,7 @@ void TestRaft_leader_recv_appendentries_response_failure_does_not_set_node_nexti
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2740,6 +3316,7 @@ void TestRaft_leader_recv_appendentries_response_increment_idx_of_node(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2771,6 +3348,7 @@ void TestRaft_leader_recv_appendentries_response_drop_message_if_term_is_old(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
         .send_appendentries          = sender_appendentries,
         .log                         = NULL
     };
@@ -2833,10 +3411,16 @@ void TestRaft_leader_recv_appendentries_response_steps_down_if_term_is_newer(
 void TestRaft_leader_recv_appendentries_steps_down_if_newer(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -2861,10 +3445,16 @@ void TestRaft_leader_recv_appendentries_steps_down_if_newer(
 void TestRaft_leader_recv_appendentries_steps_down_if_newer_term(
     CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    void *r = raft_new();
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
@@ -2926,6 +3516,9 @@ void T_estRaft_leader_sends_appendentries_when_receive_entry_msg(CuTest * tc)
 void TestRaft_leader_recv_requestvote_responds_without_granting(CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_vote = __raft_persist_vote,
+        .persist_term = __raft_persist_term,
+        .send_requestvote = __raft_send_requestvote,
         .send_appendentries = sender_appendentries,
     };
 
@@ -2959,6 +3552,9 @@ void TestRaft_leader_recv_requestvote_responds_without_granting(CuTest * tc)
 void TestRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(CuTest * tc)
 {
     raft_cbs_t funcs = {
+        .persist_vote = __raft_persist_vote,
+        .persist_term = __raft_persist_term,
+        .send_requestvote = __raft_send_requestvote,
         .send_appendentries = sender_appendentries,
     };
 

@@ -11,6 +11,24 @@
 #include "raft_private.h"
 #include "mock_send_functions.h"
 
+static int __raft_persist_term(
+    raft_server_t* raft,
+    void *udata,
+    const int val
+    )
+{
+    return 0;
+}
+
+static int __raft_persist_vote(
+    raft_server_t* raft,
+    void *udata,
+    const int val
+    )
+{
+    return 0;
+}
+
 void TestRaft_scenario_leader_appears(CuTest * tc)
 {
     unsigned long i, j;
@@ -34,6 +52,8 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
                            &((raft_cbs_t) {
                                  .send_requestvote = sender_requestvote,
                                  .send_appendentries = sender_appendentries,
+                                 .persist_term = __raft_persist_term,
+                                 .persist_vote = __raft_persist_vote,
                                  .log = NULL
                              }), sender[j]);
     }
