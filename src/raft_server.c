@@ -31,14 +31,14 @@
 static void __log(raft_server_t *me_, raft_node_t* node, const char *fmt, ...)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+    if (me->cb.log == NULL) return;
     char buf[1024];
     va_list args;
 
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
 
-    if (me->cb.log)
-        me->cb.log(me_, node, me->udata, buf);
+    me->cb.log(me_, node, me->udata, buf);
 }
 
 raft_server_t* raft_new()
