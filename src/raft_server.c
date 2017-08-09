@@ -677,6 +677,7 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     msg_requestvote_t rv;
+    int e = 0;
 
     assert(node);
     assert(node != me->node);
@@ -687,8 +688,9 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     rv.last_log_idx = raft_get_current_idx(me_);
     rv.last_log_term = raft_get_last_log_term(me_);
     rv.candidate_id = raft_get_nodeid(me_);
-    assert(me->cb.send_requestvote);
-    return me->cb.send_requestvote(me_, me->udata, node, &rv);
+    if (me->cb.send_requestvote)
+        e = me->cb.send_requestvote(me_, me->udata, node, &rv);
+    return e;
 }
 
 int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
@@ -719,10 +721,12 @@ int raft_apply_entry(raft_server_t* me_)
           me->last_applied_idx, ety->id, ety->data.len);
 
     me->last_applied_idx++;
-    assert(me->cb.applylog);
-    int e = me->cb.applylog(me_, me->udata, ety, me->last_applied_idx - 1);
-    if (RAFT_ERR_SHUTDOWN == e)
-        return RAFT_ERR_SHUTDOWN;
+    if (me->cb.applylog)
+    {
+        int e = me->cb.applylog(me_, me->udata, ety, me->last_applied_idx - 1);
+        if (RAFT_ERR_SHUTDOWN == e)
+            return RAFT_ERR_SHUTDOWN;
+    }
 
     /* Membership Change: confirm connection with cluster */
     if (RAFT_LOGTYPE_ADD_NODE == ety->type)
@@ -753,6 +757,9 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     assert(node);
     assert(node != me->node);
 
+    if (!(me->cb.send_appendentries))
+        return -1;
+
     msg_appendentries_t ae = {};
     ae.term = me->current_term;
     ae.leader_commit = raft_get_commit_idx(me_);
@@ -780,7 +787,6 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
           ae.prev_log_idx,
           ae.prev_log_term);
 
-    assert(me->cb.send_appendentries);
     return me->cb.send_appendentries(me_, me->udata, node, &ae);
 }
 
@@ -899,8 +905,8 @@ void raft_vote_for_nodeid(raft_server_t* me_, const int nodeid)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     me->voted_for = nodeid;
-    assert(me->cb.persist_vote);
-    me->cb.persist_vote(me_, me->udata, nodeid);
+    if (me->cb.persist_vote)
+        me->cb.persist_vote(me_, me->udata, nodeid);
 }
 
 int raft_msg_entry_response_committed(raft_server_t* me_,
