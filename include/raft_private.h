@@ -107,6 +107,8 @@ int raft_get_state(raft_server_t* me_);
 
 raft_node_t* raft_node_new(void* udata, int id);
 
+void raft_node_free(raft_node_t* me_);
+
 void raft_node_set_next_idx(raft_node_t* node, int nextIdx);
 
 void raft_node_set_match_idx(raft_node_t* node, int matchIdx);

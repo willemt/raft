@@ -13,6 +13,7 @@
 #define RAFT_ERR_NOT_LEADER                  -2
 #define RAFT_ERR_ONE_VOTING_CHANGE_ONLY      -3
 #define RAFT_ERR_SHUTDOWN                    -4
+#define RAFT_ERR_NOMEM                       -5
 
 #define RAFT_REQUESTVOTE_ERR_GRANTED          1
 #define RAFT_REQUESTVOTE_ERR_NOT_GRANTED      0
@@ -478,6 +479,7 @@ int raft_recv_requestvote_response(raft_server_t* me,
  *  RAFT_ERR_NOT_LEADER server is not the leader;
  *  RAFT_ERR_SHUTDOWN server should be shutdown;
  *  RAFT_ERR_ONE_VOTING_CHANGE_ONLY there is a non-voting change inflight;
+ *  RAFT_ERR_NOMEM memory allocation failure
  */
 int raft_recv_entry(raft_server_t* me,
                     msg_entry_t* ety,
@@ -622,7 +624,8 @@ void raft_set_commit_idx(raft_server_t* me, int commit_idx);
  * @param[in] ety The entry to be appended
  * @return
  *  0 on success;
- *  RAFT_ERR_SHUTDOWN server should shutdown */
+ *  RAFT_ERR_SHUTDOWN server should shutdown
+ *  RAFT_ERR_NOMEM memory allocation failure */
 int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
 
 /** Confirm if a msg_entry_response has been committed.

@@ -53,6 +53,10 @@ raft_server_t* raft_new()
     me->request_timeout = 200;
     me->election_timeout = 1000;
     me->log = log_new();
+    if (!me->log) {
+        free(me);
+        return NULL;
+    }
     me->voting_cfg_change_log_idx = -1;
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
     me->current_leader = NULL;
@@ -316,6 +320,7 @@ int raft_recv_appendentries(
     )
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+    int e = 0;
 
     me->timeout_elapsed = 0;
 
@@ -352,9 +357,9 @@ int raft_recv_appendentries(
     /* NOTE: the log starts at 1 */
     if (0 < ae->prev_log_idx)
     {
-        raft_entry_t* e = raft_get_entry_from_idx(me_, ae->prev_log_idx);
+        raft_entry_t* ety = raft_get_entry_from_idx(me_, ae->prev_log_idx);
 
-        if (!e)
+        if (!ety)
         {
             __log(me_, node, "AE no log at prev_idx %d", ae->prev_log_idx);
             goto fail_with_current_idx;
@@ -365,10 +370,10 @@ int raft_recv_appendentries(
         if (raft_get_current_idx(me_) < ae->prev_log_idx)
             goto fail_with_current_idx;
 
-        if (e->term != ae->prev_log_term)
+        if (ety->term != ae->prev_log_term)
         {
             __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d",
-                  e->term, ae->prev_log_term, raft_get_current_idx(me_), ae->prev_log_idx);
+                  ety->term, ae->prev_log_term, raft_get_current_idx(me_), ae->prev_log_idx);
             /* Delete all the following log entries because they don't match */
             raft_delete_entry_from_idx(me_, ae->prev_log_idx);
             r->current_idx = ae->prev_log_idx - 1;
@@ -410,14 +415,16 @@ int raft_recv_appendentries(
     /* Pick up remainder in case of mismatch or missing entry */
     for (; i < ae->n_entries; i++)
     {
-        int e = raft_append_entry(me_, &ae->entries[i]);
-        if (-1 == e)
-            goto fail_with_current_idx;
-        else if (RAFT_ERR_SHUTDOWN == e)
+        e = raft_append_entry(me_, &ae->entries[i]);
+        if (RAFT_ERR_SHUTDOWN == e)
         {
             r->success = 0;
             r->first_idx = 0;
             return RAFT_ERR_SHUTDOWN;
+        }
+        else if (0 != e)
+        {
+            goto fail_with_current_idx;
         }
         r->current_idx = ae->prev_log_idx + 1 + i;
     }
@@ -442,7 +449,7 @@ fail_with_current_idx:
 fail:
     r->success = 0;
     r->first_idx = 0;
-    return -1;
+    return e;
 }
 
 int raft_already_voted(raft_server_t* me_)
@@ -475,11 +482,11 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
     if (0 == current_idx)
         return 1;
 
-    raft_entry_t* e = raft_get_entry_from_idx((void*)me, current_idx);
-    if (e->term < vr->last_log_term)
+    raft_entry_t* ety = raft_get_entry_from_idx((void*)me, current_idx);
+    if (ety->term < vr->last_log_term)
         return 1;
 
-    if (vr->last_log_term == e->term && current_idx <= vr->last_log_idx)
+    if (vr->last_log_term == ety->term && current_idx <= vr->last_log_idx)
         return 1;
 
     return 0;
@@ -610,14 +617,14 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 }
 
 int raft_recv_entry(raft_server_t* me_,
-                    msg_entry_t* e,
+                    msg_entry_t* ety,
                     msg_entry_response_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
     /* Only one voting cfg change at a time */
-    if (raft_entry_is_voting_cfg_change(e))
+    if (raft_entry_is_voting_cfg_change(ety))
         if (raft_voting_change_is_in_progress(me_))
             return RAFT_ERR_ONE_VOTING_CHANGE_ONLY;
 
@@ -625,10 +632,12 @@ int raft_recv_entry(raft_server_t* me_,
         return RAFT_ERR_NOT_LEADER;
 
     __log(me_, NULL, "received entry t:%d id: %d idx: %d",
-          me->current_term, e->id, raft_get_current_idx(me_) + 1);
+          me->current_term, ety->id, raft_get_current_idx(me_) + 1);
 
-    e->term = me->current_term;
-    raft_append_entry(me_, e);
+    ety->term = me->current_term;
+    int e = raft_append_entry(me_, ety);
+    if (0 != e)
+        return e;
     for (i = 0; i < me->num_nodes; i++)
     {
         if (me->node == me->nodes[i] || !me->nodes[i] ||
@@ -647,11 +656,11 @@ int raft_recv_entry(raft_server_t* me_,
     if (1 == raft_get_num_voting_nodes(me_))
         raft_set_commit_idx(me_, raft_get_current_idx(me_));
 
-    r->id = e->id;
+    r->id = ety->id;
     r->idx = raft_get_current_idx(me_);
     r->term = me->current_term;
 
-    if (raft_entry_is_voting_cfg_change(e))
+    if (raft_entry_is_voting_cfg_change(ety))
         me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
 
     return 0;
@@ -805,10 +814,18 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
             return NULL;
     }
 
+    node = raft_node_new(udata, id);
+    if (!node)
+        return NULL;
     me->num_nodes++;
-    me->nodes = (raft_node_t*)realloc(me->nodes, sizeof(void*) * me->num_nodes);
-    me->nodes[me->num_nodes - 1] = raft_node_new(udata, id);
-    assert(me->nodes[me->num_nodes - 1]);
+    void* p = realloc(me->nodes, sizeof(void*) * me->num_nodes);
+    if (!p) {
+        me->num_nodes--;
+        raft_node_free(node);
+        return NULL;
+    }
+    me->nodes = p;
+    me->nodes[me->num_nodes - 1] = node;
     if (is_self)
         me->node = me->nodes[me->num_nodes - 1];
 
@@ -832,29 +849,20 @@ void raft_remove_node(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    raft_node_t* new_array, *new_nodes;
-    new_array = (raft_node_t*)calloc((me->num_nodes - 1), sizeof(void*));
-    new_nodes = new_array;
-
     int i, found = 0;
     for (i = 0; i<me->num_nodes; i++)
     {
         if (me->nodes[i] == node)
         {
             found = 1;
-            continue;
+            break;
         }
-        *new_nodes = me->nodes[i];
-        new_nodes++;
     }
-
     assert(found);
-
+    memmove(&me->nodes[i], &me->nodes[i + 1], sizeof(*me->nodes) * (me->num_nodes - i - 1));
     me->num_nodes--;
-    free(me->nodes);
-    me->nodes = new_array;
 
-    free(node);
+    raft_node_free(node);
 }
 
 int raft_get_nvotes_for_me(raft_server_t* me_)

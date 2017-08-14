@@ -41,15 +41,17 @@ typedef struct
     void* raft;
 } log_private_t;
 
-static void __ensurecapacity(log_private_t * me)
+static int __ensurecapacity(log_private_t * me)
 {
     int i, j;
     raft_entry_t *temp;
 
     if (me->count < me->size)
-        return;
+        return 0;
 
     temp = (raft_entry_t*)calloc(1, sizeof(raft_entry_t) * me->size * 2);
+    if (!temp)
+        return RAFT_ERR_NOMEM;
 
     for (i = 0, j = me->front; i < me->count; i++, j++)
     {
@@ -65,6 +67,7 @@ static void __ensurecapacity(log_private_t * me)
     me->entries = temp;
     me->front = 0;
     me->back = me->count;
+    return 0;
 }
 
 log_t* log_new()
@@ -76,6 +79,10 @@ log_t* log_new()
     me->count = 0;
     me->back = in(me)->front = 0;
     me->entries = (raft_entry_t*)calloc(1, sizeof(raft_entry_t) * me->size);
+    if (!me->entries) {
+        free(me);
+        return NULL;
+    }
     return (log_t*)me;
 }
 
@@ -99,9 +106,11 @@ void log_clear(log_t* me_)
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
     log_private_t* me = (log_private_t*)me_;
-    int e = 0;
+    int e;
 
-    __ensurecapacity(me);
+    e = __ensurecapacity(me);
+    if (e != 0)
+        return e;
 
     memcpy(&me->entries[me->back], c, sizeof(raft_entry_t));
 

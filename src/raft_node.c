@@ -46,6 +46,11 @@ raft_node_t* raft_node_new(void* udata, int id)
     return (raft_node_t*)me;
 }
 
+void raft_node_free(raft_node_t* me_)
+{
+    free(me_);
+}
+
 int raft_node_get_next_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
