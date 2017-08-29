@@ -1337,7 +1337,7 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
     CuAssertTrue(tc, !strncmp(ety_appended->data.buf, str4, 3));
 }
 
-void TestRaft_follower_recv_appendentries_delete_entries_if_current_idx_greater_than_prev_log_idx(
+void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_entries_greater_than_prev_log_idx(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
