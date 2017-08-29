@@ -376,16 +376,13 @@ int raft_recv_appendentries(
     {
         raft_entry_t* ety = raft_get_entry_from_idx(me_, ae->prev_log_idx);
 
+        /* 2. Reply false if log doesn't contain an entry at prevLogIndex
+           whose term matches prevLogTerm (§5.3) */
         if (!ety)
         {
             __log(me_, node, "AE no log at prev_idx %d", ae->prev_log_idx);
             goto fail_with_current_idx;
         }
-
-        /* 2. Reply false if log doesn't contain an entry at prevLogIndex
-           whose term matches prevLogTerm (§5.3) */
-        if (raft_get_current_idx(me_) < ae->prev_log_idx)
-            goto fail_with_current_idx;
 
         if (ety->term != ae->prev_log_term)
         {
