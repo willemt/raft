@@ -119,9 +119,9 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     {
         void* ud = raft_get_udata(me->raft);
         e = me->cb->log_offer(me->raft, ud, &me->entries[me->back], idx);
-        raft_offer_log(me->raft, &me->entries[me->back], idx);
-        if (e == RAFT_ERR_SHUTDOWN)
+        if (0 != e)
             return e;
+        raft_offer_log(me->raft, &me->entries[me->back], idx);
     }
 
     me->count++;
@@ -182,7 +182,7 @@ int log_count(log_t* me_)
     return ((log_private_t*)me_)->count;
 }
 
-void log_delete(log_t* me_, int idx)
+int log_delete(log_t* me_, int idx)
 {
     log_private_t* me = (log_private_t*)me_;
     int end;
@@ -194,31 +194,39 @@ void log_delete(log_t* me_, int idx)
     for (end = log_count(me_); idx < end; idx++)
     {
         int idx_tmp = me->base + me->count;
-        if (me->cb && me->cb->log_pop)
-            me->cb->log_pop(me->raft, raft_get_udata(me->raft),
-                            &me->entries[me->back - 1], idx_tmp);
+        if (me->cb && me->cb->log_pop) {
+            int e = me->cb->log_pop(me->raft, raft_get_udata(me->raft),
+                                    &me->entries[me->back - 1], idx_tmp);
+            if (0 != e)
+                return e;
+        }
         raft_pop_log(me->raft, &me->entries[me->back - 1], idx_tmp);
         me->back--;
         me->count--;
     }
+    return 0;
 }
 
-void *log_poll(log_t * me_)
+int log_poll(log_t * me_, void** etyp)
 {
     log_private_t* me = (log_private_t*)me_;
     int idx = me->base + 1;
 
     if (0 == log_count(me_))
-        return NULL;
+        return -1;
 
     const void *elem = &me->entries[me->front];
-    if (me->cb && me->cb->log_poll)
-        me->cb->log_poll(me->raft, raft_get_udata(me->raft),
-                         &me->entries[me->front], idx);
+    if (me->cb && me->cb->log_poll) {
+        int e = me->cb->log_poll(me->raft, raft_get_udata(me->raft),
+                                 &me->entries[me->front], idx);
+        if (0 != e)
+            return e;
+    }
     me->front++;
     me->count--;
     me->base++;
-    return (void*)elem;
+    *etyp = (void*)elem;
+    return 0;
 }
 
 raft_entry_t *log_peektail(log_t * me_)
