@@ -3082,7 +3082,7 @@ void TestRaft_leader_recv_appendentries_response_retry_only_if_leader(CuTest * t
     aer.success = 1;
     aer.current_idx = 1;
     aer.first_idx = 1;
-    CuAssertTrue(tc, -1 == raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer));
+    CuAssertTrue(tc, RAFT_ERR_NOT_LEADER == raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer));
     CuAssertTrue(tc, NULL == sender_poll_msg_data(sender));
 }
 

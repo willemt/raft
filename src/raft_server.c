@@ -243,7 +243,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         return -1;
 
     if (!raft_is_leader(me_))
-        return -1;
+        return RAFT_ERR_NOT_LEADER;
 
     /* If response contains term T > currentTerm: set currentTerm = T
        and convert to follower (§5.3) */
