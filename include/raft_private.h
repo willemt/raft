@@ -71,15 +71,11 @@ typedef struct {
     int connected;
 } raft_server_private_t;
 
-void raft_election_start(raft_server_t* me);
+int raft_election_start(raft_server_t* me);
 
-void raft_become_candidate(raft_server_t* me);
+int raft_become_candidate(raft_server_t* me);
 
 void raft_become_follower(raft_server_t* me);
-
-void raft_vote(raft_server_t* me, raft_node_t* node);
-
-void raft_set_current_term(raft_server_t* me,int term);
 
 void raft_randomize_election_timeout(raft_server_t* me_);
 

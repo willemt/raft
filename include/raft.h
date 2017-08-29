@@ -14,6 +14,7 @@
 #define RAFT_ERR_ONE_VOTING_CHANGE_ONLY      -3
 #define RAFT_ERR_SHUTDOWN                    -4
 #define RAFT_ERR_NOMEM                       -5
+#define RAFT_ERR_LAST                        -100
 
 #define RAFT_REQUESTVOTE_ERR_GRANTED          1
 #define RAFT_REQUESTVOTE_ERR_NOT_GRANTED      0
@@ -148,7 +149,8 @@ typedef struct
     /* Having the following fields allows us to do less book keeping in
      * regards to full fledged RPC */
 
-    /** This is the highest log IDX we've received and appended to our log */
+    /** If success, this is the highest log IDX we've received and appended to
+     * our log; otherwise, this is the our currentIndex */
     int current_idx;
 
     /** The first idx that we received within the appendentries message */
@@ -616,18 +618,24 @@ void* raft_get_udata(raft_server_t* me);
 
 /** Vote for a server.
  * This should be used to reload persistent state, ie. the voted-for field.
- * @param[in] node The server to vote for */
-void raft_vote(raft_server_t* me_, raft_node_t* node);
+ * @param[in] node The server to vote for
+ * @return
+ *  0 on success */
+int raft_vote(raft_server_t* me_, raft_node_t* node);
 
 /** Vote for a server.
  * This should be used to reload persistent state, ie. the voted-for field.
- * @param[in] nodeid The server to vote for by nodeid */
-void raft_vote_for_nodeid(raft_server_t* me_, const int nodeid);
+ * @param[in] nodeid The server to vote for by nodeid
+ * @return
+ *  0 on success */
+int raft_vote_for_nodeid(raft_server_t* me_, const int nodeid);
 
 /** Set the current term.
  * This should be used to reload persistent state, ie. the current_term field.
- * @param[in] term The new current term */
-void raft_set_current_term(raft_server_t* me, const int term);
+ * @param[in] term The new current term
+ * @return
+ *  0 on success */
+int raft_set_current_term(raft_server_t* me, const int term);
 
 /** Set the commit idx.
  * This should be used to reload persistent state, ie. the commit_idx field.

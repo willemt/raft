@@ -82,16 +82,22 @@ int raft_get_voted_for(raft_server_t* me_)
     return me->voted_for;
 }
 
-void raft_set_current_term(raft_server_t* me_, const int term)
+int raft_set_current_term(raft_server_t* me_, const int term)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     if (me->current_term < term)
     {
-        me->current_term = term;
-        me->voted_for = -1;
+        int voted_for = -1;
         if (me->cb.persist_term)
-            me->cb.persist_term(me_, me->udata, term, me->voted_for);
+        {
+            int e = me->cb.persist_term(me_, me->udata, term, voted_for);
+            if (0 != e)
+                return e;
+        }
+        me->current_term = term;
+        me->voted_for = voted_for;
     }
+    return 0;
 }
 
 int raft_get_current_term(raft_server_t* me_)
