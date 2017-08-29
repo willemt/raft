@@ -398,21 +398,11 @@ int raft_recv_appendentries(
         }
     }
 
+    r->current_idx = ae->prev_log_idx;
+
     /* 3. If an existing entry conflicts with a new one (same index
        but different terms), delete the existing entry and all that
        follow it (§5.3) */
-    if (0 < ae->prev_log_idx && ae->prev_log_idx + 1 < raft_get_current_idx(me_))
-    {
-        /* Heartbeats shouldn't cause logs to be deleted. Heartbeats might be 
-         * sent before the leader received the last appendentries response */
-        if (ae->n_entries != 0 &&
-                /* this is an old out-of-order appendentry message */
-                me->commit_idx < ae->prev_log_idx + 1)
-            raft_delete_entry_from_idx(me_, ae->prev_log_idx + 1);
-    }
-
-    r->current_idx = ae->prev_log_idx;
-
     int i;
     for (i = 0; i < ae->n_entries; i++)
     {
