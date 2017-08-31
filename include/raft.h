@@ -223,14 +223,31 @@ typedef void (
  * For safety reasons this callback MUST flush the change to disk.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] voted_for The node we voted for
+ * @param[in] vote The node we voted for
  * @return 0 on success */
 typedef int (
-*func_persist_int_f
+*func_persist_vote_f
 )   (
     raft_server_t* raft,
     void *user_data,
-    int node
+    int vote
+    );
+
+/** Callback for saving current term (and nil vote) to disk.
+ * For safety reasons this callback MUST flush the term and vote changes to
+ * disk atomically.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] term Current term
+ * @param[in] vote The node value dicating we haven't voted for anybody
+ * @return 0 on success */
+typedef int (
+*func_persist_term_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    int term,
+    int vote
     );
 
 /** Callback for saving log entry changes.
@@ -277,11 +294,12 @@ typedef struct
 
     /** Callback for persisting vote data
      * For safety reasons this callback MUST flush the change to disk. */
-    func_persist_int_f persist_vote;
+    func_persist_vote_f persist_vote;
 
-    /** Callback for persisting term data
-     * For safety reasons this callback MUST flush the change to disk. */
-    func_persist_int_f persist_term;
+    /** Callback for persisting term (and nil vote) data
+     * For safety reasons this callback MUST flush the term and vote changes to
+     * disk atomically. */
+    func_persist_term_f persist_term;
 
     /** Callback for adding an entry to the log
      * For safety reasons this callback MUST flush the change to disk.
