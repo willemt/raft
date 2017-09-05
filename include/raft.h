@@ -691,6 +691,10 @@ int raft_apply_all(raft_server_t* me_);
  * losing it's consensus guarantees. */
 void raft_become_leader(raft_server_t* me);
 
+/** Become follower. This may be used to give up leadership. It does not change
+ * currentTerm. */
+void raft_become_follower(raft_server_t* me);
+
 /** Determine if entry is voting configuration change.
  * @param[in] ety The entry to query.
  * @return 1 if this is a voting configuration change. */
