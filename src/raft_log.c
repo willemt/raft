@@ -106,6 +106,7 @@ void log_clear(log_t* me_)
 int log_append_entry(log_t* me_, raft_entry_t* c)
 {
     log_private_t* me = (log_private_t*)me_;
+    int idx = me->base + me->count + 1;
     int e;
 
     e = __ensurecapacity(me);
@@ -117,8 +118,8 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     if (me->cb && me->cb->log_offer)
     {
         void* ud = raft_get_udata(me->raft);
-        e = me->cb->log_offer(me->raft, ud, &me->entries[me->back], me->back);
-        raft_offer_log(me->raft, &me->entries[me->back], me->back);
+        e = me->cb->log_offer(me->raft, ud, &me->entries[me->back], idx);
+        raft_offer_log(me->raft, &me->entries[me->back], idx);
         if (e == RAFT_ERR_SHUTDOWN)
             return e;
     }
@@ -192,10 +193,11 @@ void log_delete(log_t* me_, int idx)
 
     for (end = log_count(me_); idx < end; idx++)
     {
+        int idx_tmp = me->base + me->count;
         if (me->cb && me->cb->log_pop)
             me->cb->log_pop(me->raft, raft_get_udata(me->raft),
-                            &me->entries[me->back - 1], me->back);
-        raft_pop_log(me->raft, &me->entries[me->back - 1], me->back);
+                            &me->entries[me->back - 1], idx_tmp);
+        raft_pop_log(me->raft, &me->entries[me->back - 1], idx_tmp);
         me->back--;
         me->count--;
     }
@@ -204,6 +206,7 @@ void log_delete(log_t* me_, int idx)
 void *log_poll(log_t * me_)
 {
     log_private_t* me = (log_private_t*)me_;
+    int idx = me->base + 1;
 
     if (0 == log_count(me_))
         return NULL;
@@ -211,7 +214,7 @@ void *log_poll(log_t * me_)
     const void *elem = &me->entries[me->front];
     if (me->cb && me->cb->log_poll)
         me->cb->log_poll(me->raft, raft_get_udata(me->raft),
-                         &me->entries[me->front], me->front);
+                         &me->entries[me->front], idx);
     me->front++;
     me->count--;
     me->base++;

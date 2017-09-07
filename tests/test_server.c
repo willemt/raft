@@ -270,7 +270,7 @@ static int __raft_logentry_offer(
     int ety_idx
     )
 {
-    CuAssertIntEquals(udata, ety_idx, 0);
+    CuAssertIntEquals(udata, ety_idx, 1);
     ety->data.buf = udata;
     return 0;
 }

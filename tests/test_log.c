@@ -20,6 +20,17 @@ void TestLog_new_is_empty(CuTest * tc)
     CuAssertTrue(tc, 0 == log_count(l));
 }
 
+static int __log_offer(
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t *entry,
+    int entry_idx
+    )
+{
+    CuAssertIntEquals((CuTest*)raft, 1, entry_idx);
+    return 0;
+}
+
 void TestLog_append_is_not_empty(CuTest * tc)
 {
     void *l;
@@ -28,6 +39,10 @@ void TestLog_append_is_not_empty(CuTest * tc)
     e.id = 1;
 
     l = log_new();
+    raft_cbs_t funcs = {
+        .log_offer = __log_offer
+    };
+    log_set_callbacks(l, &funcs, tc);
     CuAssertTrue(tc, 0 == log_append_entry(l, &e));
     CuAssertTrue(tc, 1 == log_count(l));
 }
