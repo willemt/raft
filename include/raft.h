@@ -422,7 +422,10 @@ int raft_recv_appendentries(raft_server_t* me,
 /** Receive a response from an appendentries message we sent.
  * @param[in] node The node who sent us this message
  * @param[in] r The appendentries response message
- * @return 0 on success */
+ * @return
+ *  0 on success;
+ *  -1 on error;
+ *  RAFT_ERR_NOT_LEADER server is not the leader */
 int raft_recv_appendentries_response(raft_server_t* me,
                                      raft_node_t* node,
                                      msg_appendentries_response_t* r);
