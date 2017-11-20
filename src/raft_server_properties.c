@@ -89,7 +89,7 @@ void raft_set_current_term(raft_server_t* me_, const int term)
         me->current_term = term;
         me->voted_for = -1;
         assert(me->cb.persist_term);
-        me->cb.persist_term(me_, me->udata, term);
+        me->cb.persist_term(me_, me->udata, term, me->voted_for);
     }
 }
 
