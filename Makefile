@@ -18,6 +18,7 @@ SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
+CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
 CFLAGS += -fsanitize=address
 else
 SHAREDFLAGS = -shared
@@ -59,6 +60,14 @@ tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_no
 .PHONY: amalgamation
 amalgamation:
 	./scripts/amalgamate.sh > raft.h
+
+.PHONY: infer
+infer: do_infer
+
+.PHONY: do_infer
+do_infer:
+	make clean
+	infer -- make static
 
 clean:
 	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
