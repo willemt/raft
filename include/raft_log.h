@@ -5,6 +5,8 @@ typedef void* log_t;
 
 log_t* log_new();
 
+log_t* log_alloc(int initial_size);
+
 void log_set_callbacks(log_t* me_, raft_cbs_t* funcs, void* raft);
 
 void log_free(log_t* me_);

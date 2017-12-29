@@ -57,6 +57,10 @@ tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_no
 	./tests_main
 	gcov raft_server.c
 
+.PHONY: fuzzer_tests
+fuzzer_tests:
+	python tests/log_fuzzer.py
+
 .PHONY: amalgamation
 amalgamation:
 	./scripts/amalgamate.sh > raft.h

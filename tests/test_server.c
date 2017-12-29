@@ -1528,7 +1528,7 @@ void TestRaft_follower_recv_appendentries_partial_failures(
     msg_appendentries_t ae;
     msg_appendentries_response_t aer;
 
-    /* Receive entry 2 and 3 of term 2. */
+    /* To be received: entry 2 and 3 of term 2. */
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 2;
     ae.prev_log_idx = 1;
@@ -1548,7 +1548,7 @@ void TestRaft_follower_recv_appendentries_partial_failures(
     memset(&aer, 0, sizeof(aer));
     int err = raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertIntEquals(tc, RAFT_ERR_NOMEM, err);
-    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 1, aer.success);
     CuAssertIntEquals(tc, 1, aer.current_idx);
     CuAssertIntEquals(tc, 2, raft_get_current_idx(r));
     raft_entry_t *tmp = raft_get_entry_from_idx(r, 2);
@@ -1561,7 +1561,7 @@ void TestRaft_follower_recv_appendentries_partial_failures(
     memset(&aer, 0, sizeof(aer));
     err = raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertIntEquals(tc, RAFT_ERR_NOMEM, err);
-    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 1, aer.success);
     CuAssertIntEquals(tc, 2, aer.current_idx);
     CuAssertIntEquals(tc, 2, raft_get_current_idx(r));
     tmp = raft_get_entry_from_idx(r, 2);
@@ -1573,7 +1573,7 @@ void TestRaft_follower_recv_appendentries_partial_failures(
     memset(&aer, 0, sizeof(aer));
     err = raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertIntEquals(tc, 0, err);
-    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertIntEquals(tc, 1, aer.success);
     CuAssertIntEquals(tc, 3, aer.current_idx);
     CuAssertIntEquals(tc, 3, raft_get_current_idx(r));
 }
