@@ -28,12 +28,42 @@ typedef enum {
 } raft_state_e;
 
 typedef enum {
+    /**
+     * Regular log type.
+     * This is solely for application data intended for the FSM.
+     */
     RAFT_LOGTYPE_NORMAL,
+    /**
+     * Membership change.
+     * Non-voting nodes can't cast votes or start elections.
+     * Nodes in this non-voting state are used to catch up with the cluster,
+     * when trying to the join the cluster.
+     */
     RAFT_LOGTYPE_ADD_NONVOTING_NODE,
+    /**
+     * Membership change.
+     * Add a voting node.
+     */
     RAFT_LOGTYPE_ADD_NODE,
+    /**
+     * Membership change.
+     * Nodes become demoted when we want to remove them from the cluster.
+     * Demoted nodes can't take part in voting or start elections.
+     * Demoted nodes become inactive, as per raft_node_is_active.
+     */
     RAFT_LOGTYPE_DEMOTE_NODE,
+    /**
+     * Membership change.
+     * The node is removed from the cluster.
+     * This happens after the node has been demoted.
+     * Removing nodes is a 2 step process: first demote, then remove.
+     */
     RAFT_LOGTYPE_REMOVE_NODE,
-    RAFT_LOGTYPE_NUM,
+    /**
+     * Users can piggyback the entry mechanism by specifying log types that
+     * are higher than RAFT_LOGTYPE_NUM.
+     */
+    RAFT_LOGTYPE_NUM=100,
 } raft_logtype_e;
 
 typedef struct
@@ -415,7 +445,7 @@ void raft_set_request_timeout(raft_server_t* me, int msec);
  * @return
  *  0 on success;
  *  -1 on failure;
- *  RAFT_ERR_SHUTDOWN when server should be shutdown */
+ *  RAFT_ERR_SHUTDOWN when server MUST shutdown */
 int raft_periodic(raft_server_t* me, int msec_elapsed);
 
 /** Receive an appendentries message.
@@ -466,7 +496,7 @@ int raft_recv_requestvote(raft_server_t* me,
  * @param[in] r The requestvote response message
  * @return
  *  0 on success;
- *  RAFT_ERR_SHUTDOWN server should be shutdown; */
+ *  RAFT_ERR_SHUTDOWN server MUST shutdown; */
 int raft_recv_requestvote_response(raft_server_t* me,
                                    raft_node_t* node,
                                    msg_requestvote_response_t* r);
@@ -497,7 +527,7 @@ int raft_recv_requestvote_response(raft_server_t* me,
  * @return
  *  0 on success;
  *  RAFT_ERR_NOT_LEADER server is not the leader;
- *  RAFT_ERR_SHUTDOWN server should be shutdown;
+ *  RAFT_ERR_SHUTDOWN server MUST shutdown;
  *  RAFT_ERR_ONE_VOTING_CHANGE_ONLY there is a non-voting change inflight;
  *  RAFT_ERR_NOMEM memory allocation failure
  */
@@ -683,7 +713,7 @@ int raft_node_is_voting(raft_node_t* me_);
 /** Apply all entries up to the commit index
  * @return
  *  0 on success;
- *  RAFT_ERR_SHUTDOWN when server should be shutdown */
+ *  RAFT_ERR_SHUTDOWN when server MUST shutdown */
 int raft_apply_all(raft_server_t* me_);
 
 /** Become leader

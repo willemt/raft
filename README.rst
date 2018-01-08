@@ -10,7 +10,7 @@ See `raft.h <https://github.com/willemt/raft/blob/master/include/raft.h>`_ for f
 
 See `ticketd <https://github.com/willemt/ticketd>`_ for real life use of this library.
 
-Networking is out of scope for this project. The implementor will need to do all the plumbing.
+Networking is out of scope for this project. The implementor will need to do all the plumbing. The library doesn't assume a network layer with ordering or duplicate detection. This means you could use UDP for transmission.
 
 There are no dependencies, however https://github.com/willemt/linked-List-queue is required for testing.
 
