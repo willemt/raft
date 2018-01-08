@@ -404,7 +404,8 @@ int raft_recv_appendentries(
             __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d pli:%d",
                   ety->term, ae->prev_log_term, raft_get_current_idx(me_), ae->prev_log_idx);
             /* Delete all the following log entries because they don't match */
-            e = raft_delete_entry_from_idx(me_, ae->prev_log_idx);
+            e = raft_delete_entry_from_idx(me_,
+                max(ae->prev_log_idx, ae->leader_commit + 1));
             goto out;
         }
     }
