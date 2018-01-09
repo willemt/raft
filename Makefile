@@ -18,6 +18,7 @@ SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
+CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
 CFLAGS += -fsanitize=address
 else
 SHAREDFLAGS = -shared
@@ -44,24 +45,36 @@ $(TEST_DIR)/main_test.c:
 
 .PHONY: shared
 shared: $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) $(CFLAGS) -fPIC $(SHAREDFLAGS) -o libcraft.$(SHAREDEXT)
+	$(CC) $(OBJECTS) $(LDFLAGS) $(CFLAGS) -fPIC $(SHAREDFLAGS) -o libraft.$(SHAREDEXT)
 
 .PHONY: static
 static: $(OBJECTS)
-	ar -r libcraft.a $(OBJECTS)
+	ar -r libraft.a $(OBJECTS)
 
 .PHONY: tests
-tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_snapshotting.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CFLAGS) -o tests_main $^
 	./tests_main
 	gcov raft_server.c
+
+.PHONY: fuzzer_tests
+fuzzer_tests:
+	python tests/log_fuzzer.py
 
 .PHONY: amalgamation
 amalgamation:
 	./scripts/amalgamate.sh > raft.h
 
+.PHONY: infer
+infer: do_infer
+
+.PHONY: do_infer
+do_infer:
+	make clean
+	infer -- make static
+
 clean:
 	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
-	if [ -f "libcraft.$(SHAREDEXT)" ]; then rm libcraft.$(SHAREDEXT); fi;\
-	if [ -f libcraft.a ]; then rm libcraft.a; fi;\
+	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
+	if [ -f libraft.a ]; then rm libraft.a; fi;\
 	if [ -f tests_main ]; then rm tests_main; fi;

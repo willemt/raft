@@ -34,6 +34,7 @@ add_unit_test(raft_log_tests test_log.cpp)
 add_unit_test(raft_node_tests test_node.cpp)
 add_unit_test(raft_scenario_tests test_scenario.cpp)
 add_unit_test(raft_server_tests test_server.cpp)
+add_unit_test(raft_snapshotting_tests test_snapshotting.cpp)
 
 add_executable(all_tests EXCLUDE_FROM_ALL ${ALL_TESTS} mock_send_functions.c)
 target_link_libraries(all_tests

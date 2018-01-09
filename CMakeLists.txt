@@ -3,6 +3,8 @@ project(craft)
 cmake_minimum_required(VERSION 2.8.11)
 
 add_subdirectory(thirdparty/gtest)
+target_compile_options(gtest PUBLIC -DGTEST_HAS_TR1_TUPLE=0)
+target_compile_options(gtest_main PUBLIC -DGTEST_HAS_TR1_TUPLE=0)
 
 add_library(craft STATIC
     include/raft.h
