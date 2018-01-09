@@ -303,6 +303,21 @@ typedef int (
     int vote
     );
 
+/** Callback for applying log entries to the state machine.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] entries Array of entries to be applied
+ * @param[in] n_entries Number of entries to be applied
+ * @return 0 on success */
+typedef int (
+*func_apply_logs_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t* entries,
+    int n_entries
+    );
+
 /** Callback for saving log entry changes.
  *
  * This callback is used for:
@@ -322,7 +337,18 @@ typedef int (
  *    memory pointed to in the raft_entry_data_t struct. This MUST be done if
  *    the memory is temporary.
  * @param[in] entry_idx The entries index in the log
+ * @param[in] n_entries The numberof entries.
  * @return 0 on success */
+typedef int (
+*func_logentries_event_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t *entry,
+    int entry_idx,
+    int n_entries
+    );
+
 typedef int (
 *func_logentry_event_f
 )   (
@@ -343,11 +369,6 @@ typedef struct
     /** Callback for notifying user that a node needs a snapshot sent */
     func_send_snapshot_f send_snapshot;
 
-    /** Callback for finite state machine application
-     * Return 0 on success.
-     * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logentry_event_f applylog;
-
     /** Callback for persisting vote data
      * For safety reasons this callback MUST flush the change to disk. */
     func_persist_vote_f persist_vote;
@@ -361,6 +382,36 @@ typedef struct
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
+    func_logentries_event_f offer_logs;
+
+    /** Callback for removing the oldest entry from the log
+     * For safety reasons this callback MUST flush the change to disk.
+     * @note If memory was malloc'd in log_offer then this should be the right
+     *  time to free the memory. */
+    func_logentries_event_f poll_logs;
+
+    /** Callback for removing the youngest entries from the log
+     * For safety reasons this callback MUST flush the change to disk.
+     * @note If memory was malloc'd in log_offer then this should be the right
+     *  time to free the memory. */
+    func_logentries_event_f pop_logs;
+
+    /** Callback for determining which node this configuration log entry
+     * affects. This call only applies to configuration change log entries.
+     * @return the node ID of the node */
+    func_logentry_event_f log_get_node_id;
+
+    /** Callback for detecting when a non-voting node has sufficient logs. */
+    func_node_has_sufficient_logs_f node_has_sufficient_logs;
+
+    /** Callback for catching debugging log messages
+     * This callback is optional */
+    func_log_f log;
+
+    /** WARNING: the below callbacks are deprecated */
+
+    /** Callback for adding an entry to the log
+     * For safety reasons this callback MUST flush the change to disk. */
     func_logentry_event_f log_offer;
 
     /** Callback for removing the oldest entry from the log
@@ -375,17 +426,10 @@ typedef struct
      *  time to free the memory. */
     func_logentry_event_f log_pop;
 
-    /** Callback for determining which node this configuration log entry
-     * affects. This call only applies to configuration change log entries.
-     * @return the node ID of the node */
-    func_logentry_event_f log_get_node_id;
-
-    /** Callback for detecting when a non-voting node has sufficient logs. */
-    func_node_has_sufficient_logs_f node_has_sufficient_logs;
-
-    /** Callback for catching debugging log messages
-     * This callback is optional */
-    func_log_f log;
+    /** Callback for finite state machine application
+     * Return 0 on success.
+     * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
+    func_logentry_event_f applylog;
 } raft_cbs_t;
 
 typedef struct
@@ -709,6 +753,8 @@ void raft_set_commit_idx(raft_server_t* me, int commit_idx);
  *  RAFT_ERR_SHUTDOWN server should shutdown
  *  RAFT_ERR_NOMEM memory allocation failure */
 int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
+
+int raft_append_entries(raft_server_t* me_, raft_entry_t* etys, int n_etys);
 
 /** Confirm if a msg_entry_response has been committed.
  * @param[in] r The response we want to check */
