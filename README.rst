@@ -443,11 +443,18 @@ The process works like this:
 5. When the ``send_snapshot`` callback fires, the user must propogate the snapshot to the other node.
 6. Once the peer has the snapshot, they call ``raft_begin_load_snapshot``.
 7. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
-8. Peer call s``raft_node_set_voting`` to nodes as per the snapshot's membership info.
+8. Peer calls ``raft_node_set_voting`` to nodes as per the snapshot's membership info.
 9. Peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
 10. Finally, peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
 
 When a node receives a snapshot it could reuse that snapshot itself for other nodes.
+
+Roadmap
+=======
+
+* Batch friendly interfaces - we can speed up Raft by adding new APIs that support batching many log entries
+* Implementing linearizable semantics (Ongaro, 2014)
+* Processing read-only queries more efficiently (Ongaro, 2014)
 
 References
 ==========
