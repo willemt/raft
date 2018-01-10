@@ -209,6 +209,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 
     /* Only one voting node means it's safe for us to become the leader */
     if (1 == raft_get_num_voting_nodes(me_) &&
+        raft_get_my_node(me_) &&
         raft_node_is_voting(raft_get_my_node((void*)me)) &&
         !raft_is_leader(me_))
         raft_become_leader(me_);
@@ -225,6 +226,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         !raft_snapshot_is_in_progress(me_))
     {
         if (1 < raft_get_num_voting_nodes(me_) &&
+            raft_get_my_node(me_) &&
             raft_node_is_voting(raft_get_my_node(me_)))
         {
             int e = raft_election_start(me_);
@@ -833,7 +835,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     if (!(me->cb.send_appendentries))
         return -1;
 
-    msg_appendentries_t ae = {};
+    msg_appendentries_t ae = {0};
     ae.term = me->current_term;
     ae.leader_commit = raft_get_commit_idx(me_);
     ae.prev_log_idx = 0;

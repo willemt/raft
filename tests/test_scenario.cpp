@@ -1,15 +1,11 @@
-#include <stdbool.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-#include "CuTest.h"
-
+#include <gtest/gtest.h>
+extern "C"
+{
 #include "raft.h"
 #include "raft_log.h"
 #include "raft_private.h"
 #include "mock_send_functions.h"
+}
 
 static int __raft_persist_term(
     raft_server_t* raft,
@@ -30,11 +26,17 @@ static int __raft_persist_vote(
     return 0;
 }
 
-void TestRaft_scenario_leader_appears(CuTest * tc)
+TEST(TestScenario, leader_appears)
 {
     unsigned long i, j;
     raft_server_t *r[3];
     void* sender[3];
+
+    raft_cbs_t funcs = { 0 };
+    funcs.send_requestvote = sender_requestvote;
+    funcs.send_appendentries = sender_appendentries;
+    funcs.persist_term = __raft_persist_term;
+    funcs.persist_vote = __raft_persist_vote;
 
     senders_new();
 
@@ -49,14 +51,7 @@ void TestRaft_scenario_leader_appears(CuTest * tc)
         raft_add_node(r[j], sender[0], 1, j==0);
         raft_add_node(r[j], sender[1], 2, j==1);
         raft_add_node(r[j], sender[2], 3, j==2);
-        raft_set_callbacks(r[j],
-                           &((raft_cbs_t) {
-                                 .send_requestvote = sender_requestvote,
-                                 .send_appendentries = sender_appendentries,
-                                 .persist_term = __raft_persist_term,
-                                 .persist_vote = __raft_persist_vote,
-                                 .log = NULL
-                             }), sender[j]);
+        raft_set_callbacks(r[j], &funcs, sender[j]);
     }
 
     /* NOTE: important for 1st node to send vote request before others */
@@ -82,6 +77,6 @@ one_more_time:
         if (raft_is_leader(r[j]))
             leaders += 1;
 
-    CuAssertTrue(tc, 0 != leaders);
-    CuAssertTrue(tc, 1 == leaders);
+    EXPECT_NE(0, leaders);
+    EXPECT_EQ(1, leaders);
 }

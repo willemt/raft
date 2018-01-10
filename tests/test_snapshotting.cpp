@@ -1,15 +1,19 @@
+#include <gtest/gtest.h>
+
 #include <stdbool.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include "CuTest.h"
 
+extern "C"
+{
 #include "raft.h"
 #include "raft_log.h"
 #include "raft_private.h"
 #include "mock_send_functions.h"
+}
 
 static int __raft_persist_term(
     raft_server_t* raft,
@@ -73,19 +77,18 @@ static int __raft_send_appendentries_capture(raft_server_t* raft,
 
 static int max_election_timeout(int election_timeout)
 {
-	return 2 * election_timeout;
+    return 2 * election_timeout;
 }
 
 // TODO: don't apply logs while snapshotting
 // TODO: don't cause elections while snapshotting
 
-void TestRaft_leader_begin_snapshot_fails_if_no_logs_to_compact(CuTest * tc)
+TEST(TestSnapshooting, leader_begin_snapshot_fails_if_no_logs_to_compact)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = {0};
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -95,7 +98,7 @@ void TestRaft_leader_begin_snapshot_fails_if_no_logs_to_compact(CuTest * tc)
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -107,20 +110,19 @@ void TestRaft_leader_begin_snapshot_fails_if_no_logs_to_compact(CuTest * tc)
     raft_recv_entry(r, &ety, &cr);
     ety.id = 2;
     raft_recv_entry(r, &ety, &cr);
-    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
-    CuAssertIntEquals(tc, -1, raft_begin_snapshot(r));
+    EXPECT_EQ(2, raft_get_log_count(r));
+    EXPECT_EQ(-1, raft_begin_snapshot(r));
 
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    EXPECT_EQ(0, raft_begin_snapshot(r));
 }
 
-void TestRaft_leader_will_not_apply_entry_if_snapshot_is_in_progress(CuTest * tc)
+TEST(TestSnapshooting, leader_will_not_apply_entry_if_snapshot_is_in_progress)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -130,7 +132,7 @@ void TestRaft_leader_will_not_apply_entry_if_snapshot_is_in_progress(CuTest * tc
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -143,22 +145,21 @@ void TestRaft_leader_will_not_apply_entry_if_snapshot_is_in_progress(CuTest * tc
     ety.id = 1;
     raft_recv_entry(r, &ety, &cr);
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
+    EXPECT_EQ(2, raft_get_log_count(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
-    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
+    EXPECT_EQ(0, raft_begin_snapshot(r));
+    EXPECT_EQ(1, raft_get_last_applied_idx(r));
     raft_set_commit_idx(r, 2);
-    CuAssertIntEquals(tc, -1, raft_apply_entry(r));
-    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
+    EXPECT_EQ(-1, raft_apply_entry(r));
+    EXPECT_EQ(1, raft_get_last_applied_idx(r));
 }
 
-void TestRaft_leader_snapshot_end_fails_if_snapshot_not_in_progress(CuTest * tc)
+TEST(TestSnapshooting, leader_snapshot_end_fails_if_snapshot_not_in_progress)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     raft_add_node(r, NULL, 1, 1);
@@ -166,17 +167,16 @@ void TestRaft_leader_snapshot_end_fails_if_snapshot_not_in_progress(CuTest * tc)
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
-    CuAssertIntEquals(tc, -1, raft_end_snapshot(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
+    EXPECT_EQ(-1, raft_end_snapshot(r));
 }
 
-void TestRaft_leader_snapshot_begin_fails_if_less_than_2_logs_to_compact(CuTest * tc)
+TEST(TestSnapshooting, leader_snapshot_begin_fails_if_less_than_2_logs_to_compact)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -186,7 +186,7 @@ void TestRaft_leader_snapshot_begin_fails_if_less_than_2_logs_to_compact(CuTest 
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -197,18 +197,17 @@ void TestRaft_leader_snapshot_begin_fails_if_less_than_2_logs_to_compact(CuTest 
     /* receive entry */
     raft_recv_entry(r, &ety, &cr);
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
-    CuAssertIntEquals(tc, -1, raft_begin_snapshot(r));
+    EXPECT_EQ(1, raft_get_log_count(r));
+    EXPECT_EQ(-1, raft_begin_snapshot(r));
 }
 
-void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
+TEST(TestSnapshooting, leader_snapshot_end_succeeds_if_log_compacted)
 {
-    raft_cbs_t funcs = {
-        .persist_term = __raft_persist_term,
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.persist_term = __raft_persist_term;
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -219,7 +218,7 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 1);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -232,32 +231,31 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
     ety.id = 2;
     raft_recv_entry(r, &ety, &cr);
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 1, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(2, raft_get_log_count(r));
+    EXPECT_EQ(1, raft_get_num_snapshottable_logs(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    EXPECT_EQ(0, raft_begin_snapshot(r));
 
     raft_entry_t* _ety;
     int i = raft_get_first_entry_idx(r);
     for (; i < raft_get_commit_idx(r); i++)
-        CuAssertIntEquals(tc, 0, raft_poll_entry(r, &_ety));
+        EXPECT_EQ(0, raft_poll_entry(r, &_ety));
 
-    CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
-    CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 1, raft_get_commit_idx(r));
-    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
-    CuAssertIntEquals(tc, 0, raft_periodic(r, 1000));
+    EXPECT_EQ(0, raft_end_snapshot(r));
+    EXPECT_EQ(0, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(1, raft_get_log_count(r));
+    EXPECT_EQ(1, raft_get_commit_idx(r));
+    EXPECT_EQ(1, raft_get_last_applied_idx(r));
+    EXPECT_EQ(0, raft_periodic(r, 1000));
 }
 
-void TestRaft_leader_snapshot_end_succeeds_if_log_compacted2(CuTest * tc)
+TEST(TestSnapshooting, leader_snapshot_end_succeeds_if_log_compacted2)
 {
-    raft_cbs_t funcs = {
-        .persist_term = __raft_persist_term,
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.persist_term = __raft_persist_term;
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -268,7 +266,7 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted2(CuTest * tc)
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 1);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -283,31 +281,30 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted2(CuTest * tc)
     ety.id = 3;
     raft_recv_entry(r, &ety, &cr);
     raft_set_commit_idx(r, 2);
-    CuAssertIntEquals(tc, 3, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 2, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(3, raft_get_log_count(r));
+    EXPECT_EQ(2, raft_get_num_snapshottable_logs(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    EXPECT_EQ(0, raft_begin_snapshot(r));
 
     raft_entry_t* _ety;
     int i = raft_get_first_entry_idx(r);
     for (; i <= raft_get_commit_idx(r); i++)
-        CuAssertIntEquals(tc, 0, raft_poll_entry(r, &_ety));
+        EXPECT_EQ(0, raft_poll_entry(r, &_ety));
 
-    CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
-    CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 2, raft_get_commit_idx(r));
-    CuAssertIntEquals(tc, 2, raft_get_last_applied_idx(r));
-    CuAssertIntEquals(tc, 0, raft_periodic(r, 1000));
+    EXPECT_EQ(0, raft_end_snapshot(r));
+    EXPECT_EQ(0, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(1, raft_get_log_count(r));
+    EXPECT_EQ(2, raft_get_commit_idx(r));
+    EXPECT_EQ(2, raft_get_last_applied_idx(r));
+    EXPECT_EQ(0, raft_periodic(r, 1000));
 }
 
-void TestRaft_joinee_needs_to_get_snapshot(CuTest * tc)
+TEST(TestSnapshooting, joinee_needs_to_get_snapshot)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -317,7 +314,7 @@ void TestRaft_joinee_needs_to_get_snapshot(CuTest * tc)
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -330,28 +327,27 @@ void TestRaft_joinee_needs_to_get_snapshot(CuTest * tc)
     ety.id = 2;
     raft_recv_entry(r, &ety, &cr);
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 1, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(2, raft_get_log_count(r));
+    EXPECT_EQ(1, raft_get_num_snapshottable_logs(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
-    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
-    CuAssertIntEquals(tc, -1, raft_apply_entry(r));
-    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
+    EXPECT_EQ(0, raft_begin_snapshot(r));
+    EXPECT_EQ(1, raft_get_last_applied_idx(r));
+    EXPECT_EQ(-1, raft_apply_entry(r));
+    EXPECT_EQ(1, raft_get_last_applied_idx(r));
 }
 
-void TestRaft_follower_load_from_snapshot(CuTest * tc)
+TEST(TestSnapshooting, follower_load_from_snapshot)
 {
-    raft_cbs_t funcs = {
-    };
+    raft_cbs_t funcs = {0};
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
     raft_set_state(r, RAFT_STATE_FOLLOWER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -359,15 +355,15 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
     ety.data.buf = "entry";
     ety.data.len = strlen("entry");
 
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 5, 5));
-    CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
-    CuAssertIntEquals(tc, 5, raft_get_commit_idx(r));
-    CuAssertIntEquals(tc, 5, raft_get_last_applied_idx(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_begin_load_snapshot(r, 5, 5));
+    EXPECT_EQ(0, raft_end_load_snapshot(r));
+    EXPECT_EQ(1, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(5, raft_get_commit_idx(r));
+    EXPECT_EQ(5, raft_get_last_applied_idx(r));
 
-    CuAssertIntEquals(tc, 0, raft_periodic(r, 1000));
+    EXPECT_EQ(0, raft_periodic(r, 1000));
 
     /* current idx means snapshot was unnecessary */
     ety.id = 2;
@@ -375,23 +371,22 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
     ety.id = 3;
     raft_append_entry(r, &ety);
     raft_set_commit_idx(r, 7);
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 6, 5));
-    CuAssertIntEquals(tc, 7, raft_get_commit_idx(r));
+    EXPECT_EQ(-1, raft_begin_load_snapshot(r, 6, 5));
+    EXPECT_EQ(7, raft_get_commit_idx(r));
 }
 
-void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
+TEST(TestSnapshooting, follower_load_from_snapshot_fails_if_already_loaded)
 {
-    raft_cbs_t funcs = {
-    };
+    raft_cbs_t funcs = { 0 };
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
     raft_set_state(r, RAFT_STATE_FOLLOWER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -399,30 +394,29 @@ void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
     ety.data.buf = "entry";
     ety.data.len = strlen("entry");
 
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 5, 5));
-    CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
-    CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
-    CuAssertIntEquals(tc, 5, raft_get_commit_idx(r));
-    CuAssertIntEquals(tc, 5, raft_get_last_applied_idx(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_begin_load_snapshot(r, 5, 5));
+    EXPECT_EQ(0, raft_end_load_snapshot(r));
+    EXPECT_EQ(1, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_num_snapshottable_logs(r));
+    EXPECT_EQ(5, raft_get_commit_idx(r));
+    EXPECT_EQ(5, raft_get_last_applied_idx(r));
 
-    CuAssertIntEquals(tc, RAFT_ERR_SNAPSHOT_ALREADY_LOADED, raft_begin_load_snapshot(r, 5, 5));
+    EXPECT_EQ(RAFT_ERR_SNAPSHOT_ALREADY_LOADED, raft_begin_load_snapshot(r, 5, 5));
 }
 
-void TestRaft_follower_load_from_snapshot_does_not_break_cluster_safety(CuTest * tc)
+TEST(TestSnapshooting, follower_load_from_snapshot_does_not_break_cluster_safety)
 {
-    raft_cbs_t funcs = {
-    };
+    raft_cbs_t funcs = { 0 };
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
     raft_set_state(r, RAFT_STATE_FOLLOWER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -441,22 +435,21 @@ void TestRaft_follower_load_from_snapshot_does_not_break_cluster_safety(CuTest *
     ety.data.len = strlen("entry");
     raft_append_entry(r, &ety);
 
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 2, 2));
+    EXPECT_EQ(-1, raft_begin_load_snapshot(r, 2, 2));
 }
 
-void TestRaft_follower_load_from_snapshot_fails_if_log_is_newer(CuTest * tc)
+TEST(TestSnapshooting, follower_load_from_snapshot_fails_if_log_is_newer)
 {
-    raft_cbs_t funcs = {
-    };
+    raft_cbs_t funcs = { 0 };
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
 
     raft_set_state(r, RAFT_STATE_FOLLOWER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     raft_set_last_applied_idx(r, 5);
 
@@ -466,18 +459,17 @@ void TestRaft_follower_load_from_snapshot_fails_if_log_is_newer(CuTest * tc)
     ety.data.buf = "entry";
     ety.data.len = strlen("entry");
 
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 2, 2));
+    EXPECT_EQ(-1, raft_begin_load_snapshot(r, 2, 2));
 }
 
-void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTest* tc)
+TEST(TestSnapshooting, leader_sends_appendentries_when_node_next_index_was_compacted)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries_capture,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.send_appendentries = __raft_send_appendentries_capture;
 
     msg_appendentries_t ae;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, &ae);
 
     raft_node_t* node;
@@ -507,31 +499,30 @@ void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTe
     ety.data.buf = str;
     ety.data.len = 3;
     raft_append_entry(r, &ety);
-    CuAssertIntEquals(tc, 3, raft_get_current_idx(r));
+    EXPECT_EQ(3, raft_get_current_idx(r));
 
     /* compact entry 1 & 2 */
-    CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 2, 3));
-    CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
-    CuAssertIntEquals(tc, 3, raft_get_current_idx(r));
+    EXPECT_EQ(0, raft_begin_load_snapshot(r, 2, 3));
+    EXPECT_EQ(0, raft_end_load_snapshot(r));
+    EXPECT_EQ(3, raft_get_current_idx(r));
 
     /* node wants an entry that was compacted */
     raft_node_set_next_idx(node, raft_get_current_idx(r));
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 2);
-    CuAssertIntEquals(tc, 0, raft_send_appendentries(r, node));
-    CuAssertIntEquals(tc, 2, ae.term);
-    CuAssertIntEquals(tc, 2, ae.prev_log_idx);
-    CuAssertIntEquals(tc, 2, ae.prev_log_term);
+    EXPECT_EQ(0, raft_send_appendentries(r, node));
+    EXPECT_EQ(2, ae.term);
+    EXPECT_EQ(2, ae.prev_log_idx);
+    EXPECT_EQ(2, ae.prev_log_term);
 }
 
-void TestRaft_recv_entry_fails_if_snapshot_in_progress(CuTest* tc)
+TEST(TestSnapshooting, recv_entry_fails_if_snapshot_in_progress)
 {
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
+    raft_cbs_t funcs = { 0 };
+    funcs.send_appendentries = __raft_send_appendentries;
 
-    void *r = raft_new();
+    raft_server_t *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
     msg_entry_response_t cr;
@@ -541,7 +532,7 @@ void TestRaft_recv_entry_fails_if_snapshot_in_progress(CuTest* tc)
 
     /* I am the leader */
     raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    EXPECT_EQ(0, raft_get_log_count(r));
 
     /* entry message */
     msg_entry_t ety = {};
@@ -553,12 +544,12 @@ void TestRaft_recv_entry_fails_if_snapshot_in_progress(CuTest* tc)
     raft_recv_entry(r, &ety, &cr);
     ety.id = 2;
     raft_recv_entry(r, &ety, &cr);
-    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
+    EXPECT_EQ(2, raft_get_log_count(r));
 
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    EXPECT_EQ(0, raft_begin_snapshot(r));
 
     ety.id = 3;
     ety.type = RAFT_LOGTYPE_ADD_NODE;
-    CuAssertIntEquals(tc, RAFT_ERR_SNAPSHOT_IN_PROGRESS, raft_recv_entry(r, &ety, &cr));
+    EXPECT_EQ(RAFT_ERR_SNAPSHOT_IN_PROGRESS, raft_recv_entry(r, &ety, &cr));
 }
