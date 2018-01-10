@@ -460,7 +460,7 @@ int raft_recv_appendentries(
         r->current_idx = ety_index;
     }
 
-    /* Pick up remainder in case of mismatch or missing entry */
+    /* 4. Append any new entries not already in the log */
     for (; i < ae->n_entries; i++)
     {
         e = raft_append_entry(me_, &ae->entries[i]);
@@ -469,12 +469,13 @@ int raft_recv_appendentries(
         r->current_idx = ae->prev_log_idx + 1 + i;
     }
 
-    /* 4. If leaderCommit > commitIndex, set commitIndex =
-        min(leaderCommit, index of most recent entry) */
+    /* 5. If leaderCommit > commitIndex, set commitIndex =
+        min(leaderCommit, index of last new entry) */
     if (raft_get_commit_idx(me_) < ae->leader_commit)
     {
-        int last_log_idx = max(raft_get_current_idx(me_), 1);
-        raft_set_commit_idx(me_, min(last_log_idx, ae->leader_commit));
+        int new_commit_idx = min(ae->leader_commit, r->current_idx);
+        if (raft_get_commit_idx(me_) < new_commit_idx)
+            raft_set_commit_idx(me_, new_commit_idx);
     }
 
 out:
