@@ -444,9 +444,15 @@ int raft_recv_appendentries(
             __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
                   ety->term, ae->prev_log_term, raft_get_current_idx(me_),
                   raft_get_commit_idx(me_), ae->leader_commit, ae->prev_log_idx);
+            if (ae->prev_log_idx <= raft_get_commit_idx(me_))
+            {
+                /* Should never happen; something is seriously wrong! */
+                __log(me_, node, "AE prev conflicts with committed entry");
+                e = RAFT_ERR_SHUTDOWN;
+                goto out;
+            }
             /* Delete all the following log entries because they don't match */
-            e = raft_delete_entry_from_idx(me_,
-                max(ae->prev_log_idx, ae->leader_commit + 1));
+            e = raft_delete_entry_from_idx(me_, ae->prev_log_idx);
             goto out;
         }
     }
@@ -463,8 +469,17 @@ int raft_recv_appendentries(
         raft_entry_t* ety = &ae->entries[i];
         int ety_index = ae->prev_log_idx + 1 + i;
         raft_entry_t* existing_ety = raft_get_entry_from_idx(me_, ety_index);
-        if (existing_ety && existing_ety->term != ety->term && me->commit_idx < ety_index)
+        if (existing_ety && existing_ety->term != ety->term)
         {
+            if (ety_index <= raft_get_commit_idx(me_))
+            {
+                /* Should never happen; something is seriously wrong! */
+                __log(me_, node, "AE entry conflicts with committed entry ci:%d comi:%d lcomi:%d pli:%d",
+                      raft_get_current_idx(me_), raft_get_commit_idx(me_),
+                      ae->leader_commit, ae->prev_log_idx);
+                e = RAFT_ERR_SHUTDOWN;
+                goto out;
+            }
             e = raft_delete_entry_from_idx(me_, ety_index);
             if (0 != e)
                 goto out;
