@@ -82,6 +82,15 @@ void raft_set_callbacks(raft_server_t* me_, raft_cbs_t* funcs, void* udata)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
+
+    /* WARNING: node_has_sufficient_logs is deprecated, use node_has_sufficient_entries */
+    if (me->cb.node_has_sufficient_logs && !me->cb.node_has_sufficient_entries)
+        me->cb.node_has_sufficient_entries = me->cb.node_has_sufficient_logs;
+
+    /* WARNING: log_get_node is deprecated, use entry_get_node_id */
+    if (me->cb.log_get_node_id && !me->cb.entry_get_node_id)
+        me->cb.entry_get_node_id= me->cb.log_get_node_id;
+
     me->udata = udata;
     log_set_callbacks(me->log, &me->cb, me_);
 }
@@ -322,13 +331,13 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         !raft_voting_change_is_in_progress(me_) &&
         raft_get_current_idx(me_) <= r->current_idx + 1 &&
         !raft_node_is_voting_committed(node) &&
-        me->cb.node_has_sufficient_logs &&
-        0 == raft_node_has_sufficient_logs(node)
+        me->cb.node_has_sufficient_entries &&
+        0 == raft_node_has_sufficient_entries(node)
         )
     {
-        int e = me->cb.node_has_sufficient_logs(me_, me->udata, node);
+        int e = me->cb.node_has_sufficient_entries(me_, me->udata, node);
         if (0 == e)
-            raft_node_set_has_sufficient_logs(node);
+            raft_node_set_has_sufficient_entries(node);
     }
 
     /* Update commit idx */
@@ -787,7 +796,7 @@ int raft_apply_entry(raft_server_t* me_)
     if (!raft_entry_is_cfg_change(ety))
         return 0;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, log_idx);
+    int node_id = me->cb.entry_get_node_id(me_, raft_get_udata(me_), ety, log_idx);
     raft_node_t* node = raft_get_node(me_, node_id);
 
     switch (ety->type) {
@@ -795,7 +804,7 @@ int raft_apply_entry(raft_server_t* me_)
             raft_node_set_addition_committed(node, 1);
             raft_node_set_voting_committed(node, 1);
             /* Membership Change: confirm connection with cluster */
-            raft_node_set_has_sufficient_logs(node);
+            raft_node_set_has_sufficient_entries(node);
             if (node_id == raft_get_nodeid(me_))
                 me->connected = RAFT_NODE_STATUS_CONNECTED;
             break;
@@ -1054,7 +1063,7 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
     if (!raft_entry_is_cfg_change(ety))
         return;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, idx);
+    int node_id = me->cb.entry_get_node_id(me_, raft_get_udata(me_), ety, idx);
     raft_node_t* node = raft_get_node(me_, node_id);
     int is_self = node_id == raft_get_nodeid(me_);
 
@@ -1103,7 +1112,7 @@ void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
     if (!raft_entry_is_cfg_change(ety))
         return;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, idx);
+    int node_id = me->cb.entry_get_node_id(me_, raft_get_udata(me_), ety, idx);
 
     switch (ety->type)
     {
@@ -1156,6 +1165,21 @@ int raft_poll_entry(raft_server_t* me_, raft_entry_t **ety)
     return 0;
 }
 
+void raft_offer_entries(raft_server_t* me_, raft_entry_t* ety, const int idx, const int len)
+{
+
+}
+
+void raft_pop_entries(raft_server_t* me_, raft_entry_t* ety, const int idx, const int len)
+{
+
+}
+
+int raft_poll_entries(raft_server_t* me_, raft_entry_t **ety, const int len)
+{
+    return 0;
+}
+
 int raft_get_first_entry_idx(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -1168,7 +1192,7 @@ int raft_get_first_entry_idx(raft_server_t* me_)
     return me->snapshot_last_idx;
 }
 
-int raft_get_num_snapshottable_logs(raft_server_t *me_)
+int raft_get_num_snapshottable_entries(raft_server_t *me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     if (raft_get_log_count(me_) <= 1)
@@ -1180,7 +1204,7 @@ int raft_begin_snapshot(raft_server_t *me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    if (raft_get_num_snapshottable_logs(me_) == 0)
+    if (raft_get_num_snapshottable_entries(me_) == 0)
         return -1;
 
     int snapshot_target = raft_get_commit_idx(me_);
@@ -1205,7 +1229,7 @@ int raft_begin_snapshot(raft_server_t *me_)
         "begin snapshot sli:%d slt:%d slogs:%d\n", 
         me->snapshot_last_idx,
         me->snapshot_last_term,
-        raft_get_num_snapshottable_logs(me_));
+        raft_get_num_snapshottable_entries(me_));
 
     return 0;
 }
@@ -1307,7 +1331,7 @@ int raft_begin_load_snapshot(
         "loaded snapshot sli:%d slt:%d slogs:%d\n", 
         me->snapshot_last_idx,
         me->snapshot_last_term,
-        raft_get_num_snapshottable_logs(me_));
+        raft_get_num_snapshottable_entries(me_));
 
     return 0;
 }
@@ -1324,7 +1348,7 @@ int raft_end_load_snapshot(raft_server_t *me_)
         raft_node_set_voting_committed(node, raft_node_is_voting(node));
         raft_node_set_addition_committed(node, 1);
         if (raft_node_is_voting(node))
-            raft_node_set_has_sufficient_logs(node);
+            raft_node_set_has_sufficient_entries(node);
     }
 
     return 0;
