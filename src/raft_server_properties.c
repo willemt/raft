@@ -60,7 +60,7 @@ int raft_get_num_voting_nodes(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i, num = 0;
     for (i = 0; i < me->num_nodes; i++)
-        if (raft_node_is_voting(me->nodes[i]))
+        if (raft_node_is_active(me->nodes[i]) && raft_node_is_voting(me->nodes[i]))
             num++;
     return num;
 }
@@ -228,4 +228,34 @@ int raft_get_last_log_term(raft_server_t* me_)
 int raft_is_connected(raft_server_t* me_)
 {
     return ((raft_server_private_t*)me_)->connected;
+}
+
+int raft_snapshot_is_in_progress(raft_server_t *me_)
+{
+    return ((raft_server_private_t*)me_)->snapshot_in_progress;
+}
+
+raft_entry_t *raft_get_last_applied_entry(raft_server_t *me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    if (raft_get_last_applied_idx(me_) == 0)
+        return NULL;
+    return log_get_at_idx(me->log, raft_get_last_applied_idx(me_));
+}
+
+int raft_get_snapshot_last_idx(raft_server_t *me_)
+{
+    return ((raft_server_private_t*)me_)->snapshot_last_idx;
+}
+
+int raft_get_snapshot_last_term(raft_server_t *me_)
+{
+    return ((raft_server_private_t*)me_)->snapshot_last_term;
+}
+
+void raft_set_snapshot_metadata(raft_server_t *me_, int term, int idx)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    me->snapshot_last_term = term;
+    me->snapshot_last_idx = idx;
 }
