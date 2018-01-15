@@ -140,4 +140,6 @@ void raft_node_set_voting_committed(raft_node_t* me_, int voting);
 
 int raft_node_set_addition_committed(raft_node_t* me_, int committed);
 
+int raft_get_entry_term(raft_server_t* me_, int idx, int* term);
+
 #endif /* RAFT_PRIVATE_H_ */

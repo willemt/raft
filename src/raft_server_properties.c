@@ -216,13 +216,10 @@ int raft_is_candidate(raft_server_t* me_)
 int raft_get_last_log_term(raft_server_t* me_)
 {
     int current_idx = raft_get_current_idx(me_);
-    if (0 < current_idx)
-    {
-        raft_entry_t* ety = raft_get_entry_from_idx(me_, current_idx);
-        if (ety)
-            return ety->term;
-    }
-    return 0;
+    int term;
+    int got = raft_get_entry_term(me_, current_idx, &term);
+    assert(got);
+    return term;
 }
 
 int raft_is_connected(raft_server_t* me_)

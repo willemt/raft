@@ -48,8 +48,10 @@ raft_entry_t *log_peektail(log_t * me_);
 
 int log_get_current_idx(log_t* me_);
 
-int log_load_from_snapshot(log_t *me_, int idx, int term);
+void log_load_from_snapshot(log_t *me_, int idx, int term);
 
 int log_get_base(log_t* me_);
+
+int log_get_base_term(log_t* me_);
 
 #endif /* RAFT_LOG_H_ */

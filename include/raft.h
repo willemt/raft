@@ -62,7 +62,6 @@ typedef enum {
      * Removing nodes is a 2 step process: first demote, then remove.
      */
     RAFT_LOGTYPE_REMOVE_NODE,
-    RAFT_LOGTYPE_SNAPSHOT,
     /**
      * Users can piggyback the entry mechanism by specifying log types that
      * are higher than RAFT_LOGTYPE_NUM.
@@ -726,7 +725,11 @@ void raft_set_commit_idx(raft_server_t* me, int commit_idx);
 int raft_append_entries(raft_server_t* me, raft_entry_t* entries, int *n);
 
 /** Confirm if a msg_entry_response has been committed.
- * @param[in] r The response we want to check */
+ * @param[in] r The response we want to check
+ * @return
+ *  1 if committed
+ *  0 if not committed
+ *  -1 if overwritten or commitness unknown */
 int raft_msg_entry_response_committed(raft_server_t* me_,
                                       const msg_entry_response_t* r);
 

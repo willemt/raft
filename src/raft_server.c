@@ -250,6 +250,21 @@ raft_entry_t* raft_get_entry_from_idx(raft_server_t* me_, int etyidx)
     return log_get_at_idx(me->log, etyidx);
 }
 
+/* Returns nonzero if we've got the term at idx or zero otherwise. */
+int raft_get_entry_term(raft_server_t* me_, int idx, int* term)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    int got = 1;
+    raft_entry_t* ety = raft_get_entry_from_idx(me_, idx);
+    if (ety)
+        *term = ety->term;
+    else if (idx == log_get_base(me->log))
+        *term = log_get_base_term(me->log);
+    else
+        got = 0;
+    return got;
+}
+
 int raft_voting_change_is_in_progress(raft_server_t* me_)
 {
     return ((raft_server_private_t*)me_)->voting_cfg_change_log_idx != -1;
@@ -333,10 +348,11 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 
     /* Update commit idx */
     int point = r->current_idx;
-    if (point)
+    if (point && raft_get_commit_idx(me_) < point)
     {
-        raft_entry_t* ety = raft_get_entry_from_idx(me_, point);
-        if (raft_get_commit_idx(me_) < point && ety->term == me->current_term)
+        int term;
+        int got = raft_get_entry_term(me_, point, &term);
+        if (got && term == me->current_term)
         {
             int i, votes = 1;
             for (i = 0; i < me->num_nodes; i++)
@@ -357,7 +373,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     }
 
     /* Aggressively send remaining entries */
-    if (raft_get_entry_from_idx(me_, raft_node_get_next_idx(node)))
+    if (raft_node_get_next_idx(node) <= raft_get_current_idx(me_))
         raft_send_appendentries(me_, node);
 
     /* periodic applies committed entries lazily */
@@ -414,20 +430,19 @@ int raft_recv_appendentries(
     /* NOTE: the log starts at 1 */
     if (0 < ae->prev_log_idx)
     {
-        raft_entry_t* ety = raft_get_entry_from_idx(me_, ae->prev_log_idx);
-
         /* 2. Reply false if log doesn't contain an entry at prevLogIndex
            whose term matches prevLogTerm (§5.3) */
-        if (!ety)
+        int term;
+        int got = raft_get_entry_term(me_, ae->prev_log_idx, &term);
+        if (!got && raft_get_current_idx(me_) < ae->prev_log_idx)
         {
             __log(me_, node, "AE no log at prev_idx %d", ae->prev_log_idx);
             goto out;
         }
-
-        if (ety->term != ae->prev_log_term)
+        else if (got && term != ae->prev_log_term)
         {
             __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
-                  ety->term, ae->prev_log_term, raft_get_current_idx(me_),
+                  term, ae->prev_log_term, raft_get_current_idx(me_),
                   raft_get_commit_idx(me_), ae->leader_commit, ae->prev_log_idx);
             if (ae->prev_log_idx <= raft_get_commit_idx(me_))
             {
@@ -453,8 +468,9 @@ int raft_recv_appendentries(
     {
         raft_entry_t* ety = &ae->entries[i];
         int ety_index = ae->prev_log_idx + 1 + i;
-        raft_entry_t* existing_ety = raft_get_entry_from_idx(me_, ety_index);
-        if (existing_ety && existing_ety->term != ety->term)
+        int term;
+        int got = raft_get_entry_term(me_, ety_index, &term);
+        if (got && term != ety->term)
         {
             if (ety_index <= raft_get_commit_idx(me_))
             {
@@ -470,7 +486,7 @@ int raft_recv_appendentries(
                 goto out;
             break;
         }
-        else if (!existing_ety)
+        else if (!got && raft_get_current_idx(me_) < ety_index)
             break;
         r->current_idx = ety_index;
     }
@@ -526,15 +542,13 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 
     int current_idx = raft_get_current_idx((void*)me);
 
-    /* Our log is definitely not more up-to-date if it's empty! */
-    if (0 == current_idx)
+    int term;
+    int got = raft_get_entry_term((void*)me, current_idx, &term);
+    assert(got);
+    if (term < vr->last_log_term)
         return 1;
 
-    raft_entry_t* ety = raft_get_entry_from_idx((void*)me, current_idx);
-    if (ety->term < vr->last_log_term)
-        return 1;
-
-    if (vr->last_log_term == ety->term && current_idx <= vr->last_log_idx)
+    if (vr->last_log_term == term && current_idx <= vr->last_log_idx)
         return 1;
 
     return 0;
@@ -1021,12 +1035,31 @@ int raft_vote_for_nodeid(raft_server_t* me_, const int nodeid)
 int raft_msg_entry_response_committed(raft_server_t* me_,
                                       const msg_entry_response_t* r)
 {
-    raft_entry_t* ety = raft_get_entry_from_idx(me_, r->idx);
-    if (!ety)
-        return 0;
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    int term;
+    int got = raft_get_entry_term(me_, r->idx, &term);
+    if (!got)
+    {
+        if (r->idx <= log_get_base(me->log))
+        {
+            /* The entry has been compacted. */
+            if (r->term == me->current_term)
+                /* The index is committed in this term, so it must be ours. */
+                return 1;
+            else
+                /* Impossible to know for sure. */
+                return -1;
+        }
+        else
+        {
+            /* The entry is not stored on this replica yet. */
+            return 0;
+        }
+    }
 
     /* entry from another leader has invalidated this entry message */
-    if (r->term != ety->term)
+    if (r->term != term)
         return -1;
     return r->idx <= raft_get_commit_idx(me_);
 }
@@ -1180,17 +1213,13 @@ int raft_get_first_entry_idx(raft_server_t* me_)
 
     assert(0 < raft_get_current_idx(me_));
 
-    if (me->snapshot_last_idx == 0)
-        return 1;
-
-    return me->snapshot_last_idx;
+    return log_get_base(me->log) + 1;
 }
 
 int raft_get_num_snapshottable_logs(raft_server_t *me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    if (raft_get_log_count(me_) <= 1)
-        return 0;
+    assert(log_get_base(me->log) <= raft_get_commit_idx(me_));
     return raft_get_commit_idx(me_) - log_get_base(me->log);
 }
 

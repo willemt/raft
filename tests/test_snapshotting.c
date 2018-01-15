@@ -176,37 +176,6 @@ void TestRaft_leader_snapshot_end_fails_if_snapshot_not_in_progress(CuTest * tc)
     CuAssertIntEquals(tc, -1, raft_end_snapshot(r));
 }
 
-void TestRaft_leader_snapshot_begin_fails_if_less_than_2_logs_to_compact(CuTest * tc)
-{
-    raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries,
-    };
-
-    void *r = raft_new();
-    raft_set_callbacks(r, &funcs, NULL);
-
-    msg_entry_response_t cr;
-
-    raft_add_node(r, NULL, 1, 1);
-    raft_add_node(r, NULL, 2, 0);
-
-    /* I am the leader */
-    raft_set_state(r, RAFT_STATE_LEADER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
-
-    /* entry message */
-    msg_entry_t ety = {};
-    ety.id = 1;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
-
-    /* receive entry */
-    raft_recv_entry(r, &ety, &cr);
-    raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
-    CuAssertIntEquals(tc, -1, raft_begin_snapshot(r));
-}
-
 void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
 {
     raft_cbs_t funcs = {
@@ -358,7 +327,7 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
     CuAssertIntEquals(tc, 0, raft_get_log_count(r));
     CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 5, 5));
     CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
+    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
     CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
     CuAssertIntEquals(tc, 5, raft_get_commit_idx(r));
     CuAssertIntEquals(tc, 5, raft_get_last_applied_idx(r));
@@ -398,7 +367,7 @@ void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
     CuAssertIntEquals(tc, 0, raft_get_log_count(r));
     CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 5, 5));
     CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
-    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
+    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
     CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
     CuAssertIntEquals(tc, 5, raft_get_commit_idx(r));
     CuAssertIntEquals(tc, 5, raft_get_last_applied_idx(r));

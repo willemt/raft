@@ -316,14 +316,17 @@ void TestLog_poll(CuTest * tc)
     memset(&e3, 0, sizeof(raft_entry_t));
 
     e1.id = 1;
+    e1.term = 1;
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     CuAssertIntEquals(tc, 1, log_get_current_idx(l));
 
     e2.id = 2;
+    e2.term = 2;
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
     CuAssertIntEquals(tc, 2, log_get_current_idx(l));
 
     e3.id = 3;
+    e3.term = 3;
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e3));
     CuAssertIntEquals(tc, 3, log_count(l));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
@@ -332,6 +335,7 @@ void TestLog_poll(CuTest * tc)
     CuAssertIntEquals(tc, 0, log_poll(l, 1));
     CuAssertIntEquals(tc, 2, log_count(l));
     CuAssertIntEquals(tc, 1, log_get_base(l));
+    CuAssertIntEquals(tc, 1, log_get_base_term(l));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
     CuAssertTrue(tc, NULL != log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL != log_get_at_idx(l, 3));
@@ -341,6 +345,7 @@ void TestLog_poll(CuTest * tc)
     CuAssertIntEquals(tc, 0, log_poll(l, 3));
     CuAssertIntEquals(tc, 0, log_count(l));
     CuAssertIntEquals(tc, 3, log_get_base(l));
+    CuAssertIntEquals(tc, 3, log_get_base_term(l));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
@@ -393,12 +398,9 @@ void TestLog_load_from_snapshot(CuTest * tc)
 
     l = log_new();
     CuAssertIntEquals(tc, 0, log_get_current_idx(l));
-    CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
+    log_load_from_snapshot(l, 10, 5);
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
-
-    /* this is just a marker
-     * it should never be sent to any nodes because it is part of a snapshot */
-    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 0, log_count(l));
 }
 
 void TestLog_load_from_snapshot_clears_log(CuTest * tc)
@@ -417,8 +419,8 @@ void TestLog_load_from_snapshot_clears_log(CuTest * tc)
     CuAssertIntEquals(tc, 2, log_count(l));
     CuAssertIntEquals(tc, 2, log_get_current_idx(l));
 
-    CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
-    CuAssertIntEquals(tc, 1, log_count(l));
+    log_load_from_snapshot(l, 10, 5);
+    CuAssertIntEquals(tc, 0, log_count(l));
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
 }
 
