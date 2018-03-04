@@ -89,6 +89,9 @@ typedef struct
     /** type of entry */
     int type;
 
+    /** private local data */
+    void *user_data;
+
     raft_entry_data_t data;
 } raft_entry_t;
 
