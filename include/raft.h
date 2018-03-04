@@ -870,4 +870,13 @@ int raft_node_is_voting_committed(raft_node_t* me_);
  **/
 int raft_node_is_addition_committed(raft_node_t* me_);
 
+/**
+ * Register custom heap management functions, to be used if an alternative
+ * heap management is used.
+ **/
+void raft_set_heap_functions(void *(*_malloc)(size_t),
+                             void *(*_calloc)(size_t, size_t),
+                             void *(*_realloc)(void *, size_t),
+                             void (*_free)(void *));
+
 #endif /* RAFT_H_ */

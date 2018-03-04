@@ -28,6 +28,22 @@
 #define max(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
+void *(*__raft_malloc)(size_t) = malloc;
+void *(*__raft_calloc)(size_t, size_t) = calloc;
+void *(*__raft_realloc)(void *, size_t) = realloc;
+void (*__raft_free)(void *) = free;
+
+void raft_set_heap_functions(void *(*_malloc)(size_t),
+                             void *(*_calloc)(size_t, size_t),
+                             void *(*_realloc)(void *, size_t),
+                             void (*_free)(void *))
+{
+    __raft_malloc = _malloc;
+    __raft_calloc = _calloc;
+    __raft_realloc = _realloc;
+    __raft_free = _free;
+}
+
 static void __log(raft_server_t *me_, raft_node_t* node, const char *fmt, ...)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -53,7 +69,7 @@ void raft_randomize_election_timeout(raft_server_t* me_)
 raft_server_t* raft_new()
 {
     raft_server_private_t* me =
-        (raft_server_private_t*)calloc(1, sizeof(raft_server_private_t));
+        (raft_server_private_t*)__raft_calloc(1, sizeof(raft_server_private_t));
     if (!me)
         return NULL;
     me->current_term = 0;
@@ -64,7 +80,7 @@ raft_server_t* raft_new()
     raft_randomize_election_timeout((raft_server_t*)me);
     me->log = log_new();
     if (!me->log) {
-        free(me);
+        __raft_free(me);
         return NULL;
     }
     me->voting_cfg_change_log_idx = -1;
@@ -91,7 +107,7 @@ void raft_free(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     log_free(me->log);
-    free(me_);
+    __raft_free(me_);
 }
 
 void raft_clear(raft_server_t* me_)
@@ -915,7 +931,7 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     node = raft_node_new(udata, id);
     if (!node)
         return NULL;
-    void* p = realloc(me->nodes, sizeof(void*) * (me->num_nodes + 1));
+    void* p = __raft_realloc(me->nodes, sizeof(void*) * (me->num_nodes + 1));
     if (!p) {
         raft_node_free(node);
         return NULL;
@@ -1076,7 +1092,9 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
             break;
 
         case RAFT_LOGTYPE_ADD_NODE:
-            node = raft_add_node(me_, NULL, node_id, is_self);
+            if (!node) {
+                node = raft_add_node(me_, NULL, node_id, is_self);
+            }
             assert(node);
             assert(raft_node_is_voting(node));
             break;

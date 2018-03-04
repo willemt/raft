@@ -15,6 +15,7 @@
 #include <assert.h>
 
 #include "raft.h"
+#include "raft_private.h"
 
 #define RAFT_NODE_VOTED_FOR_ME        (1 << 0)
 #define RAFT_NODE_VOTING              (1 << 1)
@@ -38,7 +39,7 @@ typedef struct
 raft_node_t* raft_node_new(void* udata, int id)
 {
     raft_node_private_t* me;
-    me = (raft_node_private_t*)calloc(1, sizeof(raft_node_private_t));
+    me = (raft_node_private_t*)__raft_calloc(1, sizeof(raft_node_private_t));
     if (!me)
         return NULL;
     me->udata = udata;
@@ -51,7 +52,7 @@ raft_node_t* raft_node_new(void* udata, int id)
 
 void raft_node_free(raft_node_t* me_)
 {
-    free(me_);
+    __raft_free(me_);
 }
 
 int raft_node_get_next_idx(raft_node_t* me_)
