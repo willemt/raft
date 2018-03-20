@@ -20,12 +20,13 @@ SHAREDEXT = dylib
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
 CFLAGS += -fsanitize=address
+CFLAGS += -Wno-nullability-completeness
 else
 SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
-OBJECTS = raft_server.o raft_server_properties.o raft_node.o raft_log.o
+OBJECTS = src/raft_server.o src/raft_server_properties.o src/raft_node.o src/raft_log.o
 
 all: static shared
 
@@ -57,9 +58,22 @@ tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_no
 	./tests_main
 	gcov raft_server.c
 
-.PHONY: fuzzer_tests
-fuzzer_tests:
+.PHONY: test_fuzzer
+test_fuzzer:
 	python tests/log_fuzzer.py
+
+.PHONY: tests_full
+tests_full:
+	make clean
+	make tests
+	make test_fuzzer
+	make test_virtraft
+
+.PHONY: test_virtraft
+test_virtraft:
+	cp src/*.c virtraft/deps/raft/
+	cp include/*.h virtraft/deps/raft/
+	cd virtraft; make clean; make; make tests
 
 .PHONY: amalgamation
 amalgamation:
@@ -71,7 +85,7 @@ infer: do_infer
 .PHONY: do_infer
 do_infer:
 	make clean
-	infer -- make static
+	infer -- make
 
 clean:
 	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
