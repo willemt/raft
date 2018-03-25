@@ -59,6 +59,30 @@ static int __raft_send_appendentries(raft_server_t* raft,
     return 0;
 }
 
+static int __raft_log_get_node_id(raft_server_t* raft,
+        void *udata,
+        raft_entry_t *entry,
+        int entry_idx)
+{
+    return atoi(entry->data.buf);
+}
+
+static int __raft_log_offer(raft_server_t* raft,
+        void* udata,
+        raft_entry_t *entry,
+        int entry_idx)
+{
+    switch (entry->type) {
+        case RAFT_LOGTYPE_ADD_NONVOTING_NODE:
+            raft_add_non_voting_node(raft, NULL, atoi(entry->data.buf), 0);
+            break;
+        case RAFT_LOGTYPE_ADD_NODE:
+            raft_add_node(raft, NULL, atoi(entry->data.buf), 0);
+            break;
+    }
+    return 0;
+}
+
 static int __raft_node_has_sufficient_logs(
     raft_server_t* raft,
     void *user_data,
@@ -3826,3 +3850,71 @@ void TestRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(C
     raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
+
+void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_voting_committed(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .applylog = __raft_applylog,
+        .persist_term = __raft_persist_term,
+        .node_has_sufficient_logs = __raft_node_has_sufficient_logs,
+        .log_get_node_id = __raft_log_get_node_id,
+        .log_offer = __raft_log_offer
+    };
+
+    void *r = raft_new();
+    raft_add_node(r, NULL, 1, 1);
+
+    int has_sufficient_logs_flag = 0;
+    raft_set_callbacks(r, &funcs, &has_sufficient_logs_flag);
+
+    /* I'm the leader */
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+    raft_set_commit_idx(r, 0);
+    raft_set_last_applied_idx(r, 0);
+
+    /* Add two non-voting nodes */
+    raft_entry_t ety = {
+        .term = 1, .id = 1,
+        .data.buf = "2", .data.len = 2,
+        .type = RAFT_LOGTYPE_ADD_NONVOTING_NODE
+    };
+    msg_entry_response_t etyr;
+    raft_recv_entry(r, &ety, &etyr);
+    ety.id++;
+    ety.data.buf = "3";
+    raft_recv_entry(r, &ety, &etyr);
+
+    msg_appendentries_response_t aer = {
+        .term = 1, .success = 1, .current_idx = 2, .first_idx = 0
+    };
+
+    /* node 3 responds so it has sufficient logs and will be promoted */
+    raft_recv_appendentries_response(r, raft_get_node(r, 3), &aer);
+    CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
+
+    ety.id++;
+    ety.type = RAFT_LOGTYPE_ADD_NODE;
+    raft_recv_entry(r, &ety, &etyr);
+
+    /* we now get a response from node 2, but it's still behind */
+    raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
+    CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
+
+    /* both nodes respond to the promotion */
+    aer.first_idx = 2;
+    aer.current_idx = 3;
+    raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
+    raft_recv_appendentries_response(r, raft_get_node(r, 3), &aer);
+    raft_apply_all(r);
+
+    /* voting change is committed, so next time we hear from node 2
+     * it should be considered as having all logs and can be promoted
+     * as well.
+     */
+    CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
+    raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
+    CuAssertIntEquals(tc, 2, has_sufficient_logs_flag);
+}
+

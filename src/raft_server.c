@@ -310,13 +310,6 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         return 0;
     }
 
-    if (r->current_idx <= match_idx)
-        return 0;
-
-    assert(r->current_idx <= raft_get_current_idx(me_));
-
-    raft_node_set_next_idx(node, r->current_idx + 1);
-    raft_node_set_match_idx(node, r->current_idx);
 
     if (!raft_node_is_voting(node) &&
         !raft_voting_change_is_in_progress(me_) &&
@@ -330,6 +323,14 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         if (0 == e)
             raft_node_set_has_sufficient_logs(node);
     }
+
+    if (r->current_idx <= match_idx)
+        return 0;
+
+    assert(r->current_idx <= raft_get_current_idx(me_));
+
+    raft_node_set_next_idx(node, r->current_idx + 1);
+    raft_node_set_match_idx(node, r->current_idx);
 
     /* Update commit idx */
     int point = r->current_idx;
@@ -1076,7 +1077,9 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
             break;
 
         case RAFT_LOGTYPE_ADD_NODE:
-            node = raft_add_node(me_, NULL, node_id, is_self);
+            if (!node) {
+                node = raft_add_node(me_, NULL, node_id, is_self);
+            }
             assert(node);
             assert(raft_node_is_voting(node));
             break;
