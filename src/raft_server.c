@@ -1262,7 +1262,7 @@ int raft_begin_load_snapshot(
     if (last_included_index == -1)
         return -1;
 
-    if (last_included_index == 0 || last_included_index == 0)
+    if (last_included_index == 0 || last_included_term == 0)
         return -1;
 
     /* loading the snapshot will break cluster safety */
