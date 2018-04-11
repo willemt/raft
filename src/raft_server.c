@@ -1218,7 +1218,7 @@ int raft_end_snapshot(raft_server_t *me_)
         return -1;
 
     /* If needed, remove compacted logs */
-    int i = raft_get_first_entry_idx(me_), end = raft_get_commit_idx(me_);
+    int i = log_get_base(me->log) + 1, end = raft_get_commit_idx(me_);
     for (; i <= end; i++)
     {
         raft_entry_t* _ety;
