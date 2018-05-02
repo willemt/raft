@@ -1259,6 +1259,12 @@ int raft_end_snapshot(raft_server_t *me_)
 
     me->snapshot_in_progress = 0;
 
+    __log(me_, NULL,
+        "end snapshot base:%d commit-index:%d current-index:%d\n",
+        log_get_base(me->log),
+        raft_get_commit_idx(me_),
+        raft_get_current_idx(me_));
+
     if (!raft_is_leader(me_))
         return 0;
 

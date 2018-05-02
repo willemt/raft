@@ -172,7 +172,7 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
 
     assert(0 <= idx - 1);
 
-    if (me->base + me->count < idx || idx < me->base)
+    if (me->base + me->count < idx || idx <= me->base)
     {
         *n_etys = 0;
         return NULL;
