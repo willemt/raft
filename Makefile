@@ -14,12 +14,13 @@ CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-ali
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Darwin)
+ASANFLAGS = -fsanitize=address
 SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
-CFLAGS += -fsanitize=address
+CFLAGS += $(ASANFLAGS)
 CFLAGS += -Wno-nullability-completeness
 else
 SHAREDFLAGS = -shared
