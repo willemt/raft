@@ -237,7 +237,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         !raft_snapshot_is_in_progress(me_))
     {
         int e = raft_apply_entry(me_);
-        if (-1 != e)
+        if (0 != e)
             return e;
     }
 
