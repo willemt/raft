@@ -314,37 +314,19 @@ void TestLog_poll(CuTest * tc)
     CuAssertIntEquals(tc, 3, log_count(l));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
 
-    raft_entry_t *ety;
-
     /* remove 1st */
-    ety = NULL;
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertTrue(tc, NULL != ety);
+    CuAssertIntEquals(tc, 0, log_poll(l, 1));
     CuAssertIntEquals(tc, 2, log_count(l));
-    CuAssertIntEquals(tc, ety->id, 1);
     CuAssertIntEquals(tc, 1, log_get_base(l));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
     CuAssertTrue(tc, NULL != log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL != log_get_at_idx(l, 3));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
 
-    /* remove 2nd */
-    ety = NULL;
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertTrue(tc, NULL != ety);
-    CuAssertIntEquals(tc, 1, log_count(l));
-    CuAssertIntEquals(tc, ety->id, 2);
-    CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
-    CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
-    CuAssertTrue(tc, NULL != log_get_at_idx(l, 3));
-    CuAssertIntEquals(tc, 3, log_get_current_idx(l));
-
-    /* remove 3rd */
-    ety = NULL;
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertTrue(tc, NULL != ety);
+    /* remove 2nd and 3rd */
+    CuAssertIntEquals(tc, 0, log_poll(l, 3));
     CuAssertIntEquals(tc, 0, log_count(l));
-    CuAssertIntEquals(tc, ety->id, 3);
+    CuAssertIntEquals(tc, 3, log_get_base(l));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
@@ -444,14 +426,15 @@ void TestLog_front_pushes_across_boundary(CuTest * tc)
     l = log_alloc(1);
     log_set_callbacks(l, &funcs, r);
 
-    raft_entry_t* ety;
-
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 1);
+    CuAssertIntEquals(tc, 0, log_poll(l, 1));
+    CuAssertIntEquals(tc, 0, log_count(l));
+    CuAssertIntEquals(tc, 1, log_get_base(l));
+
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 2);
+    CuAssertIntEquals(tc, 0, log_poll(l, 2));
+    CuAssertIntEquals(tc, 0, log_count(l));
+    CuAssertIntEquals(tc, 2, log_get_base(l));
 }
 
 void TestLog_front_and_back_pushed_across_boundary_with_enlargement_required(CuTest * tc)
@@ -471,29 +454,30 @@ void TestLog_front_and_back_pushed_across_boundary_with_enlargement_required(CuT
 
     l = log_alloc(1);
 
-    raft_entry_t* ety;
-
     /* append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
 
     /* poll */
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 1);
+    CuAssertIntEquals(tc, 0, log_poll(l, 1));
+    CuAssertIntEquals(tc, 0, log_count(l));
+    CuAssertIntEquals(tc, 1, log_get_base(l));
 
     /* append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
 
     /* poll */
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 2);
+    CuAssertIntEquals(tc, 0, log_poll(l, 2));
+    CuAssertIntEquals(tc, 0, log_count(l));
+    CuAssertIntEquals(tc, 2, log_get_base(l));
 
     /* append append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e3));
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e4));
 
     /* poll */
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 3);
+    CuAssertIntEquals(tc, 0, log_poll(l, 3));
+    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 3, log_get_base(l));
 }
 
 void TestLog_delete_after_polling(CuTest * tc)
@@ -513,23 +497,21 @@ void TestLog_delete_after_polling(CuTest * tc)
 
     l = log_alloc(1);
 
-    raft_entry_t* ety;
-
     /* append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     CuAssertIntEquals(tc, 1, log_count(l));
 
     /* poll */
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 1);
+    CuAssertIntEquals(tc, 0, log_poll(l, 1));
     CuAssertIntEquals(tc, 0, log_count(l));
+    CuAssertIntEquals(tc, 1, log_get_base(l));
 
     /* append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
     CuAssertIntEquals(tc, 1, log_count(l));
 
-    /* poll */
-    CuAssertIntEquals(tc, log_delete(l, 1), 0);
+    /* delete */
+    CuAssertIntEquals(tc, 0, log_delete(l, 2));
     CuAssertIntEquals(tc, 0, log_count(l));
 }
 
@@ -559,23 +541,20 @@ void TestLog_delete_after_polling_from_double_append(CuTest * tc)
     l = log_alloc(1);
     log_set_callbacks(l, &funcs, r);
 
-    raft_entry_t* ety;
-
     /* append append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
     CuAssertIntEquals(tc, 2, log_count(l));
 
     /* poll */
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
-    CuAssertIntEquals(tc, ety->id, 1);
+    CuAssertIntEquals(tc, 0, log_poll(l, 1));
     CuAssertIntEquals(tc, 1, log_count(l));
 
     /* append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e3));
     CuAssertIntEquals(tc, 2, log_count(l));
 
-    /* poll */
-    CuAssertIntEquals(tc, log_delete(l, 1), 0);
+    /* delete */
+    CuAssertIntEquals(tc, 0, log_delete(l, 2));
     CuAssertIntEquals(tc, 0, log_count(l));
 }

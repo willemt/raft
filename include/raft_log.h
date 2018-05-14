@@ -33,8 +33,8 @@ int log_delete(log_t* me_, int idx);
 void log_empty(log_t * me_);
 
 /**
- * Remove oldest entry. Set *etyp to oldest entry on success. */
-int log_poll(log_t * me_, void** etyp);
+ * Remove all entries before and at idx. */
+int log_poll(log_t * me_, int idx);
 
 /** Get an array of entries from this index onwards.
  * This is used for batching.

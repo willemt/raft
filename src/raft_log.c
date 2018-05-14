@@ -165,54 +165,49 @@ int log_append_entry(log_t* me_, raft_entry_t* ety)
     return 0;
 }
 
+static int has_idx(log_private_t* me, int idx)
+{
+    return me->base < idx && idx <= me->base + me->count;
+}
+
+/* Return the me->entries[] subscript for idx. */
+static int subscript(log_private_t* me, int idx)
+{
+    assert(has_idx(me, idx));
+    return (me->front + (idx - (me->base + 1))) % me->size;
+}
+
+/* Return the maximal number of entries contiguous in me->entries[] from idx up
+ * to at most idx + n - 1. */
+static int batch_up(log_private_t* me, int idx, int n)
+{
+    assert(n > 0);
+    int low = subscript(me, idx);
+    int high = subscript(me, idx + n - 1);
+    if (low <= high)
+        return high - low + 1;
+    else
+        return me->size - low;
+}
+
 raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
 {
     log_private_t* me = (log_private_t*)me_;
-    int i;
 
-    assert(0 <= idx - 1);
-
-    if (me->base + me->count < idx || idx < me->base)
+    if (!has_idx(me, idx))
     {
         *n_etys = 0;
         return NULL;
     }
 
-    /* idx starts at 1 */
-    idx -= 1;
-
-    i = (me->front + idx - me->base) % me->size;
-
-    int logs_till_end_of_log;
-
-    if (i < me->back)
-        logs_till_end_of_log = me->back - i;
-    else
-        logs_till_end_of_log = me->size - i;
-
-    *n_etys = logs_till_end_of_log;
-    return &me->entries[i];
+    *n_etys = batch_up(me, idx, (me->base + me->count) - idx + 1);
+    return &me->entries[subscript(me, idx)];
 }
 
 raft_entry_t* log_get_at_idx(log_t* me_, int idx)
 {
-    log_private_t* me = (log_private_t*)me_;
-    int i;
-
-    if (idx == 0)
-        return NULL;
-
-    if (idx <= me->base)
-        return NULL;
-
-    if (me->base + me->count < idx)
-        return NULL;
-
-    /* idx starts at 1 */
-    idx -= 1;
-
-    i = (me->front + idx - me->base) % me->size;
-    return &me->entries[i];
+    int n;
+    return log_get_from_idx(me_, idx, &n);
 }
 
 int log_count(log_t* me_)
@@ -224,11 +219,8 @@ int log_delete(log_t* me_, int idx)
 {
     log_private_t* me = (log_private_t*)me_;
 
-    if (0 == idx)
+    if (!has_idx(me, idx))
         return -1;
-
-    if (idx < me->base)
-        idx = me->base;
 
     for (; idx <= me->base + me->count && me->count;)
     {
@@ -249,28 +241,32 @@ int log_delete(log_t* me_, int idx)
     return 0;
 }
 
-int log_poll(log_t * me_, void** etyp)
+int log_poll(log_t* me_, int idx)
 {
     log_private_t* me = (log_private_t*)me_;
-    int idx = me->base + 1;
 
     if (0 == me->count)
         return -1;
 
-    const void *elem = &me->entries[me->front];
-    if (me->cb && me->cb->log_poll)
-    {
-        int e = me->cb->log_poll(me->raft, raft_get_udata(me->raft),
-                                 &me->entries[me->front], idx);
-        if (0 != e)
-            return e;
-    }
-    me->front++;
-    me->front = me->front % me->size;
-    me->count--;
-    me->base++;
+    if (!has_idx(me, idx))
+        return -1;
 
-    *etyp = (void*)elem;
+    while (me->base + 1 <= idx)
+    {
+        int n = batch_up(me, me->base + 1, idx - (me->base + 1) + 1);
+        if (me->cb && me->cb->log_poll)
+        {
+            int e = me->cb->log_poll(me->raft, raft_get_udata(me->raft),
+                                     &me->entries[me->front], me->base + 1, n);
+            if (0 != e)
+                return e;
+        }
+        me->front += n;
+        me->front = me->front % me->size;
+        me->count -= n;
+        me->base += n;
+    }
+
     return 0;
 }
 
