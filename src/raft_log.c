@@ -40,7 +40,7 @@ typedef struct
     void* raft;
 } log_private_t;
 
-int mod(int a, int b)
+static int mod(int a, int b)
 {
     int r = a % b;
     return r < 0 ? r + b : r;
