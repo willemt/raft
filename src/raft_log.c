@@ -54,7 +54,7 @@ static int __ensurecapacity(log_private_t * me)
     if (me->count < me->size)
         return 0;
 
-    temp = (raft_entry_t*)calloc(1, sizeof(raft_entry_t) * me->size * 2);
+    temp = (raft_entry_t*)__raft_calloc(1, sizeof(raft_entry_t) * me->size * 2);
     if (!temp)
         return RAFT_ERR_NOMEM;
 
@@ -66,7 +66,7 @@ static int __ensurecapacity(log_private_t * me)
     }
 
     /* clean up old entries */
-    free(me->entries);
+    __raft_free(me->entries);
 
     me->size *= 2;
     me->entries = temp;
@@ -101,14 +101,14 @@ int log_load_from_snapshot(log_t *me_, int idx, int term)
 
 log_t* log_alloc(int initial_size)
 {
-    log_private_t* me = (log_private_t*)calloc(1, sizeof(log_private_t));
+    log_private_t* me = (log_private_t*)__raft_calloc(1, sizeof(log_private_t));
     if (!me)
         return NULL;
     me->size = initial_size;
     log_clear((log_t*)me);
-    me->entries = (raft_entry_t*)calloc(1, sizeof(raft_entry_t) * me->size);
+    me->entries = (raft_entry_t*)__raft_calloc(1, sizeof(raft_entry_t) * me->size);
     if (!me->entries) {
-        free(me);
+        __raft_free(me);
         return NULL;
     }
     return (log_t*)me;
@@ -300,8 +300,8 @@ void log_free(log_t * me_)
 {
     log_private_t* me = (log_private_t*)me_;
 
-    free(me->entries);
-    free(me);
+    __raft_free(me->entries);
+    __raft_free(me);
 }
 
 int log_get_current_idx(log_t* me_)

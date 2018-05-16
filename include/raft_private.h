@@ -136,6 +136,12 @@ int raft_node_is_active(raft_node_t* me_);
 
 void raft_node_set_voting_committed(raft_node_t* me_, int voting);
 
-int raft_node_set_addition_committed(raft_node_t* me_, int committed);
+void raft_node_set_addition_committed(raft_node_t* me_, int committed);
+
+/* Heap functions */
+extern void *(*__raft_malloc)(size_t size);
+extern void *(*__raft_calloc)(size_t nmemb, size_t size);
+extern void *(*__raft_realloc)(void *ptr, size_t size);
+extern void (*__raft_free)(void *ptr);
 
 #endif /* RAFT_PRIVATE_H_ */
