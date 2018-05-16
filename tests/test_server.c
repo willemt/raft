@@ -3070,10 +3070,6 @@ void TestRaft_leader_recv_appendentries_response_do_not_increase_commit_idx_beca
     raft_recv_appendentries_response(r, raft_get_node(r, 3), &aer);
     CuAssertIntEquals(tc, 3, raft_get_commit_idx(r));
     raft_periodic(r, 1);
-    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
-    raft_periodic(r, 1);
-    CuAssertIntEquals(tc, 2, raft_get_last_applied_idx(r));
-    raft_periodic(r, 1);
     CuAssertIntEquals(tc, 3, raft_get_last_applied_idx(r));
 }
 
