@@ -379,6 +379,22 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
     CuAssertIntEquals(tc, 7, raft_get_commit_idx(r));
 }
 
+void TestRaft_follower_load_from_snapshot_fails_if_term_is_0(CuTest * tc)
+{
+    raft_cbs_t funcs = {
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+
+    raft_set_state(r, RAFT_STATE_FOLLOWER);
+    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
+    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 0, 5));
+}
+
 void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
 {
     raft_cbs_t funcs = {
