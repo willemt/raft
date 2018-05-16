@@ -236,7 +236,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     if (me->last_applied_idx < raft_get_commit_idx(me_) &&
         !raft_snapshot_is_in_progress(me_))
     {
-        int e = raft_apply_entry(me_);
+        int e = raft_apply_all(me_);
         if (-1 != e)
             return e;
     }
