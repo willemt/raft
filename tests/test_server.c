@@ -43,6 +43,16 @@ int __raft_applylog(
     return 0;
 }
 
+int __raft_applylog_shutdown(
+    raft_server_t* raft,
+    void *udata,
+    raft_entry_t *ety,
+    int idx
+    )
+{
+    return RAFT_ERR_SHUTDOWN;
+}
+
 int __raft_send_requestvote(raft_server_t* raft,
                             void* udata,
                             raft_node_t* node,
@@ -437,6 +447,37 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
 
     /* let time lapse */
     raft_periodic(r, 1);
+    CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
+}
+
+void TestRaft_user_applylog_error_propogates_to_periodic(
+    CuTest* tc)
+{
+    raft_cbs_t funcs = {
+        .persist_term = __raft_persist_term,
+        .applylog = __raft_applylog_shutdown,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    /* must be follower */
+    raft_set_state(r, RAFT_STATE_FOLLOWER);
+    raft_set_current_term(r, 1);
+    raft_set_last_applied_idx(r, 0);
+
+    /* need at least one entry */
+    raft_entry_t ety = {};
+    ety.term = 1;
+    ety.id = 1;
+    ety.data.buf = "aaa";
+    ety.data.len = 3;
+    raft_append_entry(r, &ety);
+
+    raft_set_commit_idx(r, 1);
+
+    /* let time lapse */
+    CuAssertIntEquals(tc, RAFT_ERR_SHUTDOWN, raft_periodic(r, 1));
     CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
 }
 

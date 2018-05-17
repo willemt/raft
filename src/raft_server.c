@@ -234,7 +234,6 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         if (me->request_timeout <= me->timeout_elapsed)
             raft_send_appendentries_all(me_);
     }
-
     else if (me->election_timeout_rand <= me->timeout_elapsed && 
         /* Don't become the leader when building snapshots or bad things will
          * happen when we get a client request */
@@ -253,7 +252,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         !raft_snapshot_is_in_progress(me_))
     {
         int e = raft_apply_all(me_);
-        if (-1 != e)
+        if (0 != e)
             return e;
     }
 
