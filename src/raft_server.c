@@ -54,7 +54,7 @@ static void __log(raft_server_t *me_, raft_node_t* node, const char *fmt, ...)
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
 
-    me->cb.log(me_, node, me->udata, buf);
+    me->cb.log(me_, node, buf);
 }
 
 void raft_randomize_election_timeout(raft_server_t* me_)
@@ -93,12 +93,11 @@ raft_server_t* raft_new()
     return (raft_server_t*)me;
 }
 
-void raft_set_callbacks(raft_server_t* me_, raft_cbs_t* funcs, void* udata)
+void raft_set_callbacks(raft_server_t* me_, raft_cbs_t* funcs)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     memcpy(&me->cb, funcs, sizeof(raft_cbs_t));
-    me->udata = udata;
     log_set_callbacks(me->log, &me->cb, me_);
 }
 
@@ -341,7 +340,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         0 == raft_node_has_sufficient_logs(node)
         )
     {
-        int e = me->cb.node_has_sufficient_logs(me_, me->udata, node);
+        int e = me->cb.node_has_sufficient_logs(me_, node);
         if (0 == e)
             raft_node_set_has_sufficient_logs(node);
     }
@@ -768,7 +767,7 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     rv.last_log_term = raft_get_last_log_term(me_);
     rv.candidate_id = raft_get_nodeid(me_);
     if (me->cb.send_requestvote)
-        e = me->cb.send_requestvote(me_, me->udata, node, &rv);
+        e = me->cb.send_requestvote(me_, node, &rv);
     return e;
 }
 
@@ -805,7 +804,7 @@ int raft_apply_entry(raft_server_t* me_)
     me->last_applied_idx++;
     if (me->cb.applylog)
     {
-        int e = me->cb.applylog(me_, me->udata, ety, me->last_applied_idx - 1);
+        int e = me->cb.applylog(me_, ety, me->last_applied_idx - 1);
         if (RAFT_ERR_SHUTDOWN == e)
             return RAFT_ERR_SHUTDOWN;
     }
@@ -817,7 +816,7 @@ int raft_apply_entry(raft_server_t* me_)
     if (!raft_entry_is_cfg_change(ety))
         return 0;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, log_idx);
+    int node_id = me->cb.log_get_node_id(me_, ety, log_idx);
     raft_node_t* node = raft_get_node(me_, node_id);
 
     switch (ety->type) {
@@ -875,7 +874,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     if (0 < me->snapshot_last_idx && next_idx < me->snapshot_last_idx)
     {
         if (me->cb.send_snapshot)
-            me->cb.send_snapshot(me_, me->udata, node);
+            me->cb.send_snapshot(me_, node);
         return RAFT_ERR_NEEDS_SNAPSHOT;
     }
 
@@ -902,7 +901,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
           ae.prev_log_idx,
           ae.prev_log_term);
 
-    return me->cb.send_appendentries(me_, me->udata, node, &ae);
+    return me->cb.send_appendentries(me_, node, &ae);
 }
 
 int raft_send_appendentries_all(raft_server_t* me_)
@@ -924,7 +923,7 @@ int raft_send_appendentries_all(raft_server_t* me_)
     return 0;
 }
 
-raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
+raft_node_t* raft_add_node(raft_server_t* me_, int id, int is_self)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -942,7 +941,7 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
             return NULL;
     }
 
-    node = raft_node_new(udata, id);
+    node = raft_node_new(id);
     if (!node)
         return NULL;
     void* p = __raft_realloc(me->nodes, sizeof(void*) * (me->num_nodes + 1));
@@ -959,12 +958,12 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     return me->nodes[me->num_nodes - 1];
 }
 
-raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self)
+raft_node_t* raft_add_non_voting_node(raft_server_t* me_, int id, int is_self)
 {
     if (raft_get_node(me_, id))
         return NULL;
 
-    raft_node_t* node = raft_add_node(me_, udata, id, is_self);
+    raft_node_t* node = raft_add_node(me_, id, is_self);
     if (!node)
         return NULL;
 
@@ -1026,7 +1025,7 @@ int raft_vote_for_nodeid(raft_server_t* me_, const int nodeid)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     if (me->cb.persist_vote) {
-        int e = me->cb.persist_vote(me_, me->udata, nodeid);
+        int e = me->cb.persist_vote(me_, nodeid);
         if (0 != e)
             return e;
     }
@@ -1084,7 +1083,7 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
     if (!raft_entry_is_cfg_change(ety))
         return;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, idx);
+    int node_id = me->cb.log_get_node_id(me_, ety, idx);
     raft_node_t* node = raft_get_node(me_, node_id);
     int is_self = node_id == raft_get_nodeid(me_);
 
@@ -1133,7 +1132,7 @@ void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
     if (!raft_entry_is_cfg_change(ety))
         return;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, idx);
+    int node_id = me->cb.log_get_node_id(me_, ety, idx);
 
     switch (ety->type)
     {
@@ -1275,7 +1274,7 @@ int raft_end_snapshot(raft_server_t *me_)
         if (0 < me->snapshot_last_idx && next_idx < me->snapshot_last_idx)
         {
             if (me->cb.send_snapshot)
-                me->cb.send_snapshot(me_, me->udata, node);
+                me->cb.send_snapshot(me_, node);
         }
     }
 

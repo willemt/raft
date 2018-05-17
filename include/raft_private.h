@@ -58,7 +58,6 @@ typedef struct {
 
     /* callbacks */
     raft_cbs_t cb;
-    void* udata;
 
     /* my node ID */
     raft_node_t* node;
@@ -108,7 +107,7 @@ void raft_set_state(raft_server_t* me_, int state);
 
 int raft_get_state(raft_server_t* me_);
 
-raft_node_t* raft_node_new(void* udata, int id);
+raft_node_t* raft_node_new(int id);
 
 void raft_node_free(raft_node_t* me_);
 
