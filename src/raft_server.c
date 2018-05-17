@@ -1092,9 +1092,7 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
             break;
 
         case RAFT_LOGTYPE_ADD_NODE:
-            if (!node) {
-                node = raft_add_node(me_, NULL, node_id, is_self);
-            }
+            node = raft_add_node(me_, NULL, node_id, is_self);
             assert(node);
             assert(raft_node_is_voting(node));
             break;
