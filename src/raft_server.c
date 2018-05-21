@@ -1300,9 +1300,6 @@ int raft_begin_load_snapshot(
     if (last_included_index == -1)
         return -1;
 
-    if (last_included_index == 0 || last_included_index == 0)
-        return -1;
-
     if (last_included_term == me->snapshot_last_term && last_included_index == me->snapshot_last_idx)
         return RAFT_ERR_SNAPSHOT_ALREADY_LOADED;
 
