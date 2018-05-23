@@ -272,7 +272,7 @@ int raft_voting_change_is_in_progress(raft_server_t* me_)
 
 int raft_recv_appendentries_response(raft_server_t* me_,
                                      raft_node_t* node,
-                                     msg_appendentries_response_t* r)
+                                     AppendEntriesResponseMsg_t* r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -383,8 +383,8 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 int raft_recv_appendentries(
     raft_server_t* me_,
     raft_node_t* node,
-    msg_appendentries_t* ae,
-    msg_appendentries_response_t *r
+    AppendEntriesMsg_t* ae,
+    AppendEntriesResponseMsg_t *r
     )
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -520,7 +520,7 @@ int raft_already_voted(raft_server_t* me_)
     return ((raft_server_private_t*)me_)->voted_for != -1;
 }
 
-static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
+static int __should_grant_vote(raft_server_private_t* me, RequestVoteMsg_t* vr)
 {
     /* TODO: 4.2.3 Raft Dissertation:
      * if a server receives a RequestVote request within the minimum election
@@ -557,8 +557,8 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 
 int raft_recv_requestvote(raft_server_t* me_,
                           raft_node_t* node,
-                          msg_requestvote_t* vr,
-                          msg_requestvote_response_t *r)
+                          RequestVoteMsg_t* vr,
+                          RequestVoteResponseMsg_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int e = 0;
@@ -630,7 +630,7 @@ int raft_votes_is_majority(const int num_nodes, const int nvotes)
 
 int raft_recv_requestvote_response(raft_server_t* me_,
                                    raft_node_t* node,
-                                   msg_requestvote_response_t* r)
+                                   RequestVoteResponseMsg_t* r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -692,8 +692,8 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 }
 
 int raft_recv_entry(raft_server_t* me_,
-                    msg_entry_t* ety,
-                    msg_entry_response_t *r)
+                    LogEntryMsg_table_t* ety,
+                    LogEntryResponseMsg_table_t *r)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
@@ -755,7 +755,7 @@ int raft_recv_entry(raft_server_t* me_,
 int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    msg_requestvote_t rv;
+    RequestVoteMsg_t rv;
     int e = 0;
 
     assert(node);
@@ -863,7 +863,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     if (!(me->cb.send_appendentries))
         return -1;
 
-    msg_appendentries_t ae = {};
+    AppendEntriesMsg_t ae = {};
     ae.term = me->current_term;
     ae.leader_commit = raft_get_commit_idx(me_);
     ae.prev_log_idx = 0;
@@ -1035,7 +1035,7 @@ int raft_vote_for_nodeid(raft_server_t* me_, const int nodeid)
 }
 
 int raft_msg_entry_response_committed(raft_server_t* me_,
-                                      const msg_entry_response_t* r)
+                                      const LogEntryResponseMsg_table_t* r)
 {
     raft_entry_t* ety = raft_get_entry_from_idx(me_, r->idx);
     if (!ety)

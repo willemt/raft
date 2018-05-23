@@ -1,0 +1,46 @@
+table LogEntryMsg
+{
+    term: uint64;
+    id: uint64;
+    type: uint64;
+    data: [byte];
+}
+
+table LogEntryResponseMsg
+{
+    term: uint64;
+    id: uint64;
+    idx: uint64;
+}
+
+struct RequestVoteMsg
+{
+    term: uint64;
+    candidateId: uint64;
+    lastLogIdx: uint64;
+    lastLogTerm: uint64;
+}
+
+struct RequestVoteResponseMsg
+{
+    term: uint64;
+    voteGranted: uint64;
+}
+
+table AppendEntriesMsg
+{
+    term: uint64;
+    prevLogIdx: uint64;
+    prevLogTerm: uint64;
+    leaderCommit: uint64;
+    nEntries: uint64;
+    entries: [LogEntryMsg];
+}
+
+struct AppendEntriesResponseMsg
+{
+    term: uint64;
+    success: uint64;
+    currentIdx: uint64;
+    firstIdx: uint64;
+}

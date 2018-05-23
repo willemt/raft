@@ -126,7 +126,7 @@ We call ``raft_recv_entry`` when we want to append the entry to the log.
 
 .. code-block:: c
 
-    msg_entry_response_t response;
+    LogEntryResponseMsg_table_t response;
     e = raft_recv_entry(raft,  &entry, &response);
 
 You should populate the ``entry`` struct with the log entry the client has sent. After the call completes the ``response`` parameter is populated and can be used by the ``raft_msg_entry_response_committed`` function to check if the log entry has been committed or not.
@@ -141,7 +141,7 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
 
 .. code-block:: c
 
-    msg_entry_response_t response;
+    LogEntryResponseMsg_table_t response;
 
     e = raft_recv_entry(sv->raft, &entry, &response);
     if (0 != e)
@@ -242,7 +242,7 @@ The following callbacks MUST be implemented: ``send_requestvote``, ``send_append
 
 **send_requestvote()**
 
-For this callback we have to serialize a ``msg_requestvote_t`` struct, and then send it to the peer identified by ``node``.
+For this callback we have to serialize a ``RequestVoteMsg_t`` struct, and then send it to the peer identified by ``node``.
 
 *Example from ticketd showing how the callback is implemented:*
 
@@ -252,7 +252,7 @@ For this callback we have to serialize a ``msg_requestvote_t`` struct, and then 
         raft_server_t* raft,
         void *udata,
         raft_node_t* node,
-        msg_requestvote_t* m
+        RequestVoteMsg_t* m
         )
     {
         peer_connection_t* conn = raft_node_get_udata(node);
@@ -272,7 +272,7 @@ For this callback we have to serialize a ``msg_requestvote_t`` struct, and then 
 
 **send_appendentries()**
 
-For this callback we have to serialize a ``msg_appendentries_t`` struct, and then send it to the peer identified by ``node``. This struct is more complicated to serialize because the ``m->entries`` array might be populated.
+For this callback we have to serialize a ``AppendEntriesMsg_t`` struct, and then send it to the peer identified by ``node``. This struct is more complicated to serialize because the ``m->entries`` array might be populated.
 
 *Example from ticketd showing how the callback is implemented:*
 
@@ -282,7 +282,7 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
         raft_server_t* raft,
         void *user_data,
         raft_node_t* node,
-        msg_appendentries_t* m
+        AppendEntriesMsg_t* m
         )
     {
         uv_buf_t bufs[3];
@@ -376,21 +376,21 @@ The table below shows the structs that you need to deserialize-to or deserialize
 +-------------------------+------------------------------+----------------------------------+
 | Message Type            | Struct                       | Function                         |
 +-------------------------+------------------------------+----------------------------------+
-| Append Entries          | msg_appendentries_t          | raft_recv_appendentries          |
+| Append Entries          | AppendEntriesMsg_t          | raft_recv_appendentries          |
 +-------------------------+------------------------------+----------------------------------+
-| Append Entries response | msg_appendentries_response_t | raft_recv_appendentries_response |
+| Append Entries response | AppendEntriesResponseMsg_t | raft_recv_appendentries_response |
 +-------------------------+------------------------------+----------------------------------+
-| Request Vote            | msg_requestvote_t            | raft_recv_requestvote            |
+| Request Vote            | RequestVoteMsg_t            | raft_recv_requestvote            |
 +-------------------------+------------------------------+----------------------------------+
-| Request Vote response   | msg_requestvote_response_t   | raft_recv_requestvote_response   |
+| Request Vote response   | RequestVoteResponseMsg_t   | raft_recv_requestvote_response   |
 +-------------------------+------------------------------+----------------------------------+
 
 *Example of how we receive an Append Entries message, and reply to it:*
 
 .. code-block:: c
 
-    msg_appendentries_t ae;
-    msg_appendentries_response_t response;
+    AppendEntriesMsg_t ae;
+    AppendEntriesResponseMsg_t response;
     char buf_in[1024], buf_out[1024];
     size_t len_in, len_out;
 

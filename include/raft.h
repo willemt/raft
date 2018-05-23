@@ -23,6 +23,12 @@
 #define RAFT_REQUESTVOTE_ERR_NOT_GRANTED      0
 #define RAFT_REQUESTVOTE_ERR_UNKNOWN_NODE    -1
 
+// #include "transport/core_builder.h"
+#include "transport/core_reader.h"
+// #include "transport/core_verifier.h"
+// #include "transport/flatbuffers_common_builder.h"
+// #include "transport/flatbuffers_common_reader.h"
+
 typedef enum {
     RAFT_STATE_NONE,
     RAFT_STATE_FOLLOWER,
@@ -92,105 +98,6 @@ typedef struct
     raft_entry_data_t data;
 } raft_entry_t;
 
-/** Message sent from client to server.
- * The client sends this message to a server with the intention of having it
- * applied to the FSM. */
-typedef raft_entry_t msg_entry_t;
-
-/** Entry message response.
- * Indicates to client if entry was committed or not. */
-typedef struct
-{
-    /** the entry's unique ID */
-    unsigned int id;
-
-    /** the entry's term */
-    int term;
-
-    /** the entry's index */
-    int idx;
-} msg_entry_response_t;
-
-/** Vote request message.
- * Sent to nodes when a server wants to become leader.
- * This message could force a leader/candidate to become a follower. */
-typedef struct
-{
-    /** currentTerm, to force other leader/candidate to step down */
-    int term;
-
-    /** candidate requesting vote */
-    int candidate_id;
-
-    /** index of candidate's last log entry */
-    int last_log_idx;
-
-    /** term of candidate's last log entry */
-    int last_log_term;
-} msg_requestvote_t;
-
-/** Vote request response message.
- * Indicates if node has accepted the server's vote request. */
-typedef struct
-{
-    /** currentTerm, for candidate to update itself */
-    int term;
-
-    /** true means candidate received vote */
-    int vote_granted;
-} msg_requestvote_response_t;
-
-/** Appendentries message.
- * This message is used to tell nodes if it's safe to apply entries to the FSM.
- * Can be sent without any entries as a keep alive message.
- * This message could force a leader/candidate to become a follower. */
-typedef struct
-{
-    /** currentTerm, to force other leader/candidate to step down */
-    int term;
-
-    /** the index of the log just before the newest entry for the node who
-     * receives this message */
-    int prev_log_idx;
-
-    /** the term of the log just before the newest entry for the node who
-     * receives this message */
-    int prev_log_term;
-
-    /** the index of the entry that has been appended to the majority of the
-     * cluster. Entries up to this index will be applied to the FSM */
-    int leader_commit;
-
-    /** number of entries within this message */
-    int n_entries;
-
-    /** array of entries within this message */
-    msg_entry_t* entries;
-} msg_appendentries_t;
-
-/** Appendentries response message.
- * Can be sent without any entries as a keep alive message.
- * This message could force a leader/candidate to become a follower. */
-typedef struct
-{
-    /** currentTerm, to force other leader/candidate to step down */
-    int term;
-
-    /** true if follower contained entry matching prevLogidx and prevLogTerm */
-    int success;
-
-    /* Non-Raft fields follow: */
-    /* Having the following fields allows us to do less book keeping in
-     * regards to full fledged RPC */
-
-    /** If success, this is the highest log IDX we've received and appended to
-     * our log; otherwise, this is the our currentIndex */
-    int current_idx;
-
-    /** The first idx that we received within the appendentries message */
-    int first_idx;
-} msg_appendentries_response_t;
-
 typedef void* raft_server_t;
 typedef void* raft_node_t;
 
@@ -206,7 +113,7 @@ typedef int (
     raft_server_t* raft,
     void *user_data,
     raft_node_t* node,
-    msg_requestvote_t* msg
+    RequestVoteMsg_t* msg
     );
 
 /** Callback for sending append entries messages.
@@ -221,7 +128,7 @@ typedef int (
     raft_server_t* raft,
     void *user_data,
     raft_node_t* node,
-    msg_appendentries_t* msg
+    AppendEntriesMsg_t* msg
     );
 
 /** 
@@ -479,7 +386,7 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  *
  * The log_offer callback will be called.
  *
- * @note The memory pointer (ie. raft_entry_data_t) for each msg_entry_t is
+ * @note The memory pointer (ie. raft_entry_data_t) for each LogEntryMsg_table_t is
  *   copied directly. If the memory is temporary you MUST either make the
  *   memory permanent (ie. via malloc) OR re-assign the memory within the
  *   log_offer callback.
@@ -493,8 +400,8 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  *  */
 int raft_recv_appendentries(raft_server_t* me,
                             raft_node_t* node,
-                            msg_appendentries_t* ae,
-                            msg_appendentries_response_t *r);
+                            AppendEntriesMsg_t* ae,
+                            AppendEntriesResponseMsg_t *r);
 
 /** Receive a response from an appendentries message we sent.
  * @param[in] node The node who sent us this message
@@ -505,7 +412,7 @@ int raft_recv_appendentries(raft_server_t* me,
  *  RAFT_ERR_NOT_LEADER server is not the leader */
 int raft_recv_appendentries_response(raft_server_t* me,
                                      raft_node_t* node,
-                                     msg_appendentries_response_t* r);
+                                     AppendEntriesResponseMsg_t* r);
 
 /** Receive a requestvote message.
  * @param[in] node The node who sent us this message
@@ -514,8 +421,8 @@ int raft_recv_appendentries_response(raft_server_t* me,
  * @return 0 on success */
 int raft_recv_requestvote(raft_server_t* me,
                           raft_node_t* node,
-                          msg_requestvote_t* vr,
-                          msg_requestvote_response_t *r);
+                          RequestVoteMsg_t* vr,
+                          RequestVoteResponseMsg_t *r);
 
 /** Receive a response from a requestvote message we sent.
  * @param[in] node The node this response was sent by
@@ -525,7 +432,7 @@ int raft_recv_requestvote(raft_server_t* me,
  *  RAFT_ERR_SHUTDOWN server MUST shutdown; */
 int raft_recv_requestvote_response(raft_server_t* me,
                                    raft_node_t* node,
-                                   msg_requestvote_response_t* r);
+                                   RequestVoteResponseMsg_t* r);
 
 /** Receive an entry message from the client.
  *
@@ -537,7 +444,7 @@ int raft_recv_requestvote_response(raft_server_t* me,
  *
  * The log_offer callback will be called.
  *
- * @note The memory pointer (ie. raft_entry_data_t) in msg_entry_t is
+ * @note The memory pointer (ie. raft_entry_data_t) in LogEntryMsg_table_t is
  *  copied directly. If the memory is temporary you MUST either make the
  *  memory permanent (ie. via malloc) OR re-assign the memory within the
  *  log_offer callback.
@@ -558,8 +465,8 @@ int raft_recv_requestvote_response(raft_server_t* me,
  *  RAFT_ERR_NOMEM memory allocation failure
  */
 int raft_recv_entry(raft_server_t* me,
-                    msg_entry_t* ety,
-                    msg_entry_response_t *r);
+                    LogEntryMsg_table_t* ety,
+                    LogEntryResponseMsg_table_t *r);
 
 /**
  * @return server's node ID; -1 if it doesn't know what it is */
@@ -713,7 +620,7 @@ int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
 /** Confirm if a msg_entry_response has been committed.
  * @param[in] r The response we want to check */
 int raft_msg_entry_response_committed(raft_server_t* me_,
-                                      const msg_entry_response_t* r);
+                                      const LogEntryResponseMsg_table_t* r);
 
 /** Get node's ID.
  * @return ID of node */

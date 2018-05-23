@@ -9,6 +9,8 @@ SHELL  = /bin/bash
 CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
 	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
 	  -Wunused-variable \
+	  -D FLATCC_PORTABLE \
+	  -I/Users/willem/contrib/flatcc/include \
 	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -Iinclude -g -O2 -fPIC
 
 UNAME := $(shell uname)
@@ -26,9 +28,19 @@ SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
+
 OBJECTS = src/raft_server.o src/raft_server_properties.o src/raft_node.o src/raft_log.o
 
+TRANSPORT_DIR = include/transport
+
+TRANSPORT_OBJECTS = $(TRANSPORT_DIR)/core_builder.h $(TRANSPORT_DIR)/core_reader.h $(TRANSPORT_DIR)/core_verifier.h $(TRANSPORT_DIR)/flatbuffers_common_builder.h $(TRANSPORT_DIR)/flatbuffers_common_reader.h
+
 all: static shared
+
+.PHONY: transport
+transport:
+	mkdir -p $(TRANSPORT_DIR)
+	/Users/willem/contrib/flatcc/bin/flatcc -a -o $(TRANSPORT_DIR) src/transport/core.fbs
 
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
@@ -45,11 +57,11 @@ $(TEST_DIR)/main_test.c:
 	cd $(TEST_DIR) && sh make-tests.sh "test_*.c" > main_test.c && cd ..
 
 .PHONY: shared
-shared: $(OBJECTS)
+shared: transport $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) $(CFLAGS) -fPIC $(SHAREDFLAGS) -o libraft.$(SHAREDEXT)
 
 .PHONY: static
-static: $(OBJECTS)
+static: transport $(OBJECTS)
 	ar -r libraft.a $(OBJECTS)
 
 .PHONY: tests
@@ -89,6 +101,7 @@ do_infer:
 
 clean:
 	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
+	rm $(TRANSPORT_DIR)/*.h; \
 	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
 	if [ -f libraft.a ]; then rm libraft.a; fi;\
 	if [ -f tests_main ]; then rm tests_main; fi;
