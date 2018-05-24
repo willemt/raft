@@ -1,15 +1,17 @@
 CONTRIB_DIR = .
 TEST_DIR = ./tests
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
-VPATH = src
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
-CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
-	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
-	  -Wunused-variable \
-	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -Iinclude -g -O2 -fPIC
+CFLAGS += -Iinclude \
+	  -Werror -Wextra -Werror=return-type -Werror=uninitialized \
+	  -Wno-pointer-sign -Wunused-variable \
+	  -fno-omit-frame-pointer -fno-common -fsigned-char \
+	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -g -O2 -fPIC
+
+#CFLAGS += -Wcast-align 
 
 UNAME := $(shell uname)
 
@@ -26,7 +28,7 @@ SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
-OBJECTS = src/raft_server.o src/raft_server_properties.o src/raft_node.o src/raft_log.o
+OBJECTS = src/raft_server.o src/raft_server_properties.o src/raft_node.o src/raft_log.o deps/capnproto/capn.c deps/capnproto/capn-malloc.c deps/capnproto/capn-stream.c
 
 all: static shared
 
