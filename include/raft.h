@@ -405,7 +405,7 @@ typedef struct
  * Election timeout defaults to 1000 milliseconds
  *
  * @return newly initialised Raft server */
-raft_server_t* raft_new();
+raft_server_t* raft_new(void);
 
 /** De-initialise Raft server.
  * Frees all memory */

@@ -114,7 +114,7 @@ log_t* log_alloc(raft_index_t initial_size)
     return (log_t*)me;
 }
 
-log_t* log_new()
+log_t* log_new(void)
 {
     return log_alloc(INITIAL_CAPACITY);
 }

@@ -66,7 +66,7 @@ void raft_randomize_election_timeout(raft_server_t* me_)
     __log(me_, NULL, "randomize election timeout to %d", me->election_timeout_rand);
 }
 
-raft_server_t* raft_new()
+raft_server_t* raft_new(void)
 {
     raft_server_private_t* me =
         (raft_server_private_t*)__raft_calloc(1, sizeof(raft_server_private_t));
