@@ -16,7 +16,7 @@ static int __logentry_get_node_id(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int ety_idx
+    raft_index_t ety_idx
     )
 {
     return 0;
@@ -26,7 +26,7 @@ static int __log_offer(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx
+    raft_index_t entry_idx
     )
 {
     CuAssertIntEquals((CuTest*)raft, 1, entry_idx);
@@ -37,7 +37,7 @@ static int __log_pop(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx
+    raft_index_t entry_idx
     )
 {
     raft_entry_t* copy = malloc(sizeof(*entry));
@@ -50,7 +50,7 @@ static int __log_pop_failing(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx
+    raft_index_t entry_idx
     )
 {
     return -1;

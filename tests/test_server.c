@@ -17,7 +17,7 @@
 static int __raft_persist_term(
     raft_server_t* raft,
     void *udata,
-    int term,
+    raft_term_t term,
     int vote
     )
 {
@@ -37,7 +37,7 @@ int __raft_applylog(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int idx
+    raft_index_t idx
     )
 {
     return 0;
@@ -47,7 +47,7 @@ int __raft_applylog_shutdown(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int idx
+    raft_index_t idx
     )
 {
     return RAFT_ERR_SHUTDOWN;
@@ -307,7 +307,7 @@ static int __raft_logentry_offer(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int ety_idx
+    raft_index_t ety_idx
     )
 {
     CuAssertIntEquals(udata, ety_idx, 1);
@@ -1572,14 +1572,14 @@ typedef enum {
 
 typedef struct {
     __raft_error_type_e type;
-    int idx;
+    raft_index_t idx;
 } __raft_error_t;
 
 static int __raft_log_offer_error(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx)
+    raft_index_t entry_idx)
 {
     __raft_error_t *error = user_data;
 
@@ -1592,7 +1592,7 @@ static int __raft_log_pop_error(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx)
+    raft_index_t entry_idx)
 {
     __raft_error_t *error = user_data;
 

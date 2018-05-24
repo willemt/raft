@@ -10,6 +10,8 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
+#include "raft_types.h"
+
 typedef enum {
     RAFT_ERR_NOT_LEADER=-2,
     RAFT_ERR_ONE_VOTING_CHANGE_ONLY=-3,
@@ -87,10 +89,10 @@ typedef struct
 typedef struct
 {
     /** the entry's term at the point it was created */
-    unsigned int term;
+    raft_term_t term;
 
     /** the entry's unique ID */
-    unsigned int id;
+    raft_entry_id_t id;
 
     /** type of entry */
     int type;
@@ -108,13 +110,13 @@ typedef raft_entry_t msg_entry_t;
 typedef struct
 {
     /** the entry's unique ID */
-    unsigned int id;
+    raft_entry_id_t id;
 
     /** the entry's term */
-    int term;
+    raft_term_t term;
 
     /** the entry's index */
-    int idx;
+    raft_index_t idx;
 } msg_entry_response_t;
 
 /** Vote request message.
@@ -123,16 +125,16 @@ typedef struct
 typedef struct
 {
     /** currentTerm, to force other leader/candidate to step down */
-    int term;
+    raft_term_t term;
 
     /** candidate requesting vote */
-    int candidate_id;
+    raft_node_id_t candidate_id;
 
     /** index of candidate's last log entry */
-    int last_log_idx;
+    raft_index_t last_log_idx;
 
     /** term of candidate's last log entry */
-    int last_log_term;
+    raft_term_t last_log_term;
 } msg_requestvote_t;
 
 /** Vote request response message.
@@ -140,7 +142,7 @@ typedef struct
 typedef struct
 {
     /** currentTerm, for candidate to update itself */
-    int term;
+    raft_term_t term;
 
     /** true means candidate received vote */
     int vote_granted;
@@ -153,19 +155,19 @@ typedef struct
 typedef struct
 {
     /** currentTerm, to force other leader/candidate to step down */
-    int term;
+    raft_term_t term;
 
     /** the index of the log just before the newest entry for the node who
      * receives this message */
-    int prev_log_idx;
+    raft_index_t prev_log_idx;
 
     /** the term of the log just before the newest entry for the node who
      * receives this message */
-    int prev_log_term;
+    raft_term_t prev_log_term;
 
     /** the index of the entry that has been appended to the majority of the
      * cluster. Entries up to this index will be applied to the FSM */
-    int leader_commit;
+    raft_index_t leader_commit;
 
     /** number of entries within this message */
     int n_entries;
@@ -180,7 +182,7 @@ typedef struct
 typedef struct
 {
     /** currentTerm, to force other leader/candidate to step down */
-    int term;
+    raft_term_t term;
 
     /** true if follower contained entry matching prevLogidx and prevLogTerm */
     int success;
@@ -191,10 +193,10 @@ typedef struct
 
     /** If success, this is the highest log IDX we've received and appended to
      * our log; otherwise, this is the our currentIndex */
-    int current_idx;
+    raft_index_t current_idx;
 
     /** The first idx that we received within the appendentries message */
-    int first_idx;
+    raft_index_t first_idx;
 } msg_appendentries_response_t;
 
 typedef void* raft_server_t;
@@ -289,7 +291,7 @@ typedef int (
 )   (
     raft_server_t* raft,
     void *user_data,
-    int vote
+    raft_node_id_t vote
     );
 
 /** Callback for saving current term (and nil vote) to disk.
@@ -305,8 +307,8 @@ typedef int (
 )   (
     raft_server_t* raft,
     void *user_data,
-    int term,
-    int vote
+    raft_term_t term,
+    raft_node_id_t vote
     );
 
 /** Callback for saving log entry changes.
@@ -335,7 +337,7 @@ typedef int (
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx
+    raft_index_t entry_idx
     );
 
 /** Callback for being notified of membership changes.
@@ -464,7 +466,7 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
  * @return
  *  node if it was successfully added;
  *  NULL if the node already exists */
-raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_self);
+raft_node_t* raft_add_node(raft_server_t* me, void* user_data, raft_node_id_t id, int is_self);
 
 #define raft_add_peer raft_add_node
 
@@ -474,7 +476,7 @@ raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_se
  * @return
  *  node if it was successfully added;
  *  NULL if the node already exists */
-raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self);
+raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, raft_node_id_t id, int is_self);
 
 /** Remove node.
  * @param node The node to be removed. */
@@ -610,19 +612,19 @@ int raft_get_num_voting_nodes(raft_server_t* me_);
 
 /**
  * @return number of items within log */
-int raft_get_log_count(raft_server_t* me);
+raft_index_t raft_get_log_count(raft_server_t* me);
 
 /**
  * @return current term */
-int raft_get_current_term(raft_server_t* me);
+raft_term_t raft_get_current_term(raft_server_t* me);
 
 /**
  * @return current log index */
-int raft_get_current_idx(raft_server_t* me);
+raft_index_t raft_get_current_idx(raft_server_t* me);
 
 /**
  * @return commit index */
-int raft_get_commit_idx(raft_server_t* me_);
+raft_index_t raft_get_commit_idx(raft_server_t* me_);
 
 /**
  * @return 1 if follower; 0 otherwise */
@@ -646,15 +648,15 @@ int raft_get_request_timeout(raft_server_t* me);
 
 /**
  * @return index of last applied entry */
-int raft_get_last_applied_idx(raft_server_t* me);
+raft_index_t raft_get_last_applied_idx(raft_server_t* me);
 
 /**
  * @return the node's next index */
-int raft_node_get_next_idx(raft_node_t* node);
+raft_index_t raft_node_get_next_idx(raft_node_t* node);
 
 /**
  * @return this node's user data */
-int raft_node_get_match_idx(raft_node_t* me);
+raft_index_t raft_node_get_match_idx(raft_node_t* me);
 
 /**
  * @return this node's user data */
@@ -667,18 +669,18 @@ void raft_node_set_udata(raft_node_t* me, void* user_data);
 /**
  * @param[in] idx The entry's index
  * @return entry from index */
-raft_entry_t* raft_get_entry_from_idx(raft_server_t* me, int idx);
+raft_entry_t* raft_get_entry_from_idx(raft_server_t* me, raft_index_t idx);
 
 /**
  * @param[in] node The node's ID
  * @return node pointed to by node ID */
-raft_node_t* raft_get_node(raft_server_t* me_, const int id);
+raft_node_t* raft_get_node(raft_server_t* me_, const raft_node_id_t id);
 
 /**
  * Used for iterating through nodes
  * @param[in] node The node's idx
  * @return node pointed to by node idx */
-raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const int idx);
+raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const raft_index_t idx);
 
 /**
  * @return number of votes this server has received this election */
@@ -691,7 +693,7 @@ int raft_get_voted_for(raft_server_t* me);
 /** Get what this node thinks the node ID of the leader is.
  * @return node of what this node thinks is the valid leader;
  *   -1 if the leader is unknown */
-int raft_get_current_leader(raft_server_t* me);
+raft_node_id_t raft_get_current_leader(raft_server_t* me);
 
 /** Get what this node thinks the node of the leader is.
  * @return node of what this node thinks is the valid leader;
@@ -714,19 +716,19 @@ int raft_vote(raft_server_t* me_, raft_node_t* node);
  * @param[in] nodeid The server to vote for by nodeid
  * @return
  *  0 on success */
-int raft_vote_for_nodeid(raft_server_t* me_, const int nodeid);
+int raft_vote_for_nodeid(raft_server_t* me_, const raft_node_id_t nodeid);
 
 /** Set the current term.
  * This should be used to reload persistent state, ie. the current_term field.
  * @param[in] term The new current term
  * @return
  *  0 on success */
-int raft_set_current_term(raft_server_t* me, const int term);
+int raft_set_current_term(raft_server_t* me, const raft_term_t term);
 
 /** Set the commit idx.
  * This should be used to reload persistent state, ie. the commit_idx field.
  * @param[in] commit_idx The new commit index. */
-void raft_set_commit_idx(raft_server_t* me, int commit_idx);
+void raft_set_commit_idx(raft_server_t* me, raft_index_t commit_idx);
 
 /** Add an entry to the server's log.
  * This should be used to reload persistent state, ie. the commit log.
@@ -744,7 +746,7 @@ int raft_msg_entry_response_committed(raft_server_t* me_,
 
 /** Get node's ID.
  * @return ID of node */
-int raft_node_get_id(raft_node_t* me_);
+raft_node_id_t raft_node_get_id(raft_node_t* me_);
 
 /** Tell if we are a leader, candidate or follower.
  * @return get state of type raft_state_e. */
@@ -752,7 +754,7 @@ int raft_get_state(raft_server_t* me_);
 
 /** Get the most recent log's term
  * @return the last log term */
-int raft_get_last_log_term(raft_server_t* me_);
+raft_term_t raft_get_last_log_term(raft_server_t* me_);
 
 /** Turn a node into a voting node.
  * Voting nodes can take part in elections and in-regards to committing entries,
@@ -821,7 +823,7 @@ int raft_end_snapshot(raft_server_t *me_);
 
 /** Get the entry index of the entry that was snapshotted
  **/
-int raft_get_snapshot_entry_idx(raft_server_t *me_);
+raft_index_t raft_get_snapshot_entry_idx(raft_server_t *me_);
 
 /** Check is a snapshot is in progress
  **/
@@ -837,7 +839,7 @@ int raft_poll_entry(raft_server_t* me_, raft_entry_t **ety);
  **/
 raft_entry_t *raft_get_last_applied_entry(raft_server_t *me_);
 
-int raft_get_first_entry_idx(raft_server_t* me_);
+raft_index_t raft_get_first_entry_idx(raft_server_t* me_);
 
 /** Start loading snapshot
  *
@@ -856,8 +858,8 @@ int raft_get_first_entry_idx(raft_server_t* me_);
  *  RAFT_ERR_SNAPSHOT_ALREADY_LOADED
  **/
 int raft_begin_load_snapshot(raft_server_t *me_,
-                       int last_included_term,
-		       int last_included_index);
+                       raft_term_t last_included_term,
+		       raft_index_t last_included_index);
 
 /** Stop loading snapshot.
  *
@@ -867,11 +869,11 @@ int raft_begin_load_snapshot(raft_server_t *me_,
  **/
 int raft_end_load_snapshot(raft_server_t *me_);
 
-int raft_get_snapshot_last_idx(raft_server_t *me_);
+raft_index_t raft_get_snapshot_last_idx(raft_server_t *me_);
 
-int raft_get_snapshot_last_term(raft_server_t *me_);
+raft_term_t raft_get_snapshot_last_term(raft_server_t *me_);
 
-void raft_set_snapshot_metadata(raft_server_t *me_, int term, int idx);
+void raft_set_snapshot_metadata(raft_server_t *me_, raft_term_t term, raft_index_t idx);
 
 /** Check if a node is active.
  * Active nodes could become voting nodes.

@@ -14,7 +14,7 @@
 static int __raft_persist_term(
     raft_server_t* raft,
     void *udata,
-    int term,
+    raft_term_t term,
     int vote
     )
 {
@@ -34,7 +34,7 @@ static int __raft_applylog(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int idx
+    raft_index_t idx
     )
 {
     return 0;
