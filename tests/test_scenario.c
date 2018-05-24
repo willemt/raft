@@ -14,7 +14,7 @@
 static int __raft_persist_term(
     raft_server_t* raft,
     void *udata,
-    int term,
+    raft_term_t term,
     int vote
     )
 {

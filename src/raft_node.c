@@ -28,15 +28,15 @@ typedef struct
 {
     void* udata;
 
-    int next_idx;
-    int match_idx;
+    raft_index_t next_idx;
+    raft_index_t match_idx;
 
     int flags;
 
-    int id;
+    raft_node_id_t id;
 } raft_node_private_t;
 
-raft_node_t* raft_node_new(void* udata, int id)
+raft_node_t* raft_node_new(void* udata, raft_node_id_t id)
 {
     raft_node_private_t* me;
     me = (raft_node_private_t*)__raft_calloc(1, sizeof(raft_node_private_t));
@@ -55,26 +55,26 @@ void raft_node_free(raft_node_t* me_)
     __raft_free(me_);
 }
 
-int raft_node_get_next_idx(raft_node_t* me_)
+raft_index_t raft_node_get_next_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->next_idx;
 }
 
-void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
+void raft_node_set_next_idx(raft_node_t* me_, raft_index_t nextIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     /* log index begins at 1 */
     me->next_idx = nextIdx < 1 ? 1 : nextIdx;
 }
 
-int raft_node_get_match_idx(raft_node_t* me_)
+raft_index_t raft_node_get_match_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->match_idx;
 }
 
-void raft_node_set_match_idx(raft_node_t* me_, int matchIdx)
+void raft_node_set_match_idx(raft_node_t* me_, raft_index_t matchIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     me->match_idx = matchIdx;
@@ -170,7 +170,7 @@ int raft_node_is_voting_committed(raft_node_t* me_)
     return (me->flags & RAFT_NODE_VOTING_COMMITTED) != 0;
 }
 
-int raft_node_get_id(raft_node_t* me_)
+raft_node_id_t raft_node_get_id(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->id;
