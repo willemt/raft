@@ -1215,7 +1215,7 @@ int raft_begin_snapshot(raft_server_t *me_)
         return -1;
 
     int snapshot_target = raft_get_commit_idx(me_);
-    if (!snapshot_target || snapshot_target == 0)
+    if (!snapshot_target)
         return -1;
 
     raft_entry_t* ety = raft_get_entry_from_idx(me_, snapshot_target);
