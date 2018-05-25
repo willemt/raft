@@ -44,6 +44,7 @@ void raft_set_heap_functions(void *(*_malloc)(size_t),
     __raft_free = _free;
 }
 
+__attribute__ ((format (printf, 3, 4)))
 static void __log(raft_server_t *me_, raft_node_t* node, const char *fmt, ...)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -612,7 +613,7 @@ int raft_recv_requestvote(raft_server_t* me_,
 
 done:
     __log(me_, node, "node requested vote: %d replying: %s",
-          node,
+          raft_node_get_id(node),
           r->vote_granted == 1 ? "granted" :
           r->vote_granted == 0 ? "not granted" : "unknown");
 
@@ -761,7 +762,7 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     assert(node);
     assert(node != me->node);
 
-    __log(me_, node, "sending requestvote to: %d", node);
+    __log(me_, node, "sending requestvote to: %d", raft_node_get_id(node));
 
     rv.term = me->current_term;
     rv.last_log_idx = raft_get_current_idx(me_);
@@ -1214,7 +1215,7 @@ int raft_begin_snapshot(raft_server_t *me_)
         return -1;
 
     int snapshot_target = raft_get_commit_idx(me_);
-    if (!snapshot_target || snapshot_target == 0)
+    if (!snapshot_target)
         return -1;
 
     raft_entry_t* ety = raft_get_entry_from_idx(me_, snapshot_target);
