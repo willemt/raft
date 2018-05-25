@@ -196,7 +196,6 @@ typedef void* raft_node_t;
 
 /** Callback for sending request vote messages.
  * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node's ID that we are sending this message to
  * @param[in] msg The request vote message to be sent
  * @return 0 on success */
@@ -204,14 +203,12 @@ typedef int (
 *func_send_requestvote_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     raft_node_t* node,
     msg_requestvote_t* msg
     );
 
 /** Callback for sending append entries messages.
  * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node's ID that we are sending this message to
  * @param[in] msg The appendentries message to be sent
  * @return 0 on success */
@@ -219,7 +216,6 @@ typedef int (
 *func_send_appendentries_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     raft_node_t* node,
     msg_appendentries_t* msg
     );
@@ -229,28 +225,24 @@ typedef int (
  * Callback for telling the user to send a snapshot.
  *
  * @param[in] raft Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] node Node's ID that needs a snapshot sent to
  **/
 typedef int (
 *func_send_snapshot_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     raft_node_t* node
     );
 
 /** Callback for detecting when non-voting nodes have obtained enough logs.
  * This triggers only when there are no pending configuration changes.
  * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node
  * @return 0 does not want to be notified again; otherwise -1 */
 typedef int (
 *func_node_has_sufficient_logs_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     raft_node_t* node
     );
 
@@ -260,14 +252,12 @@ typedef int (
  * This callback is optional
  * @param[in] raft The Raft server making this callback
  * @param[in] node The node that is the subject of this log. Could be NULL.
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] buf The buffer that was logged */
 typedef void (
 *func_log_f
 )    (
     raft_server_t* raft,
     raft_node_t* node,
-    void *user_data,
     const char *buf
     );
 #endif
@@ -275,14 +265,12 @@ typedef void (
 /** Callback for saving who we voted for to disk.
  * For safety reasons this callback MUST flush the change to disk.
  * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] vote The node we voted for
  * @return 0 on success */
 typedef int (
 *func_persist_vote_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     int vote
     );
 
@@ -290,7 +278,6 @@ typedef int (
  * For safety reasons this callback MUST flush the term and vote changes to
  * disk atomically.
  * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] term Current term
  * @param[in] vote The node value dicating we haven't voted for anybody
  * @return 0 on success */
@@ -298,7 +285,6 @@ typedef int (
 *func_persist_term_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     int term,
     int vote
     );
@@ -316,7 +302,6 @@ typedef int (
  * For safety reasons this callback MUST flush the change to disk.
  *
  * @param[in] raft The Raft server making this callback
- * @param[in] user_data User data that is passed from Raft server
  * @param[in] entry The entry that the event is happening to.
  *    For offering, polling, and popping, the user is allowed to change the
  *    memory pointed to in the raft_entry_data_t struct. This MUST be done if
@@ -327,7 +312,6 @@ typedef int (
 *func_logentry_event_f
 )   (
     raft_server_t* raft,
-    void *user_data,
     raft_entry_t *entry,
     int entry_idx
     );
@@ -415,8 +399,8 @@ void raft_clear(raft_server_t* me);
 /** Set callbacks and user data.
  *
  * @param[in] funcs Callbacks
- * @param[in] user_data "User data" - user's context that's included in a callback */
-void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
+ */
+void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs);
 
 /** Add node.
  *
@@ -426,18 +410,13 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
  *  This call MUST be made in the same order as the other raft nodes.
  *  This is because the node ID is assigned depending on when this call is made
  *
- * @param[in] user_data The user data for the node.
- *  This is obtained using raft_node_get_udata.
- *  Examples of what this could be:
- *  - void* pointing to implementor's networking data
- *  - a (IP,Port) tuple
  * @param[in] id The integer ID of this node
  *  This is used for identifying clients across sessions.
  * @param[in] is_self Set to 1 if this "node" is this server
  * @return
  *  node if it was successfully added;
  *  NULL if the node already exists */
-raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_self);
+raft_node_t* raft_add_node(raft_server_t* me, int id, int is_self);
 
 #define raft_add_peer raft_add_node
 
@@ -447,7 +426,7 @@ raft_node_t* raft_add_node(raft_server_t* me, void* user_data, int id, int is_se
  * @return
  *  node if it was successfully added;
  *  NULL if the node already exists */
-raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self);
+raft_node_t* raft_add_non_voting_node(raft_server_t* me_, int id, int is_self);
 
 /** Remove node.
  * @param node The node to be removed. */
@@ -630,14 +609,6 @@ int raft_node_get_next_idx(raft_node_t* node);
 int raft_node_get_match_idx(raft_node_t* me);
 
 /**
- * @return this node's user data */
-void* raft_node_get_udata(raft_node_t* me);
-
-/**
- * Set this node's user data */
-void raft_node_set_udata(raft_node_t* me, void* user_data);
-
-/**
  * @param[in] idx The entry's index
  * @return entry from index */
 raft_entry_t* raft_get_entry_from_idx(raft_server_t* me, int idx);
@@ -670,10 +641,6 @@ int raft_get_current_leader(raft_server_t* me);
  * @return node of what this node thinks is the valid leader;
  *   NULL if the leader is unknown */
 raft_node_t* raft_get_current_leader_node(raft_server_t* me);
-
-/**
- * @return callback user data */
-void* raft_get_udata(raft_server_t* me);
 
 /** Vote for a server.
  * This should be used to reload persistent state, ie. the voted-for field.

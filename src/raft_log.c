@@ -151,8 +151,7 @@ int log_append_entry(log_t* me_, raft_entry_t* ety)
 
     if (me->cb && me->cb->log_offer)
     {
-        void* ud = raft_get_udata(me->raft);
-        e = me->cb->log_offer(me->raft, ud, &me->entries[me->back], idx);
+        e = me->cb->log_offer(me->raft, &me->entries[me->back], idx);
         if (0 != e)
             return e;
         raft_offer_log(me->raft, &me->entries[me->back], idx);
@@ -237,8 +236,7 @@ int log_delete(log_t* me_, int idx)
 
         if (me->cb && me->cb->log_pop)
         {
-            int e = me->cb->log_pop(me->raft, raft_get_udata(me->raft),
-                                    &me->entries[back], idx_tmp);
+            int e = me->cb->log_pop(me->raft, &me->entries[back], idx_tmp);
             if (0 != e)
                 return e;
         }
@@ -260,8 +258,7 @@ int log_poll(log_t * me_, void** etyp)
     const void *elem = &me->entries[me->front];
     if (me->cb && me->cb->log_poll)
     {
-        int e = me->cb->log_poll(me->raft, raft_get_udata(me->raft),
-                                 &me->entries[me->front], idx);
+        int e = me->cb->log_poll(me->raft, &me->entries[me->front], idx);
         if (0 != e)
             return e;
     }
