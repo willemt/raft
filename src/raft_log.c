@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  *
  * @file
- * @brief ADT for managing Raft log entries (aka entries)
+ * @brief ADT for managing Raft log entries
  * @author Willem Thiart himself@willemthiart.com
  */
 
@@ -136,7 +136,6 @@ void log_clear(log_t* me_)
     me->base = 0;
 }
 
-/** TODO: rename log_append */
 int log_append_entry(log_t* me_, raft_entry_t* ety)
 {
     log_private_t* me = (log_private_t*)me_;
@@ -162,6 +161,11 @@ int log_append_entry(log_t* me_, raft_entry_t* ety)
     me->back++;
     me->back = me->back % me->size;
 
+    return 0;
+}
+
+int log_append_entries(log_t* me_, raft_entry_t* ety, int len)
+{
     return 0;
 }
 
@@ -271,6 +275,11 @@ int log_poll(log_t * me_, void** etyp)
     me->base++;
 
     *etyp = (void*)elem;
+    return 0;
+}
+
+int log_poll_entries(log_t * me_, void** etyp, const int len)
+{
     return 0;
 }
 

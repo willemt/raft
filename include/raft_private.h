@@ -63,11 +63,11 @@ typedef struct {
     /* my node ID */
     raft_node_t* node;
 
-    /* the log which has a voting cfg change, otherwise -1 */
+    /* log entry which has a voting cfg change, otherwise -1 */
     int voting_cfg_change_log_idx;
 
-    /* Our membership with the cluster is confirmed (ie. configuration log was
-     * committed) */
+    /* Our membership with the cluster is confirmed (ie. configuration log
+     * entry was committed) */
     int connected;
 
     int snapshot_in_progress;
@@ -122,15 +122,21 @@ void raft_node_vote_for_me(raft_node_t* me_, const int vote);
 
 int raft_node_has_vote_for_me(raft_node_t* me_);
 
-void raft_node_set_has_sufficient_logs(raft_node_t* me_);
+void raft_node_set_has_sufficient_entries(raft_node_t* me_);
 
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
+/* DEPRECATED */
 void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
 
+/* DEPRECATED */
 void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
 
-int raft_get_num_snapshottable_logs(raft_server_t* me_);
+void raft_offer_entries(raft_server_t* me_, raft_entry_t* ety, const int idx, int len);
+
+void raft_pop_entries(raft_server_t* me_, raft_entry_t* ety, const int idx, int len);
+
+int raft_get_num_snapshottable_entries(raft_server_t* me_);
 
 int raft_node_is_active(raft_node_t* me_);
 

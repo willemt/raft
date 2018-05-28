@@ -240,14 +240,14 @@ typedef int (
     raft_node_t* node
     );
 
-/** Callback for detecting when non-voting nodes have obtained enough logs.
+/** Callback for detecting when non-voting nodes have obtained enough entries.
  * This triggers only when there are no pending configuration changes.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node
  * @return 0 does not want to be notified again; otherwise -1 */
 typedef int (
-*func_node_has_sufficient_logs_f
+*func_node_has_sufficient_entries_f
 )   (
     raft_server_t* raft,
     void *user_data,
@@ -303,6 +303,21 @@ typedef int (
     int vote
     );
 
+/** Callback for applying log entries to the state machine.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] entries Array of entries to be applied
+ * @param[in] n_entries Number of entries to be applied
+ * @return 0 on success */
+typedef int (
+*func_apply_entries_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t* entries,
+    int n_entries
+    );
+
 /** Callback for saving log entry changes.
  *
  * This callback is used for:
@@ -322,7 +337,18 @@ typedef int (
  *    memory pointed to in the raft_entry_data_t struct. This MUST be done if
  *    the memory is temporary.
  * @param[in] entry_idx The entries index in the log
+ * @param[in] n_entries The numberof entries.
  * @return 0 on success */
+typedef int (
+*func_logentries_event_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t *entry,
+    int entry_idx,
+    int n_entries
+    );
+
 typedef int (
 *func_logentry_event_f
 )   (
@@ -343,11 +369,6 @@ typedef struct
     /** Callback for notifying user that a node needs a snapshot sent */
     func_send_snapshot_f send_snapshot;
 
-    /** Callback for finite state machine application
-     * Return 0 on success.
-     * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logentry_event_f applylog;
-
     /** Callback for persisting vote data
      * For safety reasons this callback MUST flush the change to disk. */
     func_persist_vote_f persist_vote;
@@ -357,10 +378,40 @@ typedef struct
      * disk atomically. */
     func_persist_term_f persist_term;
 
-    /** Callback for adding an entry to the log
+    /** Callback for adding entries to the log
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
+    func_logentries_event_f offer_entries;
+
+    /** Callback for removing the oldest entries from the log
+     * For safety reasons this callback MUST flush the change to disk.
+     * @note If memory was malloc'd in log_offer then this should be the right
+     *  time to free the memory. */
+    func_logentries_event_f poll_entries;
+
+    /** Callback for removing the youngest entries from the log
+     * For safety reasons this callback MUST flush the change to disk.
+     * @note If memory was malloc'd in log_offer then this should be the right
+     *  time to free the memory. */
+    func_logentries_event_f pop_entries;
+
+    /** Callback for determining which node this configuration log entry
+     * affects. This call only applies to configuration change log entries.
+     * @return the node ID of the node */
+    func_logentry_event_f entry_get_node_id;
+
+    /** Callback for detecting when a non-voting node has sufficient entries. */
+    func_node_has_sufficient_entries_f node_has_sufficient_entries;
+
+    /** Callback for catching debugging log messages
+     * This callback is optional */
+    func_log_f log;
+
+    /** WARNING: the below callbacks are deprecated */
+
+    /** Callback for adding an entry to the log
+     * For safety reasons this callback MUST flush the change to disk. */
     func_logentry_event_f log_offer;
 
     /** Callback for removing the oldest entry from the log
@@ -375,17 +426,18 @@ typedef struct
      *  time to free the memory. */
     func_logentry_event_f log_pop;
 
+    /** Callback for finite state machine application
+     * Return 0 on success.
+     * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
+    func_logentry_event_f applylog;
+
+    /** Callback for detecting when a non-voting node has sufficient entries. */
+    func_node_has_sufficient_entries_f node_has_sufficient_logs;
+
     /** Callback for determining which node this configuration log entry
      * affects. This call only applies to configuration change log entries.
      * @return the node ID of the node */
     func_logentry_event_f log_get_node_id;
-
-    /** Callback for detecting when a non-voting node has sufficient logs. */
-    func_node_has_sufficient_logs_f node_has_sufficient_logs;
-
-    /** Callback for catching debugging log messages
-     * This callback is optional */
-    func_log_f log;
 } raft_cbs_t;
 
 typedef struct
@@ -477,12 +529,12 @@ int raft_periodic(raft_server_t* me, int msec_elapsed);
  *
  * Might call malloc once to increase the log entry array size.
  *
- * The log_offer callback will be called.
+ * The offer_entries callback will be called.
  *
  * @note The memory pointer (ie. raft_entry_data_t) for each msg_entry_t is
  *   copied directly. If the memory is temporary you MUST either make the
  *   memory permanent (ie. via malloc) OR re-assign the memory within the
- *   log_offer callback.
+ *   offer_entries callback.
  *
  * @param[in] node The node who sent us this message
  * @param[in] ae The appendentries message
@@ -535,12 +587,12 @@ int raft_recv_requestvote_response(raft_server_t* me,
  *
  * Might call malloc once to increase the log entry array size.
  *
- * The log_offer callback will be called.
+ * The offer_entries callback will be called.
  *
  * @note The memory pointer (ie. raft_entry_data_t) in msg_entry_t is
  *  copied directly. If the memory is temporary you MUST either make the
  *  memory permanent (ie. via malloc) OR re-assign the memory within the
- *  log_offer callback.
+ *  offer_entries callback.
  *
  * Will fail:
  * <ul>
@@ -710,6 +762,8 @@ void raft_set_commit_idx(raft_server_t* me, int commit_idx);
  *  RAFT_ERR_NOMEM memory allocation failure */
 int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
 
+int raft_append_entries(raft_server_t* me_, raft_entry_t* etys, int n_etys);
+
 /** Confirm if a msg_entry_response has been committed.
  * @param[in] r The response we want to check */
 int raft_msg_entry_response_committed(raft_server_t* me_,
@@ -736,9 +790,11 @@ void raft_node_set_voting(raft_node_t* node, int voting);
  * @return 1 if this is a voting node. Otherwise 0. */
 int raft_node_is_voting(raft_node_t* me_);
 
-/** Check if a node has sufficient logs to be able to join the cluster.
+/** Check if a node has sufficient entries to be able to join the cluster.
  **/
-int raft_node_has_sufficient_logs(raft_node_t* me_);
+int raft_node_has_sufficient_entries(raft_node_t* me_);
+
+#define raft_node_has_sufficient_logs raft_node_has_sufficient_entries
 
 /** Apply all entries up to the commit index
  * @return
@@ -801,10 +857,16 @@ int raft_get_snapshot_entry_idx(raft_server_t *me_);
 int raft_snapshot_is_in_progress(raft_server_t *me_);
 
 /** Remove the first log entry.
- * This should be used for compacting logs.
+ * This should be used for compacting entries.
  * @return 0 on success
  **/
 int raft_poll_entry(raft_server_t* me_, raft_entry_t **ety);
+
+/** Remove the first log entries.
+ * This should be used for compacting entries.
+ * @return 0 on success
+ **/
+int raft_poll_entries(raft_server_t* me_, raft_entry_t **ety, const int len);
 
 /** Get last applied entry
  **/
@@ -817,8 +879,8 @@ int raft_get_first_entry_idx(raft_server_t* me_);
  * This is usually the result of a snapshot being loaded.
  * We need to send an appendentries response.
  *
- * @param[in] last_included_term Term of the last log of the snapshot
- * @param[in] last_included_index Index of the last log of the snapshot 
+ * @param[in] last_included_term Term of the last entry of the snapshot
+ * @param[in] last_included_index Index of the last entry of the snapshot 
  *
  * @return
  *  0 on success

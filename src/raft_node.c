@@ -17,12 +17,12 @@
 #include "raft.h"
 #include "raft_private.h"
 
-#define RAFT_NODE_VOTED_FOR_ME        (1 << 0)
-#define RAFT_NODE_VOTING              (1 << 1)
-#define RAFT_NODE_HAS_SUFFICIENT_LOG  (1 << 2)
-#define RAFT_NODE_INACTIVE            (1 << 3)
-#define RAFT_NODE_VOTING_COMMITTED    (1 << 4)
-#define RAFT_NODE_ADDITION_COMMITTED  (1 << 5)
+#define RAFT_NODE_VOTED_FOR_ME            (1 << 0)
+#define RAFT_NODE_VOTING                  (1 << 1)
+#define RAFT_NODE_HAS_SUFFICIENT_ENTRIES  (1 << 2)
+#define RAFT_NODE_INACTIVE                (1 << 3)
+#define RAFT_NODE_VOTING_COMMITTED        (1 << 4)
+#define RAFT_NODE_ADDITION_COMMITTED      (1 << 5)
 
 typedef struct
 {
@@ -128,16 +128,16 @@ int raft_node_is_voting(raft_node_t* me_)
     return (me->flags & RAFT_NODE_VOTING) != 0;
 }
 
-int raft_node_has_sufficient_logs(raft_node_t* me_)
+int raft_node_has_sufficient_entries(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
-    return (me->flags & RAFT_NODE_HAS_SUFFICIENT_LOG) != 0;
+    return (me->flags & RAFT_NODE_HAS_SUFFICIENT_ENTRIES) != 0;
 }
 
-void raft_node_set_has_sufficient_logs(raft_node_t* me_)
+void raft_node_set_has_sufficient_entries(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
-    me->flags |= RAFT_NODE_HAS_SUFFICIENT_LOG;
+    me->flags |= RAFT_NODE_HAS_SUFFICIENT_ENTRIES;
 }
 
 void raft_node_set_active(raft_node_t* me_, int active)
