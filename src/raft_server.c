@@ -765,6 +765,7 @@ int raft_recv_entry(raft_server_t* me_,
     r->idx = raft_get_current_idx(me_);
     r->term = me->current_term;
 
+    /* FIXME: is this required if raft_append_entry does this too? */
     if (raft_entry_is_voting_cfg_change(ety))
         me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
 

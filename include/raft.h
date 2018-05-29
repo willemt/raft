@@ -10,14 +10,16 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
-#define RAFT_ERR_NOT_LEADER                  -2
-#define RAFT_ERR_ONE_VOTING_CHANGE_ONLY      -3
-#define RAFT_ERR_SHUTDOWN                    -4
-#define RAFT_ERR_NOMEM                       -5
-#define RAFT_ERR_NEEDS_SNAPSHOT              -6
-#define RAFT_ERR_SNAPSHOT_IN_PROGRESS        -7
-#define RAFT_ERR_SNAPSHOT_ALREADY_LOADED     -8
-#define RAFT_ERR_LAST                        -100
+typedef enum {
+    RAFT_ERR_NOT_LEADER=-2,
+    RAFT_ERR_ONE_VOTING_CHANGE_ONLY=-3,
+    RAFT_ERR_SHUTDOWN=-4,
+    RAFT_ERR_NOMEM=-5,
+    RAFT_ERR_NEEDS_SNAPSHOT=-6,
+    RAFT_ERR_SNAPSHOT_IN_PROGRESS=-7,
+    RAFT_ERR_SNAPSHOT_ALREADY_LOADED=-8,
+    RAFT_ERR_LAST=-100,
+} raft_error_e;
 
 typedef enum {
     RAFT_MEMBERSHIP_ADD,

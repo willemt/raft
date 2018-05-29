@@ -72,9 +72,7 @@ tests_full:
 
 .PHONY: test_virtraft
 test_virtraft:
-	cp src/*.c virtraft/deps/raft/
-	cp include/*.h virtraft/deps/raft/
-	cd virtraft; make clean; make; make tests
+	python3 tests/virtraft2.py --servers 7 -i 20000 --compaction_rate 50 --drop_rate 5 -P 10 --seed 1 -m 3
 
 .PHONY: amalgamation
 amalgamation:
