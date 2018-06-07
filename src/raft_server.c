@@ -125,7 +125,6 @@ void raft_clear(raft_server_t* me_)
     me->last_applied_idx = 0;
     me->num_nodes = 0;
     me->node = NULL;
-    me->voting_cfg_change_log_idx = 0;
     log_clear(me->log);
 }
 
@@ -431,15 +430,25 @@ int raft_recv_appendentries(
     {
         raft_entry_t* ety = raft_get_entry_from_idx(me_, ae->prev_log_idx);
 
+        /* Is a snapshot */
+        if (ae->prev_log_idx == me->snapshot_last_idx)
+        {
+            if (me->snapshot_last_term != ae->prev_log_term)
+            {
+                /* Should never happen; something is seriously wrong! */
+                __log(me_, node, "Snapshot AE prev conflicts with committed entry");
+                e = RAFT_ERR_SHUTDOWN;
+                goto out;
+            }
+        }
         /* 2. Reply false if log doesn't contain an entry at prevLogIndex
            whose term matches prevLogTerm (§5.3) */
-        if (!ety)
+        else if (!ety)
         {
             __log(me_, node, "AE no log at prev_idx %d", ae->prev_log_idx);
             goto out;
         }
-
-        if (ety->term != ae->prev_log_term)
+        else if (ety->term != ae->prev_log_term)
         {
             __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
                   ety->term, ae->prev_log_term, raft_get_current_idx(me_),
@@ -546,10 +555,20 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
         return 1;
 
     raft_entry_t* ety = raft_get_entry_from_idx((void*)me, current_idx);
-    if (ety->term < vr->last_log_term)
+    int ety_term;
+
+    // TODO: add test
+    if (ety)
+        ety_term = ety->term;
+    else if (!ety && me->snapshot_last_idx == current_idx)
+        ety_term = me->snapshot_last_term;
+    else
+        return 0;
+
+    if (ety_term < vr->last_log_term)
         return 1;
 
-    if (vr->last_log_term == ety->term && current_idx <= vr->last_log_idx)
+    if (vr->last_log_term == ety_term && current_idx <= vr->last_log_idx)
         return 1;
 
     return 0;
@@ -589,7 +608,7 @@ int raft_recv_requestvote(raft_server_t* me_,
         else
             r->vote_granted = 0;
 
-        /* there must be in an election. */
+        /* must be in an election. */
         me->current_leader = NULL;
 
         me->timeout_elapsed = 0;
@@ -887,11 +906,16 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     if (1 < next_idx)
     {
         raft_entry_t* prev_ety = raft_get_entry_from_idx(me_, next_idx - 1);
-        ae.prev_log_idx = next_idx - 1;
-        if (prev_ety)
-            ae.prev_log_term = prev_ety->term;
-        else
+        if (!prev_ety)
+        {
+            ae.prev_log_idx = me->snapshot_last_idx;
             ae.prev_log_term = me->snapshot_last_term;
+        }
+        else
+        {
+            ae.prev_log_idx = next_idx - 1;
+            ae.prev_log_term = prev_ety->term;
+        }
     }
 
     __log(me_, node, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
@@ -1247,9 +1271,12 @@ int raft_end_snapshot(raft_server_t *me_)
     if (!me->snapshot_in_progress || me->snapshot_last_idx == 0)
         return -1;
 
+    assert(raft_get_num_snapshottable_logs(me_) != 0);
+    assert(me->snapshot_last_idx == raft_get_commit_idx(me_));
+
     /* If needed, remove compacted logs */
-    int i = raft_get_first_entry_idx(me_), end = raft_get_commit_idx(me_);
-    for (; i <= end; i++)
+    int i = 0, end = raft_get_num_snapshottable_logs(me_);
+    for (; i < end; i++)
     {
         raft_entry_t* _ety;
         int e = raft_poll_entry(me_, &_ety);

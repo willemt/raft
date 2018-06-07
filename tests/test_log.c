@@ -399,10 +399,7 @@ void TestLog_load_from_snapshot(CuTest * tc)
     CuAssertIntEquals(tc, 0, log_get_current_idx(l));
     CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
-
-    /* this is just a marker
-     * it should never be sent to any nodes because it is part of a snapshot */
-    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 0, log_count(l));
 }
 
 void TestLog_load_from_snapshot_clears_log(CuTest * tc)
@@ -422,7 +419,7 @@ void TestLog_load_from_snapshot_clears_log(CuTest * tc)
     CuAssertIntEquals(tc, 2, log_get_current_idx(l));
 
     CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
-    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 0, log_count(l));
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
 }
 

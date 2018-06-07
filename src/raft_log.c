@@ -80,21 +80,7 @@ int log_load_from_snapshot(log_t *me_, int idx, int term)
     log_private_t* me = (log_private_t*)me_;
 
     log_clear(me_);
-
-    raft_entry_t ety;
-    ety.data.len = 0;
-    ety.id = 1;
-    ety.term = term;
-    ety.type = RAFT_LOGTYPE_SNAPSHOT;
-
-    int e = log_append_entry(me_, &ety);
-    if (e != 0)
-    {
-        assert(0);
-        return e;
-    }
-
-    me->base = idx - 1;
+    me->base = idx;
 
     return 0;
 }
@@ -202,10 +188,7 @@ raft_entry_t* log_get_at_idx(log_t* me_, int idx)
     if (idx == 0)
         return NULL;
 
-    if (idx <= me->base)
-        return NULL;
-
-    if (me->base + me->count < idx)
+    if (me->base + me->count < idx || idx <= me->base)
         return NULL;
 
     /* idx starts at 1 */
