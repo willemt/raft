@@ -574,3 +574,48 @@ void TestLog_delete_after_polling_from_double_append(CuTest * tc)
     CuAssertIntEquals(tc, 0, log_delete(l, 2));
     CuAssertIntEquals(tc, 0, log_count(l));
 }
+
+void TestLog_get_from_idx_with_base_off_by_one(CuTest * tc)
+{
+    void* queue = llqueue_new();
+    void *r = raft_new();
+    raft_cbs_t funcs = {
+        .log_pop = __log_pop,
+        .log_get_node_id = __logentry_get_node_id
+    };
+    raft_set_callbacks(r, &funcs, queue);
+
+    void *l;
+    raft_entry_t e1, e2;
+
+    memset(&e1, 0, sizeof(raft_entry_t));
+    memset(&e2, 0, sizeof(raft_entry_t));
+
+    e1.id = 1;
+    e2.id = 2;
+
+    l = log_alloc(1);
+    log_set_callbacks(l, &funcs, r);
+
+    raft_entry_t* ety;
+
+    /* append append */
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
+    CuAssertIntEquals(tc, 2, log_count(l));
+
+    /* poll */
+    CuAssertIntEquals(tc, log_poll(l, 1), 0);
+    CuAssertIntEquals(tc, 1, log_count(l));
+
+    /* get off-by-one index */
+    int n_etys;
+    CuAssertPtrEquals(tc, log_get_from_idx(l, 1, &n_etys), NULL);
+    CuAssertIntEquals(tc, n_etys, 0);
+
+    /* now get the correct index */
+    ety = log_get_from_idx(l, 2, &n_etys);
+    CuAssertPtrNotNull(tc, ety);
+    CuAssertIntEquals(tc, n_etys, 1);
+    CuAssertIntEquals(tc, ety->id, 2);
+}
