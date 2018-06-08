@@ -1407,7 +1407,7 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
 
     char* strs[] = {"111", "222", "333"};
     raft_entry_t *ety_appended;
-    
+   
     __create_mock_entries_for_conflict_tests(tc, r, strs);
     CuAssertIntEquals(tc, 3, raft_get_log_count(r));
 
@@ -1903,7 +1903,7 @@ void TestRaft_follower_recv_appendentries_heartbeat_does_not_overwrite_logs(
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
 
     /* receive a heartbeat
-     * NOTE: the leader hasn't received the response to the last AE so it can 
+     * NOTE: the leader hasn't received the response to the last AE so it can
      * only assume prev_Log_idx is still 1 */
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 1;

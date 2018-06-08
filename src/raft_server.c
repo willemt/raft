@@ -233,7 +233,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
         if (me->request_timeout <= me->timeout_elapsed)
             raft_send_appendentries_all(me_);
     }
-    else if (me->election_timeout_rand <= me->timeout_elapsed && 
+    else if (me->election_timeout_rand <= me->timeout_elapsed &&
         /* Don't become the leader when building snapshots or bad things will
          * happen when we get a client request */
         !raft_snapshot_is_in_progress(me_))
@@ -542,7 +542,7 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
     if (vr->term < raft_get_current_term((void*)me))
         return 0;
 
-    /* TODO: if voted for is candiate return 1 (if below checks pass) */
+    /* TODO: if voted for is candidate return 1 (if below checks pass) */
     if (raft_already_voted((void*)me))
         return 0;
 
@@ -1256,7 +1256,7 @@ int raft_begin_snapshot(raft_server_t *me_)
     me->snapshot_in_progress = 1;
 
     __log(me_, NULL,
-        "begin snapshot sli:%d slt:%d slogs:%d\n", 
+        "begin snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));
@@ -1367,7 +1367,7 @@ int raft_begin_load_snapshot(
     me->num_nodes = 1;
 
     __log(me_, NULL,
-        "loaded snapshot sli:%d slt:%d slogs:%d\n", 
+        "loaded snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));

@@ -223,7 +223,7 @@ typedef int (
     msg_appendentries_t* msg
     );
 
-/** 
+/**
  * Log compaction
  * Callback for telling the user to send a snapshot.
  *
@@ -291,7 +291,7 @@ typedef int (
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] term Current term
- * @param[in] vote The node value dicating we haven't voted for anybody
+ * @param[in] vote The node value dictating we haven't voted for anybody
  * @return 0 on success */
 typedef int (
 *func_persist_term_f
@@ -722,12 +722,12 @@ int raft_node_get_id(raft_node_t* me_);
  * @return get state of type raft_state_e. */
 int raft_get_state(raft_server_t* me_);
 
-/** The the most recent log's term
+/** Get the most recent log's term
  * @return the last log term */
 int raft_get_last_log_term(raft_server_t* me_);
 
 /** Turn a node into a voting node.
- * Voting nodes can take part in elections and in-regards to commiting entries,
+ * Voting nodes can take part in elections and in-regards to committing entries,
  * are counted in majorities. */
 void raft_node_set_voting(raft_node_t* node, int voting);
 
@@ -817,7 +817,7 @@ int raft_get_first_entry_idx(raft_server_t* me_);
  * We need to send an appendentries response.
  *
  * @param[in] last_included_term Term of the last log of the snapshot
- * @param[in] last_included_index Index of the last log of the snapshot 
+ * @param[in] last_included_index Index of the last log of the snapshot
  *
  * @return
  *  0 on success
