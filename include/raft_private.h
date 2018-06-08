@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2013, Willem-Hendrik Thiart
  * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file. 
+ * found in the LICENSE file.
  *
  * @file
  * @author Willem Thiart himself@willemthiart.com
@@ -44,7 +44,7 @@ typedef struct {
 
     /* amount of time left till timeout */
     int timeout_elapsed;
- 
+
     raft_node_t* nodes;
     int num_nodes;
 

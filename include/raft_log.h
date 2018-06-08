@@ -16,8 +16,8 @@ void log_clear(log_t* me_);
 /**
  * Add entry to log.
  * Don't add entry if we've already added this entry (based off ID)
- * Don't add entries with ID=0 
- * @return 0 if unsucessful; 1 otherwise */
+ * Don't add entries with ID=0
+ * @return 0 if unsuccessful; 1 otherwise */
 int log_append_entry(log_t* me_, raft_entry_t* c);
 
 /**
