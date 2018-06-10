@@ -876,4 +876,19 @@ void raft_set_heap_functions(void *(*_malloc)(size_t),
                              void *(*_realloc)(void *, size_t),
                              void (*_free)(void *));
 
+/** Confirm that a node's voting status is final
+ * @param[in] node The node
+ * @param[in] voting Whether this node's voting status is committed or not */
+void raft_node_set_voting_committed(raft_node_t* me_, int voting);
+
+/** Confirm that a node's voting status is final
+ * @param[in] node The node
+ * @param[in] committed Whether this node's membership is committed or not */
+void raft_node_set_addition_committed(raft_node_t* me_, int committed);
+
+/** Check if a voting change is in progress
+ * @param[in] raft The Raft server
+ * @return 1 if a voting change is in progress */
+int raft_voting_change_is_in_progress(raft_server_t* me_);
+
 #endif /* RAFT_H_ */
