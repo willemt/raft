@@ -816,6 +816,9 @@ int raft_get_first_entry_idx(raft_server_t* me_);
  * This is usually the result of a snapshot being loaded.
  * We need to send an appendentries response.
  *
+ * This will remove all other nodes (not ourself). The user MUST use the
+ * snapshot to load the new membership information.
+ *
  * @param[in] last_included_term Term of the last log of the snapshot
  * @param[in] last_included_index Index of the last log of the snapshot
  *
