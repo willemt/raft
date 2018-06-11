@@ -1060,7 +1060,12 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     if (is_self)
         me->node = me->nodes[me->num_nodes - 1];
 
-    return me->nodes[me->num_nodes - 1];
+    node = me->nodes[me->num_nodes - 1];
+
+    if (me->cb.notify_membership_event)
+        me->cb.notify_membership_event(me_, raft_get_udata(me_), node, RAFT_MEMBERSHIP_ADD);
+
+    return node;
 }
 
 raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self)
@@ -1079,6 +1084,9 @@ raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, i
 void raft_remove_node(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    if (me->cb.notify_membership_event)
+        me->cb.notify_membership_event(me_, raft_get_udata(me_), node, RAFT_MEMBERSHIP_REMOVE);
 
     assert(node);
 
@@ -1234,9 +1242,8 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
                     }
                     else if (!node)
                     {
-                        raft_node_t* tmpnode = raft_add_non_voting_node(
-                                                me_, NULL, node_id, is_self);
-                        assert(tmpnode);
+                        node = raft_add_non_voting_node(me_, NULL, node_id, is_self);
+                        assert(node);
                     }
                 }
                 break;
