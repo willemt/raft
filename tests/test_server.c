@@ -1076,6 +1076,46 @@ void TestRaft_server_recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_
     CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
+/* If requestvote is received within the minimum election timeout of
+ * hearing from a current leader, it does not update its term or grant its
+ * vote (�6).
+ */
+void TestRaft_server_recv_requestvote_ignore_if_master_is_fresh(CuTest * tc)
+{
+    raft_cbs_t funcs = { 0
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_set_current_term(r, 1);
+    raft_set_election_timeout(r, 1000);
+
+    msg_appendentries_t ae = { 0 };
+    msg_appendentries_response_t aer;
+    ae.term = 1;
+
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+    CuAssertTrue(tc, 1 == aer.success);
+
+    msg_requestvote_t rv = { 
+        .term = 2,
+        .candidate_id = 3,
+        .last_log_idx = 0,
+        .last_log_term = 1
+    };
+    msg_requestvote_response_t rvr;
+    raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
+    CuAssertTrue(tc, 1 != rvr.vote_granted);
+
+    /* After election timeout passed, the same requestvote should be accepted */
+    raft_periodic(r, 1001);
+    raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
+    CuAssertTrue(tc, 1 == rvr.vote_granted);
+}
+
 void TestRaft_follower_becomes_follower_is_follower(CuTest * tc)
 {
     void *r = raft_new();
@@ -3909,7 +3949,11 @@ void TestRaft_leader_recv_requestvote_responds_without_granting(CuTest * tc)
     CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
 
-void TestRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(CuTest * tc)
+#if 0
+/* This test is disabled because it violates the Raft paper's view on 
+ * ignoring RequestVotes when a leader is established.
+ */
+void T_estRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(CuTest * tc)
 {
     raft_cbs_t funcs = {
         .persist_vote = __raft_persist_vote,
@@ -3944,6 +3988,7 @@ void TestRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(C
     raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
+#endif
 
 void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_voting_committed(
     CuTest * tc)

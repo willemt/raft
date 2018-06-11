@@ -539,11 +539,6 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 {
     raft_node_t *my_node = raft_get_my_node((void*)me);
 
-    /* TODO: 4.2.3 Raft Dissertation:
-     * if a server receives a RequestVote request within the minimum election
-     * timeout of hearing from a current leader, it does not update its term or
-     * grant its vote */
-
     if (my_node && !raft_node_is_voting(my_node))
         return 0;
 
@@ -580,6 +575,13 @@ int raft_recv_requestvote(raft_server_t* me_,
 
     if (!node)
         node = raft_get_node(me_, vr->candidate_id);
+
+    /* Reject request if we have a leader */
+    if (me->leader_id != -1 && me->leader_id != raft_node_get_id(node) &&
+        me->timeout_elapsed < me->election_timeout) {
+        r->vote_granted = 0;
+        goto done;
+    }
 
     if (raft_get_current_term(me_) < vr->term)
     {
