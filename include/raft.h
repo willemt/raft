@@ -19,6 +19,11 @@
 #define RAFT_ERR_SNAPSHOT_ALREADY_LOADED     -8
 #define RAFT_ERR_LAST                        -100
 
+typedef enum {
+    RAFT_MEMBERSHIP_ADD,
+    RAFT_MEMBERSHIP_REMOVE,
+} raft_membership_e;
+
 #define RAFT_REQUESTVOTE_ERR_GRANTED          1
 #define RAFT_REQUESTVOTE_ERR_NOT_GRANTED      0
 #define RAFT_REQUESTVOTE_ERR_UNKNOWN_NODE    -1
@@ -331,6 +336,25 @@ typedef int (
     int entry_idx
     );
 
+/** Callback for being notified of membership changes.
+ *
+ * Implementing this callback is optional.
+ *
+ * Remove notification happens before the node is about to be removed.
+ *
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node that is the subject of this log. Could be NULL.
+ * @param[in] type The type of membership change */
+typedef void (
+*func_membership_event_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_node_t *node,
+    raft_membership_e type
+    );
+
 typedef struct
 {
     /** Callback for sending request vote messages */
@@ -381,6 +405,8 @@ typedef struct
 
     /** Callback for detecting when a non-voting node has sufficient logs. */
     func_node_has_sufficient_logs_f node_has_sufficient_logs;
+
+    func_membership_event_f notify_membership_event;
 
     /** Callback for catching debugging log messages
      * This callback is optional */
