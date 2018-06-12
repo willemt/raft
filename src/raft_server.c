@@ -822,6 +822,7 @@ int raft_recv_entry(raft_server_t* me_,
     if (0 != e)
         return e;
     assert(k == 1);
+
     for (i = 0; i < me->num_nodes; i++)
     {
         raft_node_t* node = me->nodes[i];
