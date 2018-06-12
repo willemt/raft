@@ -742,6 +742,7 @@ int raft_recv_entry(raft_server_t* me_,
     int e = raft_append_entry(me_, ety);
     if (0 != e)
         return e;
+
     for (i = 0; i < me->num_nodes; i++)
     {
         raft_node_t* node = me->nodes[i];
@@ -1142,9 +1143,7 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
             break;
 
         case RAFT_LOGTYPE_ADD_NODE:
-            if (!node) {
-                node = raft_add_node(me_, NULL, node_id, is_self);
-            }
+            node = raft_add_node(me_, NULL, node_id, is_self);
             assert(node);
             assert(raft_node_is_voting(node));
             break;

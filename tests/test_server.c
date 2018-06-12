@@ -82,14 +82,6 @@ static int __raft_log_offer(raft_server_t* raft,
         raft_entry_t *entry,
         int entry_idx)
 {
-    switch (entry->type) {
-        case RAFT_LOGTYPE_ADD_NONVOTING_NODE:
-            raft_add_non_voting_node(raft, NULL, atoi(entry->data.buf), 0);
-            break;
-        case RAFT_LOGTYPE_ADD_NODE:
-            raft_add_node(raft, NULL, atoi(entry->data.buf), 0);
-            break;
-    }
     return 0;
 }
 
@@ -3963,10 +3955,10 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_v
         .type = RAFT_LOGTYPE_ADD_NONVOTING_NODE
     };
     msg_entry_response_t etyr;
-    raft_recv_entry(r, &ety, &etyr);
+    CuAssertIntEquals(tc, 0, raft_recv_entry(r, &ety, &etyr));
     ety.id++;
     ety.data.buf = "3";
-    raft_recv_entry(r, &ety, &etyr);
+    CuAssertIntEquals(tc, 0, raft_recv_entry(r, &ety, &etyr));
 
     msg_appendentries_response_t aer = {
         .term = 1, .success = 1, .current_idx = 2, .first_idx = 0
