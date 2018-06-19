@@ -25,8 +25,9 @@ static int __logentry_get_node_id(
 static int __log_offer(
     raft_server_t* raft,
     void *user_data,
-    raft_entry_t *entry,
-    int entry_idx
+    raft_entry_t *entries,
+    int entry_idx,
+    int *n_entries
     )
 {
     CuAssertIntEquals((CuTest*)raft, 1, entry_idx);
@@ -60,6 +61,12 @@ raft_cbs_t funcs = {
     .log_pop = __log_pop,
     .log_get_node_id = __logentry_get_node_id
 };
+
+static int log_append_entry(log_t* me_, raft_entry_t* ety)
+{
+    int k = 1;
+    return log_append(me_, ety, &k);
+}
 
 void* __set_up()
 {

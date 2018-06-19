@@ -74,6 +74,12 @@ raft_cbs_t generic_funcs = {
     .persist_vote = __raft_persist_vote,
 };
 
+static int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
+{
+    int k = 1;
+    return raft_append_entries(me_, ety, &k);
+}
+
 static int max_election_timeout(int election_timeout)
 {
 	return 2 * election_timeout;
@@ -281,7 +287,8 @@ static int __raft_logentry_offer(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int ety_idx
+    int ety_idx,
+    int *n_entries
     )
 {
     CuAssertIntEquals(udata, ety_idx, 1);
@@ -1366,7 +1373,7 @@ void TestRaft_follower_recv_appendentries_delete_entries_if_conflict_with_new_en
 
     char* strs[] = {"111", "222", "333"};
     raft_entry_t *ety_appended;
-    
+
     __create_mock_entries_for_conflict_tests(tc, r, strs);
     CuAssertIntEquals(tc, 3, raft_get_log_count(r));
 
@@ -1482,12 +1489,16 @@ static int __raft_log_offer_error(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx)
+    int entry_idx,
+    int *n_entries)
 {
     __raft_error_t *error = user_data;
 
-    if (__RAFT_LOG_OFFER_ERR == error->type && entry_idx == error->idx)
+    if (__RAFT_LOG_OFFER_ERR == error->type && entry_idx <= error->idx
+        && error->idx < (entry_idx + *n_entries)) {
+        *n_entries = error->idx - entry_idx;
         return RAFT_ERR_NOMEM;
+    }
     return 0;
 }
 
@@ -1510,7 +1521,7 @@ void TestRaft_follower_recv_appendentries_partial_failures(
     raft_cbs_t funcs = {
         .persist_term = __raft_persist_term,
         .log_offer = __raft_log_offer_error,
-        .log_pop = __raft_log_pop_error
+        .log_pop = __raft_log_pop_error,
     };
 
     void *r = raft_new();
@@ -1862,7 +1873,7 @@ void TestRaft_follower_recv_appendentries_heartbeat_does_not_overwrite_logs(
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
 
     /* receive a heartbeat
-     * NOTE: the leader hasn't received the response to the last AE so it can 
+     * NOTE: the leader hasn't received the response to the last AE so it can
      * only assume prev_Log_idx is still 1 */
     memset(&ae, 0, sizeof(msg_appendentries_t));
     ae.term = 1;

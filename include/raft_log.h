@@ -14,11 +14,10 @@ void log_free(log_t* me_);
 void log_clear(log_t* me_);
 
 /**
- * Add entry to log.
- * Don't add entry if we've already added this entry (based off ID)
- * Don't add entries with ID=0 
- * @return 0 if unsucessful; 1 otherwise */
-int log_append_entry(log_t* me_, raft_entry_t* c);
+ * Add 'n' entries to the log with valid (positive, non-zero) IDs
+ * that haven't already been added and save the number of successfully
+ * appended entries in 'n' */
+int log_append(log_t* me_, raft_entry_t* entries, int *n);
 
 /**
  * @return number of entries held within log */

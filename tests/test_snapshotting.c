@@ -71,6 +71,12 @@ static int __raft_send_appendentries_capture(raft_server_t* raft,
 /*     .persist_vote = __raft_persist_vote, */
 /* }; */
 
+static int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
+{
+    int k = 1;
+    return raft_append_entries(me_, ety, &k);
+}
+
 static int max_election_timeout(int election_timeout)
 {
 	return 2 * election_timeout;

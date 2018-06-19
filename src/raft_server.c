@@ -219,7 +219,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
             raft_send_appendentries_all(me_);
     }
 
-    else if (me->election_timeout_rand <= me->timeout_elapsed && 
+    else if (me->election_timeout_rand <= me->timeout_elapsed &&
         /* Don't become the leader when building snapshots or bad things will
          * happen when we get a client request */
         !raft_snapshot_is_in_progress(me_))
@@ -476,13 +476,12 @@ int raft_recv_appendentries(
     }
 
     /* 4. Append any new entries not already in the log */
-    for (; i < ae->n_entries; i++)
-    {
-        e = raft_append_entry(me_, &ae->entries[i]);
-        if (0 != e)
-            goto out;
-        r->current_idx = ae->prev_log_idx + 1 + i;
-    }
+    int k = ae->n_entries - i;
+    e = raft_append_entries(me_, &ae->entries[i], &k);
+    i += k;
+    r->current_idx = ae->prev_log_idx + i;
+    if (0 != e)
+        goto out;
 
     /* 5. If leaderCommit > commitIndex, set commitIndex =
         min(leaderCommit, index of last new entry) */
@@ -703,9 +702,11 @@ int raft_recv_entry(raft_server_t* me_,
           me->current_term, ety->id, raft_get_current_idx(me_) + 1);
 
     ety->term = me->current_term;
-    int e = raft_append_entry(me_, ety);
+    int k = 1;
+    int e = raft_append_entries(me_, ety, &k);
     if (0 != e)
         return e;
+    assert(k == 1);
     for (i = 0; i < me->num_nodes; i++)
     {
         raft_node_t* node = me->nodes[i];
@@ -758,14 +759,11 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     return e;
 }
 
-int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
+int raft_append_entries(raft_server_t* me_, raft_entry_t* entries, int *n)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    if (raft_entry_is_voting_cfg_change(ety))
-        me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
-
-    return log_append_entry(me->log, ety);
+    return log_append(me->log, entries, n);
 }
 
 int raft_apply_entry(raft_server_t* me_)
@@ -1063,58 +1061,75 @@ int raft_entry_is_cfg_change(raft_entry_t* ety)
         RAFT_LOGTYPE_REMOVE_NODE == ety->type);
 }
 
-void raft_offer_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
+void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
+                    const int n_entries, const int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+    int i;
 
-    if (!raft_entry_is_cfg_change(ety))
+    if (me == NULL || entries == NULL)
         return;
 
-    int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, idx);
-    raft_node_t* node = raft_get_node(me_, node_id);
-    int is_self = node_id == raft_get_nodeid(me_);
+    for (i = 0; i < n_entries; i++) {
+        raft_entry_t *ety = &entries[i];
 
-    switch (ety->type)
-    {
-        case RAFT_LOGTYPE_ADD_NONVOTING_NODE:
-            if (!is_self)
-            {
-                if (node && !raft_node_is_active(node))
+        if (!raft_entry_is_cfg_change(ety))
+            continue;
+
+        if (raft_entry_is_voting_cfg_change(ety))
+            me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
+
+        int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_),
+                                             ety, idx);
+        raft_node_t* node = raft_get_node(me_, node_id);
+        int is_self = node_id == raft_get_nodeid(me_);
+
+        switch (ety->type)
+        {
+            case RAFT_LOGTYPE_ADD_NONVOTING_NODE:
+                if (!is_self)
                 {
-                    raft_node_set_active(node, 1);
+                    if (node && !raft_node_is_active(node))
+                    {
+                        raft_node_set_active(node, 1);
+                    }
+                    else if (!node)
+                    {
+                        raft_node_t* node = raft_add_non_voting_node(
+                                                me_, NULL, node_id, is_self);
+                        assert(node);
+                    }
                 }
-                else if (!node)
-                {
-                    raft_node_t* node = raft_add_non_voting_node(me_, NULL, node_id, is_self);
-                    assert(node);
-                }
-            }
-            break;
+                break;
 
-        case RAFT_LOGTYPE_ADD_NODE:
-            node = raft_add_node(me_, NULL, node_id, is_self);
-            assert(node);
-            assert(raft_node_is_voting(node));
-            break;
+            case RAFT_LOGTYPE_ADD_NODE:
+                node = raft_add_node(me_, NULL, node_id, is_self);
+                assert(node);
+                assert(raft_node_is_voting(node));
+                break;
 
-        case RAFT_LOGTYPE_DEMOTE_NODE:
-            if (node)
-                raft_node_set_voting(node, 0);
-            break;
+            case RAFT_LOGTYPE_DEMOTE_NODE:
+                if (node)
+                    raft_node_set_voting(node, 0);
+                break;
 
-        case RAFT_LOGTYPE_REMOVE_NODE:
-            if (node)
-                raft_node_set_active(node, 0);
-            break;
+            case RAFT_LOGTYPE_REMOVE_NODE:
+                if (node)
+                    raft_node_set_active(node, 0);
+                break;
 
-        default:
-            assert(0);
+            default:
+                assert(0);
+        }
     }
 }
 
 void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    if (me == NULL || ety == NULL)
+        return;
 
     if (!raft_entry_is_cfg_change(ety))
         return;
@@ -1206,7 +1221,7 @@ int raft_begin_snapshot(raft_server_t *me_)
     me->snapshot_in_progress = 1;
 
     __log(me_, NULL,
-        "begin snapshot sli:%d slt:%d slogs:%d\n", 
+        "begin snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));
@@ -1303,7 +1318,7 @@ int raft_begin_load_snapshot(
     me->num_nodes = 1;
 
     __log(me_, NULL,
-        "loaded snapshot sli:%d slt:%d slogs:%d\n", 
+        "loaded snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));

@@ -322,7 +322,7 @@ typedef int (
  *    memory pointed to in the raft_entry_data_t struct. This MUST be done if
  *    the memory is temporary.
  * @param[in] entry_idx The lower bound of the index range (ie. the index of entries[0])
- * @param[in] n_entries The number of entries in the range
+ * @param[in,out] n_entries The number of entries in the range
  * @return 0 on success */
 typedef int (
 *func_logentries_event_f
@@ -331,7 +331,7 @@ typedef int (
     void *user_data,
     raft_entry_t *entries,
     int entry_idx,
-    int n_entries
+    int *n_entries
     );
 
 /** Callback for saving changes to one log entry. See also
@@ -370,11 +370,11 @@ typedef struct
      * disk atomically. */
     func_persist_term_f persist_term;
 
-    /** Callback for adding an entry to the log
+    /** Callback for adding entries to the log
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logentry_event_f log_offer;
+    func_logentries_event_f log_offer;
 
     /** Callback for removing entries from the log head
      * For safety reasons this callback MUST flush the change to disk.
@@ -714,14 +714,15 @@ int raft_set_current_term(raft_server_t* me, const int term);
  * @param[in] commit_idx The new commit index. */
 void raft_set_commit_idx(raft_server_t* me, int commit_idx);
 
-/** Add an entry to the server's log.
+/** Add entries to the server's log.
  * This should be used to reload persistent state, ie. the commit log.
- * @param[in] ety The entry to be appended
+ * @param[in] entries List of entries to be appended
+ * @param[in,out] n Number of entries to append / successfully appended
  * @return
  *  0 on success;
  *  RAFT_ERR_SHUTDOWN server should shutdown
  *  RAFT_ERR_NOMEM memory allocation failure */
-int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
+int raft_append_entries(raft_server_t* me, raft_entry_t* entries, int *n);
 
 /** Confirm if a msg_entry_response has been committed.
  * @param[in] r The response we want to check */
