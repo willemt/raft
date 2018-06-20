@@ -72,7 +72,7 @@ static int __raft_send_appendentries(raft_server_t* raft,
 static int __raft_log_get_node_id(raft_server_t* raft,
         void *udata,
         raft_entry_t *entry,
-        int entry_idx)
+        raft_index_t entry_idx)
 {
     return atoi(entry->data.buf);
 }
@@ -80,7 +80,7 @@ static int __raft_log_get_node_id(raft_server_t* raft,
 static int __raft_log_offer(raft_server_t* raft,
         void* udata,
         raft_entry_t *entry,
-        int entry_idx)
+        raft_index_t entry_idx)
 {
     return 0;
 }

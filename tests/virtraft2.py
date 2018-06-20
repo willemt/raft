@@ -289,6 +289,9 @@ class Network(object):
         raise ServerDoesNotExist('Could not find server: {}'.format(id))
 
     def add_partition(self):
+        if len(self.active_servers) <= 1:
+            return
+
         nodes = list(self.active_servers)
         self.random.shuffle(nodes)
         n1 = nodes.pop()
@@ -301,7 +304,10 @@ class Network(object):
 
     def periodic(self):
         if self.random.randint(1, 100) < self.member_rate:
-            self.toggle_membership()
+            if 20 < self.random.randint(1, 100):
+                self.add_member()
+            else:
+                self.remove_member()
 
         if self.random.randint(1, 100) < self.partition_rate:
             self.add_partition()
@@ -324,6 +330,7 @@ class Network(object):
                 self.latest_applied_log_iteration,
                 self.latest_applied_log_idx,
                 ))
+            self.diagnotistic_info()
             sys.exit(1)
 
         # Count leadership changes
@@ -500,7 +507,51 @@ class Network(object):
     def active_servers(self):
         return [s for s in self.servers if not getattr(s, 'removed', False)]
 
-    def toggle_membership(self):
+    def add_member(self):
+        if net.num_of_servers <= len(self.active_servers):
+            return
+
+        if not self.leader:
+            logging.error('no leader')
+            return
+
+        leader = self.leader
+
+        if not lib.raft_is_leader(leader.raft):
+            return
+
+        if lib.raft_voting_change_is_in_progress(leader.raft):
+            # logging.error('{} voting change in progress'.format(server))
+            return
+
+        server = RaftServer(self)
+
+        # Create a new configuration entry to be processed by the leader
+        ety = ffi.new('msg_entry_t*')
+        ety.term = 0
+        ety.id = self.new_entry_id()
+        ety.type = lib.RAFT_LOGTYPE_ADD_NONVOTING_NODE
+        change = ffi.new_handle(ChangeRaftEntry(server.id))
+        ety.data.buf = change
+        ety.data.len = ffi.sizeof(ety.data.buf)
+        assert(lib.raft_entry_is_cfg_change(ety))
+
+        self.entries.append((ety, change))
+
+        e = leader.recv_entry(ety)
+        if 0 != e:
+            logging.error(err2str(e))
+            return
+        else:
+            self.num_membership_changes += 1
+
+        # Wake up new node
+        server.set_connection_status(NODE_CONNECTING)
+        assert server.udata
+        added_node = lib.raft_add_non_voting_node(server.raft, server.udata, server.id, 1)
+        assert added_node
+
+    def remove_member(self):
         if not self.leader:
             logging.error('no leader')
             return
@@ -525,31 +576,20 @@ class Network(object):
 
         if NODE_DISCONNECTED == server.connection_status:
             self.remove_server(server)
-            server = RaftServer(self)
+            return
 
         # Create a new configuration entry to be processed by the leader
         ety = ffi.new('msg_entry_t*')
         ety.term = 0
         ety.id = self.new_entry_id()
-        if server.connection_status == NODE_CONNECTED:
-            ety.type = lib.RAFT_LOGTYPE_DEMOTE_NODE
-        else:
-            ety.type = lib.RAFT_LOGTYPE_ADD_NONVOTING_NODE
+        assert server.connection_status == NODE_CONNECTED
+        ety.type = lib.RAFT_LOGTYPE_DEMOTE_NODE
         change = ffi.new_handle(ChangeRaftEntry(server.id))
         ety.data.buf = change
         ety.data.len = ffi.sizeof(ety.data.buf)
         assert(lib.raft_entry_is_cfg_change(ety))
 
         self.entries.append((ety, change))
-
-        # logging.warning("{}> {} Membership change {}: ety.id:{} id:{} {}".format(
-        #     self.iteration,
-        #     server,
-        #     "ADD" if ety.type == lib.RAFT_LOGTYPE_ADD_NONVOTING_NODE else "DEMOTE",
-        #     ety.id,
-        #     lib.raft_get_nodeid(leader.raft),
-        #     server.id,
-        # ))
 
         e = leader.recv_entry(ety)
         if 0 != e:
@@ -559,15 +599,8 @@ class Network(object):
             self.num_membership_changes += 1
 
         # Wake up new node
-        if NODE_DISCONNECTED == server.connection_status:
-            server.set_connection_status(NODE_CONNECTING)
-            assert server.udata
-            added_node = lib.raft_add_non_voting_node(server.raft, server.udata, server.id, 1)
-            assert added_node
-        elif NODE_CONNECTED == server.connection_status:
-            server.set_connection_status(NODE_DISCONNECTING)
-        else:
-            logging.warning('Unknown status set {}'.format(server.connection_status))
+        assert NODE_CONNECTED == server.connection_status
+        server.set_connection_status(NODE_DISCONNECTING)
 
     def diagnotistic_info(self):
         print()
@@ -706,13 +739,13 @@ class RaftServer(object):
         self.raft_send_requestvote = ffi.callback("int(raft_server_t*, void*, raft_node_t*, msg_requestvote_t*)", raft_send_requestvote)
         self.raft_send_appendentries = ffi.callback("int(raft_server_t*, void*, raft_node_t*, msg_appendentries_t*)", raft_send_appendentries)
         self.raft_send_snapshot = ffi.callback("int(raft_server_t*, void* , raft_node_t*)", raft_send_snapshot)
-        self.raft_applylog = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_applylog)
-        self.raft_persist_vote = ffi.callback("int(raft_server_t*, void*, int)", raft_persist_vote)
-        self.raft_persist_term = ffi.callback("int(raft_server_t*, void*, int, int)", raft_persist_term)
-        self.raft_logentry_offer = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_logentry_offer)
-        self.raft_logentry_poll = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_logentry_poll)
-        self.raft_logentry_pop = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_logentry_pop)
-        self.raft_logentry_get_node_id = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_logentry_get_node_id)
+        self.raft_applylog = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_applylog)
+        self.raft_persist_vote = ffi.callback("int(raft_server_t*, void*, raft_node_id_t)", raft_persist_vote)
+        self.raft_persist_term = ffi.callback("int(raft_server_t*, void*, raft_term_t, raft_node_id_t)", raft_persist_term)
+        self.raft_logentry_offer = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_logentry_offer)
+        self.raft_logentry_poll = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_logentry_poll)
+        self.raft_logentry_pop = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_logentry_pop)
+        self.raft_logentry_get_node_id = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_logentry_get_node_id)
         self.raft_node_has_sufficient_logs = ffi.callback("int(raft_server_t* raft, void *user_data, raft_node_t* node)", raft_node_has_sufficient_logs)
         self.raft_notify_membership_event = ffi.callback("void(raft_server_t* raft, void *user_data, raft_node_t* node, raft_membership_e)", raft_notify_membership_event)
         self.raft_log = ffi.callback("void(raft_server_t*, raft_node_t*, void*, const char* buf)", raft_log)
@@ -908,6 +941,10 @@ class RaftServer(object):
     def send_snapshot(self, node):
         assert not lib.raft_snapshot_is_in_progress(self.raft)
 
+        # FIXME: Why would this happen?
+        if not hasattr(self, 'snapshot'):
+            return 0
+
         node_sv = ffi.from_handle(lib.raft_node_get_udata(node))
 
         # TODO: Why would this happen?
@@ -1078,12 +1115,14 @@ if __name__ == '__main__':
     net.partition_rate = int(args['--partition_rate'])
     net.no_random_period = 1 == int(args['--no_random_period'])
 
-    for i in range(0, int(args['--servers'])):
-        RaftServer(net)
+    net.num_of_servers = int(args['--servers'])
 
     if net.member_rate == 0:
+        for i in range(0, int(args['--servers'])):
+            RaftServer(net)
         net.commit_static_configuration()
     else:
+        RaftServer(net)
         net.prep_dynamic_configuration()
 
     for i in range(0, int(args['--iterations'])):
