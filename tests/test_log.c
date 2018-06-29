@@ -38,12 +38,17 @@ static int __log_pop(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx
+    int entry_idx,
+    int *n_entries
     )
 {
-    raft_entry_t* copy = malloc(sizeof(*entry));
-    memcpy(copy, entry, sizeof(*entry));
-    llqueue_offer(user_data, copy);
+    raft_entry_t* copy = malloc(*n_entries * sizeof(*entry));
+    int i;
+    for (i = 0; i < *n_entries; i++)
+    {
+        memcpy(copy, entry--, sizeof(*copy));
+        llqueue_offer(user_data, copy++);
+    }
     return 0;
 }
 
@@ -51,9 +56,11 @@ static int __log_pop_failing(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx
+    int entry_idx,
+    int *n_entries
     )
 {
+    *n_entries = 0;
     return -1;
 }
 

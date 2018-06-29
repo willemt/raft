@@ -129,7 +129,8 @@ int raft_votes_is_majority(const int nnodes, const int nvotes);
 void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
                     const int n_entries, const int idx);
 
-void raft_pop_log(raft_server_t* me_, raft_entry_t* ety, const int idx);
+void raft_pop_log(raft_server_t* me_, raft_entry_t* entries,
+                    const int n_entries, const int idx);
 
 int raft_get_num_snapshottable_logs(raft_server_t* me_);
 

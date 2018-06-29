@@ -1506,12 +1506,16 @@ static int __raft_log_pop_error(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx)
+    int entry_idx,
+    int *n_entries)
 {
     __raft_error_t *error = user_data;
 
-    if (__RAFT_LOG_POP_ERR == error->type && entry_idx == error->idx)
+    if (__RAFT_LOG_POP_ERR == error->type && entry_idx <= error->idx
+        && error->idx < (entry_idx + *n_entries)) {
+        *n_entries = error->idx - entry_idx;
         return RAFT_ERR_NOMEM;
+    }
     return 0;
 }
 

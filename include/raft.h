@@ -382,11 +382,12 @@ typedef struct
      *  time to free the memory. */
     func_logentries_event_f log_poll;
 
-    /** Callback for removing the youngest entry from the log
+    /** Callback for removing entries from the tail of the log in
+     * descending order.
      * For safety reasons this callback MUST flush the change to disk.
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. */
-    func_logentry_event_f log_pop;
+    func_logentries_event_f log_pop;
 
     /** Callback for determining which node this configuration log entry
      * affects. This call only applies to configuration change log entries.
