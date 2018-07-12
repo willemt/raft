@@ -2527,6 +2527,17 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
 
+    raft_entry_t etys[3];
+    int i;
+    for (i = 0; i < 3; i++)
+    {
+        etys[i].term = 1;
+        etys[i].id = i + 1;
+        etys[i].data.buf = "aaa";
+        etys[i].data.len = 3;
+        raft_append_entry(r, &etys[i]);
+    }
+
     raft_node_t* p = raft_get_node(r, 2);
     raft_node_set_next_idx(p, 4);
 

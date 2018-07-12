@@ -690,6 +690,107 @@ int raft_recv_requestvote_response(raft_server_t* me_,
     return 0;
 }
 
+int raft_recv_installsnapshot(raft_server_t* me_,
+                              raft_node_t* node,
+                              msg_installsnapshot_t* is,
+                              msg_installsnapshot_response_t* r)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    int e;
+
+    r->term = me->current_term;
+    r->last_idx = is->last_idx;
+    r->complete = 0;
+
+    if (is->term < me->current_term)
+        return 0;
+
+    if (me->current_term < is->term)
+    {
+        e = raft_set_current_term(me_, is->term);
+        if (0 != e)
+            return e;
+        r->term = me->current_term;
+    }
+
+    if (!raft_is_follower(me_))
+        raft_become_follower(me_);
+
+    me->current_leader = node;
+    me->timeout_elapsed = 0;
+
+    if (is->last_idx <= raft_get_commit_idx(me_))
+    {
+        /* Committed entries must match the snapshot. */
+        r->complete = 1;
+        return 0;
+    }
+
+    int term;
+    int got = raft_get_entry_term(me_, is->last_idx, &term);
+    if (got && term == is->last_term)
+    {
+        raft_set_commit_idx(me_, is->last_idx);
+        r->complete = 1;
+        return 0;
+    }
+
+    assert(me->cb.recv_installsnapshot);
+    e = me->cb.recv_installsnapshot(me_, me->udata, node, is, r);
+    if (e < 0)
+        return e;
+
+    if (e == 1)
+        r->complete = 1;
+
+    return 0;
+}
+
+int raft_recv_installsnapshot_response(raft_server_t* me_,
+                                       raft_node_t* node,
+                                       msg_installsnapshot_response_t *r)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    if (!node)
+        return -1;
+
+    if (!raft_is_leader(me_))
+        return RAFT_ERR_NOT_LEADER;
+
+    if (me->current_term < r->term)
+    {
+        int e = raft_set_current_term(me_, r->term);
+        if (0 != e)
+            return e;
+        raft_become_follower(me_);
+        me->current_leader = NULL;
+        return 0;
+    }
+    else if (me->current_term != r->term)
+        return 0;
+
+    assert(me->cb.recv_installsnapshot_response);
+    int e = me->cb.recv_installsnapshot_response(me_, me->udata, node, r);
+    if (0 != e)
+        return e;
+
+    if (!r->complete)
+        return 0;
+
+    /* The snapshot installation is complete. Update the node state. */
+    if (raft_node_get_match_idx(node) < r->last_idx)
+    {
+        raft_node_set_match_idx(node, r->last_idx);
+        raft_node_set_next_idx(node, r->last_idx + 1);
+    }
+
+    if (raft_node_get_next_idx(node) <= raft_get_current_idx(me_))
+        raft_send_appendentries(me_, node);
+
+    return 0;
+}
+
 int raft_recv_entry(raft_server_t* me_,
                     msg_entry_t* ety,
                     msg_entry_response_t *r)
@@ -851,6 +952,26 @@ raft_entry_t* raft_get_entries_from_idx(raft_server_t* me_, int idx, int* n_etys
     return log_get_from_idx(me->log, idx, n_etys);
 }
 
+int raft_send_installsnapshot(raft_server_t* me_, raft_node_t* node)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    msg_installsnapshot_t is = {};
+    is.term = me->current_term;
+    is.last_idx = log_get_base(me->log);
+    is.last_term = log_get_base_term(me->log);
+
+    __log(me_, node, "sending installsnapshot: ci:%d comi:%d t:%d lli:%d llt:%d",
+          raft_get_current_idx(me_),
+          raft_get_commit_idx(me_),
+          is.term,
+          is.last_idx,
+          is.last_term);
+
+    assert(me->cb.send_installsnapshot);
+    return me->cb.send_installsnapshot(me_, me->udata, node, &is);
+}
+
 int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
@@ -864,33 +985,19 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     msg_appendentries_t ae = {};
     ae.term = me->current_term;
     ae.leader_commit = raft_get_commit_idx(me_);
-    ae.prev_log_idx = 0;
-    ae.prev_log_term = 0;
 
     int next_idx = raft_node_get_next_idx(node);
 
-    /* figure out if the client needs a snapshot sent */
-    if (0 < me->snapshot_last_idx && next_idx < me->snapshot_last_idx)
-    {
-        if (me->cb.send_snapshot)
-            me->cb.send_snapshot(me_, me->udata, node);
-        return RAFT_ERR_NEEDS_SNAPSHOT;
-    }
+    if (next_idx <= log_get_base(me->log))
+        return raft_send_installsnapshot(me_, node);
 
     ae.entries = raft_get_entries_from_idx(me_, next_idx, &ae.n_entries);
     assert((!ae.entries && 0 == ae.n_entries) ||
-            (ae.entries && 0 < ae.n_entries));
+           (ae.entries && 0 < ae.n_entries));
 
-    /* previous log is the log just before the new logs */
-    if (1 < next_idx)
-    {
-        raft_entry_t* prev_ety = raft_get_entry_from_idx(me_, next_idx - 1);
-        ae.prev_log_idx = next_idx - 1;
-        if (prev_ety)
-            ae.prev_log_term = prev_ety->term;
-        else
-            ae.prev_log_term = me->snapshot_last_term;
-    }
+    ae.prev_log_idx = next_idx - 1;
+    int got = raft_get_entry_term(me_, ae.prev_log_idx, &ae.prev_log_term);
+    assert(got);
 
     __log(me_, node, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
           raft_get_current_idx(me_),
@@ -1265,28 +1372,6 @@ int raft_end_snapshot(raft_server_t *me_)
         return e;
 
     me->snapshot_in_progress = 0;
-
-    if (!raft_is_leader(me_))
-        return 0;
-
-    int i;
-    for (i = 0; i < me->num_nodes; i++)
-    {
-        raft_node_t* node = me->nodes[i];
-
-        if (me->node == node || !raft_node_is_active(node))
-            continue;
-
-        int next_idx = raft_node_get_next_idx(node);
-
-        /* figure out if the client needs a snapshot sent */
-        if (0 < me->snapshot_last_idx && next_idx < me->snapshot_last_idx)
-        {
-            if (me->cb.send_snapshot)
-                me->cb.send_snapshot(me_, me->udata, node);
-        }
-    }
-
     return 0;
 }
 
@@ -1305,10 +1390,6 @@ int raft_begin_load_snapshot(
 
     if (last_included_index <= raft_get_commit_idx(me_))
         return -1;
-    me->current_term = last_included_term;
-    me->voted_for = -1;
-    raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
-    me->current_leader = NULL;
 
     log_load_from_snapshot(me->log, last_included_index, last_included_term);
 

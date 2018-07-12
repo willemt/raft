@@ -190,6 +190,32 @@ typedef struct
     int first_idx;
 } msg_appendentries_response_t;
 
+/** InstallSnapshot request message. */
+typedef struct
+{
+    /** currentTerm, to force other leader/candidate to step down */
+    int term;
+
+    /** Index of the last entry represented by this snapshot */
+    int last_idx;
+
+    /** Term of the last entry represented by this snapshot */
+    int last_term;
+} msg_installsnapshot_t;
+
+/** InstallSnapshot response message. */
+typedef struct
+{
+    /** currentTerm, to force other leader/candidate to step down */
+    int term;
+
+    /** Same with the one in the request message */
+    int last_idx;
+
+    /** True if the snapshot has been fully received */
+    int complete;
+} msg_installsnapshot_response_t;
+
 typedef void* raft_server_t;
 typedef void* raft_node_t;
 
@@ -223,20 +249,58 @@ typedef int (
     msg_appendentries_t* msg
     );
 
-/** 
- * Log compaction
- * Callback for telling the user to send a snapshot.
- *
- * @param[in] raft Raft server making this callback
+/** Callback for sending InstallSnapshot request messages.
+ * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node Node's ID that needs a snapshot sent to
- **/
+ * @param[in] node The node that we are sending this message to
+ * @param[in] msg The InstallSnapshot message to be sent
+ * @return 0 on success */
 typedef int (
-*func_send_snapshot_f
+*func_send_installsnapshot_f
 )   (
     raft_server_t* raft,
     void *user_data,
-    raft_node_t* node
+    raft_node_t* node,
+    msg_installsnapshot_t* msg
+    );
+
+/** Callback for receiving InstallSnapshot request messages.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node that we are receiving this message from
+ * @param[in] msg The InstallSnapshot message
+ * @param[in] r The InstallSnapshot response to be sent
+ * @return
+ *  0 if this chunk is successful received
+ *  1 if the whole snapshot is successfully received
+ *  or an error */
+typedef int (
+*func_recv_installsnapshot_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_node_t* node,
+    msg_installsnapshot_t* msg,
+    msg_installsnapshot_response_t* r
+    );
+
+/** Callback for receiving InstallSnapshot response messages.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node that we are sending this message to
+ * @param[in] msg The InstallSnapshot message
+ * @param[in] r The InstallSnapshot response to be sent
+ * @return
+ *  0 if this chunk is successful received
+ *  1 if the whole snapshot is successfully received
+ *  or an error */
+typedef int (
+*func_recv_installsnapshot_response_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_node_t* node,
+    msg_installsnapshot_response_t* r
     );
 
 /** Callback for detecting when non-voting nodes have obtained enough logs.
@@ -352,8 +416,14 @@ typedef struct
     /** Callback for sending appendentries messages */
     func_send_appendentries_f send_appendentries;
 
-    /** Callback for notifying user that a node needs a snapshot sent */
-    func_send_snapshot_f send_snapshot;
+    /** Callback for sending InstallSnapshot messages */
+    func_send_installsnapshot_f send_installsnapshot;
+
+    /** Callback for receiving InstallSnapshot messages */
+    func_recv_installsnapshot_f recv_installsnapshot;
+
+    /** Callback for receiving InstallSnapshot responses */
+    func_recv_installsnapshot_response_f recv_installsnapshot_response;
 
     /** Callback for finite state machine application
      * Return 0 on success.
@@ -539,6 +609,17 @@ int raft_recv_requestvote(raft_server_t* me,
 int raft_recv_requestvote_response(raft_server_t* me,
                                    raft_node_t* node,
                                    msg_requestvote_response_t* r);
+
+/** Receive an InstallSnapshot message. */
+int raft_recv_installsnapshot(raft_server_t* me,
+                              raft_node_t* node,
+                              msg_installsnapshot_t* is,
+                              msg_installsnapshot_response_t *r);
+
+/** Receive an InstallSnapshot message. */
+int raft_recv_installsnapshot_response(raft_server_t* me,
+                                       raft_node_t* node,
+                                       msg_installsnapshot_response_t *r);
 
 /** Receive an entry message from the client.
  *

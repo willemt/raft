@@ -66,6 +66,24 @@ static int __raft_send_appendentries_capture(raft_server_t* raft,
     return 0;
 }
 
+static int __raft_send_installsnapshot(raft_server_t* raft,
+                                       void* udata,
+                                       raft_node_t* node,
+                                       msg_installsnapshot_t* msg)
+{
+    return 0;
+}
+
+static int __raft_send_installsnapshot_capture(raft_server_t* raft,
+                                               void* udata,
+                                               raft_node_t* node,
+                                               msg_installsnapshot_t* msg)
+{
+    msg_installsnapshot_t* msg_captured = (msg_installsnapshot_t*)udata;
+    memcpy(msg_captured, msg, sizeof(msg_installsnapshot_t));
+    return 0;
+}
+
 /* static raft_cbs_t generic_funcs = { */
 /*     .persist_term = __raft_persist_term, */
 /*     .persist_vote = __raft_persist_vote, */
@@ -184,6 +202,7 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
     raft_cbs_t funcs = {
         .persist_term = __raft_persist_term,
         .send_appendentries = __raft_send_appendentries,
+        .send_installsnapshot = __raft_send_installsnapshot
     };
 
     void *r = raft_new();
@@ -228,6 +247,7 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted2(CuTest * tc)
     raft_cbs_t funcs = {
         .persist_term = __raft_persist_term,
         .send_appendentries = __raft_send_appendentries,
+        .send_installsnapshot = __raft_send_installsnapshot
     };
 
     void *r = raft_new();
@@ -375,13 +395,14 @@ void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
 void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTest* tc)
 {
     raft_cbs_t funcs = {
-        .send_appendentries = __raft_send_appendentries_capture,
+        .send_appendentries = __raft_send_appendentries,
+        .send_installsnapshot = __raft_send_installsnapshot_capture,
     };
 
-    msg_appendentries_t ae;
+    msg_installsnapshot_t is;
 
     void *r = raft_new();
-    raft_set_callbacks(r, &funcs, &ae);
+    raft_set_callbacks(r, &funcs, &is);
 
     raft_node_t* node;
     raft_add_node(r, NULL, 1, 1);
@@ -423,9 +444,9 @@ void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTe
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 2);
     CuAssertIntEquals(tc, 0, raft_send_appendentries(r, node));
-    CuAssertIntEquals(tc, 2, ae.term);
-    CuAssertIntEquals(tc, 2, ae.prev_log_idx);
-    CuAssertIntEquals(tc, 2, ae.prev_log_term);
+    CuAssertIntEquals(tc, 2, is.term);
+    CuAssertIntEquals(tc, 3, is.last_idx);
+    CuAssertIntEquals(tc, 2, is.last_term);
 }
 
 void TestRaft_recv_entry_fails_if_snapshot_in_progress(CuTest* tc)

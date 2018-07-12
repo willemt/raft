@@ -432,7 +432,7 @@ Log Compaction
 --------------
 The log compaction method supported is called "Snapshotting for memory-based state machines" (Ongaro, 2014)
 
-This library does not send snapshots (ie. there are NO send_snapshot, recv_snapshot callbacks to implement). The user has to send the snapshot outside of this library.  The implementor has to serialize and deserialize the snapshot.
+The user has to implement the ``send_installsnapshot``, ``recv_installsnapshot``, and ``recv_installsnapshot_response`` callbacks, in a way similar to those for appendentries messages. The implementor has to serialize and deserialize the snapshot, send it in chunks, and determine the completeness of a snapshot transfer.
 
 The process works like this:
 
@@ -440,12 +440,13 @@ The process works like this:
 2. Save the current membership details to the snapshot.
 3. Save the finite state machine to the snapshot.
 4. End snapshotting with ``raft_end_snapshot``.
-5. When the ``send_snapshot`` callback fires, the user must propogate the snapshot to the other node.
-6. Once the peer has the snapshot, they call ``raft_begin_load_snapshot``.
-7. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
-8. Peer calls ``raft_node_set_voting`` to nodes as per the snapshot's membership info.
-9. Peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
-10. Finally, peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
+5. When the ``send_installsnapshot`` callback fires, the user must propogate a chunk of the snapshot to the other node by ``msg_installsnapshot_t`` and implementation-specific additional arguments (e.g., the offset of the chunk).
+6. When the peer receives the chunk, the user must call ``raft_recv_installsnapshot``. When ``recv_installsnapshot`` fires, the user must process the chunk and fill any implementation-specific arguments to the response.
+7. When the ``recv_installsnapshot_response`` callback fires, the user must record the progress of the snapshot transfer, typically in the user data of the ``raft_node_t`` object for the peer.
+8. Once the peer has the complete snapshot, the user must call ``raft_begin_load_snapshot``.
+9. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
+10. Peer calls ``raft_node_set_voting`` to nodes as per the snapshot's membership info.
+11. Finally, peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
 
 When a node receives a snapshot it could reuse that snapshot itself for other nodes.
 
