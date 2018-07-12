@@ -1249,7 +1249,7 @@ int raft_begin_snapshot(raft_server_t *me_)
     me->snapshot_in_progress = 1;
 
     __log(me_, NULL,
-        "begin snapshot sli:%d slt:%d slogs:%d\n",
+        "begin snapshot sli:%d slt:%d slogs:%d",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));
@@ -1264,7 +1264,7 @@ int raft_end_snapshot(raft_server_t *me_)
     if (!me->snapshot_in_progress || me->snapshot_last_idx == 0)
         return -1;
 
-    int e = log_poll(me->log, raft_get_commit_idx(me_));
+    int e = log_poll(me->log, me->snapshot_last_idx);
     if (e != 0)
         return e;
 
