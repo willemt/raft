@@ -323,8 +323,9 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
     ety.id = 1;
     ety.data.buf = "entry";
     ety.data.len = strlen("entry");
+    raft_append_entry(r, &ety);
+    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
 
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
     CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 5, 5));
     CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
     CuAssertIntEquals(tc, 0, raft_get_log_count(r));
@@ -334,10 +335,10 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
 
     CuAssertIntEquals(tc, 0, raft_periodic(r, 1000));
 
-    /* current idx means snapshot was unnecessary */
-    ety.id = 2;
+    /* committed idx means snapshot was unnecessary */
+    ety.id = 6;
     raft_append_entry(r, &ety);
-    ety.id = 3;
+    ety.id = 7;
     raft_append_entry(r, &ety);
     raft_set_commit_idx(r, 7);
     CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 6, 5));
@@ -358,13 +359,6 @@ void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
     raft_set_state(r, RAFT_STATE_FOLLOWER);
     CuAssertIntEquals(tc, 0, raft_get_log_count(r));
 
-    /* entry message */
-    msg_entry_t ety = {};
-    ety.id = 1;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
-
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
     CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 5, 5));
     CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
     CuAssertIntEquals(tc, 0, raft_get_log_count(r));
@@ -373,65 +367,6 @@ void TestRaft_follower_load_from_snapshot_fails_if_already_loaded(CuTest * tc)
     CuAssertIntEquals(tc, 5, raft_get_last_applied_idx(r));
 
     CuAssertIntEquals(tc, RAFT_ERR_SNAPSHOT_ALREADY_LOADED, raft_begin_load_snapshot(r, 5, 5));
-}
-
-void TestRaft_follower_load_from_snapshot_does_not_break_cluster_safety(CuTest * tc)
-{
-    raft_cbs_t funcs = {
-    };
-
-    void *r = raft_new();
-    raft_set_callbacks(r, &funcs, NULL);
-
-    raft_add_node(r, NULL, 1, 1);
-    raft_add_node(r, NULL, 2, 0);
-
-    raft_set_state(r, RAFT_STATE_FOLLOWER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
-
-    /* entry message */
-    msg_entry_t ety = {};
-    ety.id = 1;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
-    raft_append_entry(r, &ety);
-
-    ety.id = 2;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
-    raft_append_entry(r, &ety);
-
-    ety.id = 3;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
-    raft_append_entry(r, &ety);
-
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 2, 2));
-}
-
-void TestRaft_follower_load_from_snapshot_fails_if_log_is_newer(CuTest * tc)
-{
-    raft_cbs_t funcs = {
-    };
-
-    void *r = raft_new();
-    raft_set_callbacks(r, &funcs, NULL);
-
-    raft_add_node(r, NULL, 1, 1);
-    raft_add_node(r, NULL, 2, 0);
-
-    raft_set_state(r, RAFT_STATE_FOLLOWER);
-    CuAssertIntEquals(tc, 0, raft_get_log_count(r));
-
-    raft_set_last_applied_idx(r, 5);
-
-    /* entry message */
-    msg_entry_t ety = {};
-    ety.id = 1;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
-
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 2, 2));
 }
 
 void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTest* tc)

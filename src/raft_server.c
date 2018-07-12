@@ -1307,17 +1307,11 @@ int raft_begin_load_snapshot(
     if (last_included_index == 0 || last_included_index == 0)
         return -1;
 
-    /* loading the snapshot will break cluster safety */
-    if (last_included_index < me->last_applied_idx)
-        return -1;
-
-    /* snapshot was unnecessary */
-    if (last_included_index < raft_get_current_idx(me_))
-        return -1;
-
     if (last_included_term == me->snapshot_last_term && last_included_index == me->snapshot_last_idx)
         return RAFT_ERR_SNAPSHOT_ALREADY_LOADED;
 
+    if (last_included_index <= raft_get_commit_idx(me_))
+        return -1;
     me->current_term = last_included_term;
     me->voted_for = -1;
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
@@ -1325,8 +1319,7 @@ int raft_begin_load_snapshot(
 
     log_load_from_snapshot(me->log, last_included_index, last_included_term);
 
-    if (raft_get_commit_idx(me_) < last_included_index)
-        raft_set_commit_idx(me_, last_included_index);
+    raft_set_commit_idx(me_, last_included_index);
 
     me->last_applied_idx = last_included_index;
     raft_set_snapshot_metadata(me_, last_included_term, me->last_applied_idx);
