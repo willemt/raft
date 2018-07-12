@@ -1223,18 +1223,14 @@ int raft_get_num_snapshottable_logs(raft_server_t *me_)
     return raft_get_commit_idx(me_) - log_get_base(me->log);
 }
 
-int raft_begin_snapshot(raft_server_t *me_)
+int raft_begin_snapshot(raft_server_t *me_, int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    if (raft_get_num_snapshottable_logs(me_) == 0)
+    if (raft_get_commit_idx(me_) < idx)
         return -1;
 
-    int snapshot_target = raft_get_commit_idx(me_);
-    if (!snapshot_target || snapshot_target == 0)
-        return -1;
-
-    raft_entry_t* ety = raft_get_entry_from_idx(me_, snapshot_target);
+    raft_entry_t* ety = raft_get_entry_from_idx(me_, idx);
     if (!ety)
         return -1;
 
@@ -1245,7 +1241,7 @@ int raft_begin_snapshot(raft_server_t *me_)
 
     assert(raft_get_commit_idx(me_) == raft_get_last_applied_idx(me_));
 
-    raft_set_snapshot_metadata(me_, ety->term, snapshot_target);
+    raft_set_snapshot_metadata(me_, ety->term, idx);
     me->snapshot_in_progress = 1;
 
     __log(me_, NULL,

@@ -79,7 +79,7 @@ static int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
 
 static int max_election_timeout(int election_timeout)
 {
-	return 2 * election_timeout;
+        return 2 * election_timeout;
 }
 
 // TODO: don't apply logs while snapshotting
@@ -114,10 +114,13 @@ void TestRaft_leader_begin_snapshot_fails_if_no_logs_to_compact(CuTest * tc)
     ety.id = 2;
     raft_recv_entry(r, &ety, &cr);
     CuAssertIntEquals(tc, 2, raft_get_log_count(r));
-    CuAssertIntEquals(tc, -1, raft_begin_snapshot(r));
 
-    raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    /* no committed entries */
+    CuAssertIntEquals(tc, -1, raft_begin_snapshot(r, 0));
+
+    /* snapshot a committed entry */
+    raft_set_commit_idx(r, 2);
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 1));
 }
 
 void TestRaft_leader_will_not_apply_entry_if_snapshot_is_in_progress(CuTest * tc)
@@ -151,7 +154,7 @@ void TestRaft_leader_will_not_apply_entry_if_snapshot_is_in_progress(CuTest * tc
     raft_set_commit_idx(r, 1);
     CuAssertIntEquals(tc, 2, raft_get_log_count(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 1));
     CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
     raft_set_commit_idx(r, 2);
     CuAssertIntEquals(tc, -1, raft_apply_entry(r));
@@ -210,7 +213,7 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
     CuAssertIntEquals(tc, 2, raft_get_log_count(r));
     CuAssertIntEquals(tc, 1, raft_get_num_snapshottable_logs(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 1));
 
     CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
     CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
@@ -256,7 +259,7 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted2(CuTest * tc)
     CuAssertIntEquals(tc, 3, raft_get_log_count(r));
     CuAssertIntEquals(tc, 2, raft_get_num_snapshottable_logs(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 2));
 
     CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
     CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
@@ -298,7 +301,7 @@ void TestRaft_joinee_needs_to_get_snapshot(CuTest * tc)
     CuAssertIntEquals(tc, 2, raft_get_log_count(r));
     CuAssertIntEquals(tc, 1, raft_get_num_snapshottable_logs(r));
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 1));
     CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
     CuAssertIntEquals(tc, -1, raft_apply_entry(r));
     CuAssertIntEquals(tc, 1, raft_get_last_applied_idx(r));
@@ -456,7 +459,7 @@ void TestRaft_recv_entry_fails_if_snapshot_in_progress(CuTest* tc)
     CuAssertIntEquals(tc, 2, raft_get_log_count(r));
 
     raft_set_commit_idx(r, 1);
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 1));
 
     ety.id = 3;
     ety.type = RAFT_LOGTYPE_ADD_NODE;

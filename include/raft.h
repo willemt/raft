@@ -783,7 +783,7 @@ int raft_entry_is_voting_cfg_change(raft_entry_t* ety);
  * @return 1 if this is a configuration change. */
 int raft_entry_is_cfg_change(raft_entry_t* ety);
 
-/** Begin snapshotting.
+/** Begin snapshotting an index.
  *
  * While snapshotting, raft will:
  *  - not apply log entries
@@ -792,7 +792,7 @@ int raft_entry_is_cfg_change(raft_entry_t* ety);
  * @return 0 on success
  *
  **/
-int raft_begin_snapshot(raft_server_t *me_);
+int raft_begin_snapshot(raft_server_t *me_, int idx);
 
 /** Stop snapshotting.
  *
