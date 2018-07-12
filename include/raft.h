@@ -422,6 +422,7 @@ typedef int (
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
  * @param[in] node The node that is the subject of this log. Could be NULL.
+ * @param[in] entry The entry that was the trigger for the event. Could be NULL.
  * @param[in] type The type of membership change */
 typedef void (
 *func_membership_event_f
@@ -429,6 +430,7 @@ typedef void (
     raft_server_t* raft,
     void *user_data,
     raft_node_t *node,
+    raft_entry_t *entry,
     raft_membership_e type
     );
 

@@ -1029,7 +1029,7 @@ int raft_send_appendentries_all(raft_server_t* me_)
     return 0;
 }
 
-raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
+raft_node_t* raft_add_node_internal(raft_server_t* me_, raft_entry_t *ety, void* udata, int id, int is_self)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -1064,17 +1064,22 @@ raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
     node = me->nodes[me->num_nodes - 1];
 
     if (me->cb.notify_membership_event)
-        me->cb.notify_membership_event(me_, raft_get_udata(me_), node, RAFT_MEMBERSHIP_ADD);
+        me->cb.notify_membership_event(me_, raft_get_udata(me_), node, ety, RAFT_MEMBERSHIP_ADD);
 
     return node;
 }
 
-raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self)
+raft_node_t* raft_add_node(raft_server_t* me_, void* udata, int id, int is_self)
+{
+    return raft_add_node_internal(me_, NULL, udata, id, is_self);
+}
+
+static raft_node_t* raft_add_non_voting_node_internal(raft_server_t* me_, raft_entry_t *ety, void* udata, int id, int is_self)
 {
     if (raft_get_node(me_, id))
         return NULL;
 
-    raft_node_t* node = raft_add_node(me_, udata, id, is_self);
+    raft_node_t* node = raft_add_node_internal(me_, ety, udata, id, is_self);
     if (!node)
         return NULL;
 
@@ -1082,12 +1087,17 @@ raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, i
     return node;
 }
 
+raft_node_t* raft_add_non_voting_node(raft_server_t* me_, void* udata, int id, int is_self)
+{
+    return raft_add_non_voting_node_internal(me_, NULL, udata, id, is_self);
+}
+
 void raft_remove_node(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     if (me->cb.notify_membership_event)
-        me->cb.notify_membership_event(me_, raft_get_udata(me_), node, RAFT_MEMBERSHIP_REMOVE);
+        me->cb.notify_membership_event(me_, raft_get_udata(me_), node, NULL, RAFT_MEMBERSHIP_REMOVE);
 
     assert(node);
 
@@ -1243,14 +1253,14 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
                     }
                     else if (!node)
                     {
-                        node = raft_add_non_voting_node(me_, NULL, node_id, is_self);
+                        node = raft_add_non_voting_node_internal(me_, ety, NULL, node_id, is_self);
                         assert(node);
                     }
                 }
                 break;
 
             case RAFT_LOGTYPE_ADD_NODE:
-                node = raft_add_node(me_, NULL, node_id, is_self);
+                node = raft_add_node_internal(me_, ety, NULL, node_id, is_self);
                 assert(node);
                 assert(raft_node_is_voting(node));
                 break;
