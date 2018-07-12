@@ -1325,8 +1325,6 @@ int raft_end_snapshot(raft_server_t *me_)
         }
     }
 
-    assert(raft_get_log_count(me_) == 1);
-
     return 0;
 }
 
