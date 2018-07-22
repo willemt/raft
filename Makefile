@@ -87,7 +87,7 @@ do_infer:
 	infer -- make
 
 clean:
-	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
+	@rm -f $(TEST_DIR)/main_test.c src/*.o $(GCOV_OUTPUT); \
 	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
 	if [ -f libraft.a ]; then rm libraft.a; fi;\
 	if [ -f tests_main ]; then rm tests_main; fi;
