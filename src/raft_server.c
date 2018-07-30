@@ -1277,6 +1277,21 @@ int raft_begin_snapshot(raft_server_t *me_)
     return 0;
 }
 
+int raft_cancel_snapshot(raft_server_t *me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    if (!me->snapshot_in_progress)
+        return -1;
+
+    me->snapshot_last_idx = me->saved_snapshot_last_idx;
+    me->snapshot_last_term = me->saved_snapshot_last_term;
+
+    me->snapshot_in_progress = 1;
+
+    return 0;
+}
+
 int raft_end_snapshot(raft_server_t *me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

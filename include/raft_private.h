@@ -77,6 +77,12 @@ typedef struct {
     /* Last compacted snapshot */
     raft_index_t snapshot_last_idx;
     raft_term_t snapshot_last_term;
+
+    /* Previous index/term values stored during snapshot,
+     * which are restored if the operation is cancelled.
+     */
+    raft_index_t saved_snapshot_last_idx;
+    raft_term_t saved_snapshot_last_term;
 } raft_server_private_t;
 
 int raft_election_start(raft_server_t* me);
