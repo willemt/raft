@@ -197,7 +197,7 @@ typedef void* raft_node_t;
 /** Callback for sending request vote messages.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The node's ID that we are sending this message to
+ * @param[in] node The node that we are sending this message to
  * @param[in] msg The request vote message to be sent
  * @return 0 on success */
 typedef int (
@@ -212,7 +212,7 @@ typedef int (
 /** Callback for sending append entries messages.
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The node's ID that we are sending this message to
+ * @param[in] node The node that we are sending this message to
  * @param[in] msg The appendentries message to be sent
  * @return 0 on success */
 typedef int (
