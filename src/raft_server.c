@@ -1398,20 +1398,6 @@ int raft_begin_load_snapshot(
     me->last_applied_idx = last_included_index;
     raft_set_snapshot_metadata(me_, last_included_term, me->last_applied_idx);
 
-    /* remove all nodes but self */
-    int i, my_node_by_idx = 0;
-    for (i = 0; i < me->num_nodes; i++)
-    {
-        if (raft_get_nodeid(me_) == raft_node_get_id(me->nodes[i]))
-            my_node_by_idx = i;
-        else
-            raft_node_set_active(me->nodes[i], 0);
-    }
-
-    /* this will be realloc'd by a raft_add_node */
-    me->nodes[0] = me->nodes[my_node_by_idx];
-    me->num_nodes = 1;
-
     __log(me_, NULL,
         "loaded snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,

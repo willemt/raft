@@ -444,8 +444,8 @@ The process works like this:
 6. When the peer receives the chunk, the user must call ``raft_recv_installsnapshot``. When ``recv_installsnapshot`` fires, the user must process the chunk and fill any implementation-specific arguments to the response.
 7. When the ``recv_installsnapshot_response`` callback fires, the user must record the progress of the snapshot transfer, typically in the user data of the ``raft_node_t`` object for the peer.
 8. Once the peer has the complete snapshot, the user must call ``raft_begin_load_snapshot``.
-9. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
-10. Peer calls ``raft_node_set_voting`` to nodes as per the snapshot's membership info.
+9. Peer calls ``raft_remove_node`` to remove all nodes.
+10. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
 11. Finally, peer calls ``raft_node_set_active`` to nodes as per the snapshot's membership info.
 
 When a node receives a snapshot it could reuse that snapshot itself for other nodes.
