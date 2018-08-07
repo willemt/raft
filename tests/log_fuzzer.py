@@ -28,7 +28,10 @@ class Libraft(object):
         self.lib = ffi.dlopen(library)
 
         def load(fname):
-            return subprocess.check_output(["gcc", "-E", fname])
+            return '\n'.join(
+                [line for line in subprocess.check_output(
+                    ["gcc", "-E", fname]).decode('utf-8').split('\n')
+                 if not line.startswith('#')])
 
         ffi.cdef(load('include/raft.h'))
         ffi.cdef(load('include/raft_log.h'))

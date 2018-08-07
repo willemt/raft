@@ -14,18 +14,20 @@ CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-ali
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Darwin)
+ASANFLAGS = -fsanitize=address
 SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
 CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
-CFLAGS += -fsanitize=address
+CFLAGS += $(ASANFLAGS)
+CFLAGS += -Wno-nullability-completeness
 else
 SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
-OBJECTS = raft_server.o raft_server_properties.o raft_node.o raft_log.o
+OBJECTS = src/raft_server.o src/raft_server_properties.o src/raft_node.o src/raft_log.o
 
 all: static shared
 
@@ -57,9 +59,20 @@ tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_no
 	./tests_main
 	gcov raft_server.c
 
-.PHONY: fuzzer_tests
-fuzzer_tests:
+.PHONY: test_fuzzer
+test_fuzzer:
 	python tests/log_fuzzer.py
+
+.PHONY: tests_full
+tests_full:
+	make clean
+	make tests
+	make test_fuzzer
+	make test_virtraft
+
+.PHONY: test_virtraft
+test_virtraft:
+	python3 tests/virtraft2.py --servers 7 -i 20000 --compaction_rate 50 --drop_rate 5 -P 10 --seed 1 -m 3
 
 .PHONY: amalgamation
 amalgamation:
@@ -71,10 +84,10 @@ infer: do_infer
 .PHONY: do_infer
 do_infer:
 	make clean
-	infer -- make static
+	infer -- make
 
 clean:
-	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
+	@rm -f $(TEST_DIR)/main_test.c src/*.o $(GCOV_OUTPUT); \
 	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
 	if [ -f libraft.a ]; then rm libraft.a; fi;\
 	if [ -f tests_main ]; then rm tests_main; fi;

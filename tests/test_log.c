@@ -16,7 +16,7 @@ static int __logentry_get_node_id(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int ety_idx
+    raft_index_t ety_idx
     )
 {
     return 0;
@@ -25,9 +25,8 @@ static int __logentry_get_node_id(
 static int __log_offer(
     raft_server_t* raft,
     void *user_data,
-    raft_entry_t *entries,
-    int entry_idx,
-    int *n_entries
+    raft_entry_t *entry,
+    raft_index_t entry_idx
     )
 {
     CuAssertIntEquals((CuTest*)raft, 1, entry_idx);
@@ -38,8 +37,7 @@ static int __log_pop(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx,
-    int *n_entries
+    raft_index_t entry_idx
     )
 {
     raft_entry_t* copy = malloc(*n_entries * sizeof(*entry));
@@ -56,8 +54,7 @@ static int __log_pop_failing(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx,
-    int *n_entries
+    raft_index_t entry_idx
     )
 {
     *n_entries = 0;
@@ -395,10 +392,7 @@ void TestLog_load_from_snapshot(CuTest * tc)
     CuAssertIntEquals(tc, 0, log_get_current_idx(l));
     CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
-
-    /* this is just a marker
-     * it should never be sent to any nodes because it is part of a snapshot */
-    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 0, log_count(l));
 }
 
 void TestLog_load_from_snapshot_clears_log(CuTest * tc)
@@ -418,7 +412,7 @@ void TestLog_load_from_snapshot_clears_log(CuTest * tc)
     CuAssertIntEquals(tc, 2, log_get_current_idx(l));
 
     CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
-    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, 0, log_count(l));
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
 }
 
@@ -571,4 +565,50 @@ void TestLog_delete_after_polling_from_double_append(CuTest * tc)
     /* delete */
     CuAssertIntEquals(tc, 0, log_delete(l, 2));
     CuAssertIntEquals(tc, 0, log_count(l));
+}
+
+void TestLog_get_from_idx_with_base_off_by_one(CuTest * tc)
+{
+    void* queue = llqueue_new();
+    void *r = raft_new();
+    raft_cbs_t funcs = {
+        .log_pop = __log_pop,
+        .log_get_node_id = __logentry_get_node_id
+    };
+    raft_set_callbacks(r, &funcs, queue);
+
+    void *l;
+    raft_entry_t e1, e2;
+
+    memset(&e1, 0, sizeof(raft_entry_t));
+    memset(&e2, 0, sizeof(raft_entry_t));
+
+    e1.id = 1;
+    e2.id = 2;
+
+    l = log_alloc(1);
+    log_set_callbacks(l, &funcs, r);
+
+    raft_entry_t* ety;
+
+    /* append append */
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
+    CuAssertIntEquals(tc, 2, log_count(l));
+
+    /* poll */
+    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
+    CuAssertIntEquals(tc, ety->id, 1);
+    CuAssertIntEquals(tc, 1, log_count(l));
+
+    /* get off-by-one index */
+    int n_etys;
+    CuAssertPtrEquals(tc, log_get_from_idx(l, 1, &n_etys), NULL);
+    CuAssertIntEquals(tc, n_etys, 0);
+
+    /* now get the correct index */
+    ety = log_get_from_idx(l, 2, &n_etys);
+    CuAssertPtrNotNull(tc, ety);
+    CuAssertIntEquals(tc, n_etys, 1);
+    CuAssertIntEquals(tc, ety->id, 2);
 }
