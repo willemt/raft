@@ -39,6 +39,9 @@ typedef enum {
     RAFT_STATE_LEADER
 } raft_state_e;
 
+/** Allow entries to apply while taking a snapshot */
+#define RAFT_SNAPSHOT_NONBLOCKING_APPLY     1
+
 typedef enum {
     /**
      * Regular log type.
@@ -800,10 +803,14 @@ int raft_entry_is_cfg_change(raft_entry_t* ety);
  *  - not apply log entries
  *  - not start elections
  *
+ * If the RAFT_SNAPSHOT_NONBLOCKING_APPLY flag is specified, log entries will
+ * be applied during snapshot.  The FSM must isolate the snapshot state and
+ * guarantee these changes do not affect it.
+ *
  * @return 0 on success
  *
  **/
-int raft_begin_snapshot(raft_server_t *me_);
+int raft_begin_snapshot(raft_server_t *me_, int flags);
 
 /** Stop snapshotting.
  *
@@ -828,6 +835,11 @@ raft_index_t raft_get_snapshot_entry_idx(raft_server_t *me_);
 /** Check is a snapshot is in progress
  **/
 int raft_snapshot_is_in_progress(raft_server_t *me_);
+
+/** Check if entries can be applied now (no snapshot in progress, or
+ * RAFT_SNAPSHOT_NONBLOCKING_APPLY specified).
+ **/
+int raft_is_apply_allowed(raft_server_t* me_);
 
 /** Remove the first log entry.
  * This should be used for compacting logs.

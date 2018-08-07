@@ -235,6 +235,12 @@ int raft_snapshot_is_in_progress(raft_server_t *me_)
     return ((raft_server_private_t*)me_)->snapshot_in_progress;
 }
 
+int raft_is_apply_allowed(raft_server_t* me_)
+{
+    return (!raft_snapshot_is_in_progress(me_) ||
+            (((raft_server_private_t*)me_)->snapshot_flags & RAFT_SNAPSHOT_NONBLOCKING_APPLY));
+}
+
 raft_entry_t *raft_get_last_applied_entry(raft_server_t *me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

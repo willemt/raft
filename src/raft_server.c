@@ -248,7 +248,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     }
 
     if (me->last_applied_idx < raft_get_commit_idx(me_) &&
-        !raft_snapshot_is_in_progress(me_))
+            raft_is_apply_allowed(me_))
     {
         int e = raft_apply_all(me_);
         if (0 != e)
@@ -728,7 +728,7 @@ int raft_recv_entry(raft_server_t* me_,
 
         /* Multi-threading: need to fail here because user might be
          * snapshotting membership settings. */
-        if (raft_snapshot_is_in_progress(me_))
+        if (!raft_is_apply_allowed(me_))
             return RAFT_ERR_SNAPSHOT_IN_PROGRESS;
     }
 
@@ -810,7 +810,7 @@ int raft_apply_entry(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    if (raft_snapshot_is_in_progress(me_))
+    if (!raft_is_apply_allowed(me_)) 
         return -1;
 
     /* Don't apply after the commit_idx */
@@ -1086,7 +1086,7 @@ int raft_msg_entry_response_committed(raft_server_t* me_,
 
 int raft_apply_all(raft_server_t* me_)
 {
-    if (raft_snapshot_is_in_progress(me_))
+    if (!raft_is_apply_allowed(me_))
         return 0;
 
     while (raft_get_last_applied_idx(me_) < raft_get_commit_idx(me_))
@@ -1243,7 +1243,7 @@ raft_index_t raft_get_num_snapshottable_logs(raft_server_t *me_)
     return raft_get_commit_idx(me_) - log_get_base(me->log);
 }
 
-int raft_begin_snapshot(raft_server_t *me_)
+int raft_begin_snapshot(raft_server_t *me_, int flags)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -1267,6 +1267,7 @@ int raft_begin_snapshot(raft_server_t *me_)
 
     raft_set_snapshot_metadata(me_, ety->term, snapshot_target);
     me->snapshot_in_progress = 1;
+    me->snapshot_flags = flags;
 
     __log(me_, NULL,
         "begin snapshot sli:%d slt:%d slogs:%d\n",
