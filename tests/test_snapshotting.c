@@ -71,6 +71,12 @@ static int __raft_send_appendentries_capture(raft_server_t* raft,
 /*     .persist_vote = __raft_persist_vote, */
 /* }; */
 
+static int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
+{
+    int k = 1;
+    return raft_append_entries(me_, ety, &k);
+}
+
 static int max_election_timeout(int election_timeout)
 {
 	return 2 * election_timeout;
@@ -237,11 +243,6 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted(CuTest * tc)
 
     CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
 
-    raft_entry_t* _ety;
-    int i = raft_get_first_entry_idx(r);
-    for (; i < raft_get_commit_idx(r); i++)
-        CuAssertIntEquals(tc, 0, raft_poll_entry(r, &_ety));
-
     CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
     CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));
     CuAssertIntEquals(tc, 1, raft_get_log_count(r));
@@ -287,11 +288,6 @@ void TestRaft_leader_snapshot_end_succeeds_if_log_compacted2(CuTest * tc)
     CuAssertIntEquals(tc, 2, raft_get_num_snapshottable_logs(r));
 
     CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
-
-    raft_entry_t* _ety;
-    int i = raft_get_first_entry_idx(r);
-    for (; i <= raft_get_commit_idx(r); i++)
-        CuAssertIntEquals(tc, 0, raft_poll_entry(r, &_ety));
 
     CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
     CuAssertIntEquals(tc, 0, raft_get_num_snapshottable_logs(r));

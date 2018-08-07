@@ -311,26 +311,39 @@ typedef int (
     raft_node_id_t vote
     );
 
-/** Callback for saving log entry changes.
+/** Callback for saving changes to a range of log entries.
  *
  * This callback is used for:
  * <ul>
- *      <li>Adding entries to the log (ie. offer)</li>
- *      <li>Removing the first entry from the log (ie. polling)</li>
- *      <li>Removing the last entry from the log (ie. popping)</li>
+ *      <li>Appending entries to the log (ie. offer)</li>
+ *      <li>Removing entries from the head of the log (ie. polling)</li>
+ *      <li>Removing entries from the tail of the log (ie. popping)</li>
  *      <li>Applying entries</li>
  * </ul>
  *
- * For safety reasons this callback MUST flush the change to disk.
+ * For safety reasons this callback MUST flush the changes to disk.
  *
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] entry The entry that the event is happening to.
+ * @param[in] entries The array of entries that the event is happening to.
  *    For offering, polling, and popping, the user is allowed to change the
  *    memory pointed to in the raft_entry_data_t struct. This MUST be done if
  *    the memory is temporary.
- * @param[in] entry_idx The entries index in the log
+ * @param[in] entry_idx The lower bound of the index range (ie. the index of entries[0])
+ * @param[in,out] n_entries The number of entries in the range
  * @return 0 on success */
+typedef int (
+*func_logentries_event_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_entry_t *entries,
+    int entry_idx,
+    int *n_entries
+    );
+
+/** Callback for saving changes to one log entry. See also
+ * func_logentries_event_f. */
 typedef int (
 *func_logentry_event_f
 )   (
@@ -384,23 +397,24 @@ typedef struct
      * disk atomically. */
     func_persist_term_f persist_term;
 
-    /** Callback for adding an entry to the log
+    /** Callback for adding entries to the log
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logentry_event_f log_offer;
+    func_logentries_event_f log_offer;
 
-    /** Callback for removing the oldest entry from the log
+    /** Callback for removing entries from the log head
      * For safety reasons this callback MUST flush the change to disk.
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. */
-    func_logentry_event_f log_poll;
+    func_logentries_event_f log_poll;
 
-    /** Callback for removing the youngest entry from the log
+    /** Callback for removing entries from the tail of the log in
+     * descending order.
      * For safety reasons this callback MUST flush the change to disk.
      * @note If memory was malloc'd in log_offer then this should be the right
      *  time to free the memory. */
-    func_logentry_event_f log_pop;
+    func_logentries_event_f log_pop;
 
     /** Callback for determining which node this configuration log entry
      * affects. This call only applies to configuration change log entries.
@@ -730,14 +744,15 @@ int raft_set_current_term(raft_server_t* me, const raft_term_t term);
  * @param[in] commit_idx The new commit index. */
 void raft_set_commit_idx(raft_server_t* me, raft_index_t commit_idx);
 
-/** Add an entry to the server's log.
+/** Add entries to the server's log.
  * This should be used to reload persistent state, ie. the commit log.
- * @param[in] ety The entry to be appended
+ * @param[in] entries List of entries to be appended
+ * @param[in,out] n Number of entries to append / successfully appended
  * @return
  *  0 on success;
  *  RAFT_ERR_SHUTDOWN server should shutdown
  *  RAFT_ERR_NOMEM memory allocation failure */
-int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
+int raft_append_entries(raft_server_t* me, raft_entry_t* entries, int *n);
 
 /** Confirm if a msg_entry_response has been committed.
  * @param[in] r The response we want to check */
@@ -828,12 +843,6 @@ raft_index_t raft_get_snapshot_entry_idx(raft_server_t *me_);
 /** Check is a snapshot is in progress
  **/
 int raft_snapshot_is_in_progress(raft_server_t *me_);
-
-/** Remove the first log entry.
- * This should be used for compacting logs.
- * @return 0 on success
- **/
-int raft_poll_entry(raft_server_t* me_, raft_entry_t **ety);
 
 /** Get last applied entry
  **/

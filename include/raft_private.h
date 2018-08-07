@@ -102,7 +102,7 @@ int raft_apply_entry(raft_server_t* me_);
  * Appends entry using the current term.
  * Note: we make the assumption that current term is up-to-date
  * @return 0 if unsuccessful */
-int raft_append_entry(raft_server_t* me_, raft_entry_t* c);
+int raft_append_entries(raft_server_t* me, raft_entry_t* entries, int *n);
 
 void raft_set_last_applied_idx(raft_server_t* me, raft_index_t idx);
 

@@ -1,0 +1,6 @@
+Import('env')
+env = env.Clone()
+env.AppendUnique(CPPPATH = ['../include'])
+env.Library('raft',
+	    ['raft_server.c', 'raft_server_properties.c', 'raft_node.c',
+	     'raft_log.c'])
