@@ -3843,6 +3843,67 @@ void TestRaft_leader_sends_empty_appendentries_every_request_timeout(
     CuAssertTrue(tc, NULL != ae);
 }
 
+void TestRaft_leader_does_not_send_empty_appendentries_if_last_appendentries_is_recent(
+    CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .send_appendentries = sender_appendentries,
+        .log                = NULL
+    };
+
+    void *sender = sender_new(NULL);
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, sender);
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_add_node(r, NULL, 3, 0);
+    raft_set_election_timeout(r, 1000);
+    raft_set_request_timeout(r, 500);
+    CuAssertTrue(tc, 0 == raft_get_timeout_elapsed(r));
+
+    /* candidate to leader */
+    raft_set_state(r, RAFT_STATE_CANDIDATE);
+    raft_become_leader(r);
+
+    /* receive initial empty appendentries messages for both nodes */
+    msg_appendentries_t* ae;
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL == ae);
+
+    /* let some time elapse, but not enough to trigger the request timeout */
+    raft_periodic(r, 250);
+
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL == ae);
+
+    /* receive an entry from the user and send appendentries requests to both
+     * follower nodes */
+    msg_entry_t mety = {};
+    mety.id = 1;
+    mety.data.buf = "entry";
+    mety.data.len = strlen("entry");
+
+    msg_entry_response_t cr;
+    raft_recv_entry(r, &mety, &cr);
+
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL != ae);
+
+    /* let some more time elapse, this time it's past the initial request
+     *  timeout, but the timer has been reset so we don't send an empty
+     *  appendentries */
+    raft_periodic(r, 251);
+    ae = sender_poll_msg_data(sender);
+    CuAssertTrue(tc, NULL == ae);
+}
+
 /* TODO: If a server receives a request with a stale term number, it rejects the request. */
 #if 0
 void T_estRaft_leader_sends_appendentries_when_receive_entry_msg(CuTest * tc)
