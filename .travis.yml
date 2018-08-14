@@ -3,5 +3,6 @@ before_install:
   - sudo pip install cpp-coveralls
 script:
   - make tests
+  - make test_virtraft
 after_success:
   - coveralls --verbose --exclude include --exclude tests --exclude CLinkedListQueue
