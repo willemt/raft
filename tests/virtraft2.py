@@ -21,7 +21,7 @@ Some chaos we generate:
 Usage:
   virtraft --servers SERVERS [-d RATE] [-D RATE] [-c RATE] [-C RATE] [-m RATE]
                              [-P RATE] [-s SEED] [-i ITERS] [-p] [--tsv]
-                             [-q] [-v] [-l LEVEL]
+                             [-q] [-v] [-l LEVEL] [-j] [-L LOGFILE]
   virtraft --version
   virtraft --help
 
@@ -42,7 +42,9 @@ Options:
                              [default: 1000]
   --tsv                      Output node status tab separated values at exit
   -v --verbose               Show debug logs
+  -j --json_output           JSON output for diagnostics
   -l --log_level LEVEL       Set log level
+  -L --log_file LOGFILE      Set log file
   -V --version               Display version.
   -h --help                  Prints a short usage summary.
 
@@ -62,6 +64,10 @@ import sys
 import terminaltables
 
 from raft_cffi import ffi, lib
+
+
+logger = logging.getLogger('raft')
+
 
 NODE_DISCONNECTED = 0
 NODE_CONNECTING = 1
@@ -217,7 +223,7 @@ def raft_log(raft, node, udata, buf):
     if node != ffi.NULL:
         node = ffi.from_handle(lib.raft_node_get_udata(node))
     # if server.id in [1] or (node and node.id in [1]):
-    logging.info('{0}>  {1}:{2}: {3}'.format(
+    logger.info('{0}>  {1}:{2}: {3}'.format(
         server.network.iteration,
         server.id,
         node.id if node else '',
@@ -244,7 +250,7 @@ class Network(object):
         self.ety_id = 0
         self.entries = []
         self.random = random.Random(seed)
-        self.partitions = []
+        self.partitions = set()
         self.no_random_period = False
 
         self.server_id = 0
@@ -296,11 +302,12 @@ class Network(object):
         self.random.shuffle(nodes)
         n1 = nodes.pop()
         n2 = nodes.pop()
-        self.partitions.append((n1, n2))
+        self.partitions.add((n1, n2))
 
     def remove_partition(self):
-        self.random.shuffle(self.partitions)
-        self.partitions.pop()
+        parts = sorted(list(self.partitions))
+        self.random.shuffle(parts)
+        self.partitions.remove(parts.pop())
 
     def periodic(self):
         if self.random.randint(1, 100) < self.member_rate:
@@ -326,7 +333,7 @@ class Network(object):
 
         # Deadlock detection
         if self.latest_applied_log_idx != 0 and self.latest_applied_log_iteration + 5000 < self.iteration:
-            logging.error("deadlock detected iteration:{0} appliedidx:{1}\n".format(
+            logger.error("deadlock detected iteration:{0} appliedidx:{1}\n".format(
                 self.latest_applied_log_iteration,
                 self.latest_applied_log_idx,
                 ))
@@ -378,7 +385,7 @@ class Network(object):
             response = ffi.new('msg_appendentries_response_t*')
             e = lib.raft_recv_appendentries(msg.sendee.raft, node, msg.data, response)
             if lib.RAFT_ERR_SHUTDOWN == e:
-                logging.error('Catastrophic')
+                logger.error('Catastrophic')
                 print(msg.sendee.debug_log())
                 print(msg.sendor.debug_log())
                 sys.exit(1)
@@ -451,7 +458,7 @@ class Network(object):
                 term1 = lib.raft_get_current_term(sv1.raft)
                 term2 = lib.raft_get_current_term(sv2.raft)
                 if lib.raft_is_leader(sv2.raft) and term1 == term2:
-                    logging.error("election safety invalidated")
+                    logger.error("election safety invalidated")
                     print(sv1, sv2, term1)
                     print('partitions:', self.partitions)
                     sys.exit(1)
@@ -512,7 +519,7 @@ class Network(object):
             return
 
         if not self.leader:
-            logging.error('no leader')
+            logger.error('no leader')
             return
 
         leader = self.leader
@@ -521,7 +528,7 @@ class Network(object):
             return
 
         if lib.raft_voting_change_is_in_progress(leader.raft):
-            # logging.error('{} voting change in progress'.format(server))
+            # logger.error('{} voting change in progress'.format(server))
             return
 
         server = RaftServer(self)
@@ -540,7 +547,7 @@ class Network(object):
 
         e = leader.recv_entry(ety)
         if 0 != e:
-            logging.error(err2str(e))
+            logger.error(err2str(e))
             return
         else:
             self.num_membership_changes += 1
@@ -553,7 +560,7 @@ class Network(object):
 
     def remove_member(self):
         if not self.leader:
-            logging.error('no leader')
+            logger.error('no leader')
             return
 
         leader = self.leader
@@ -563,15 +570,15 @@ class Network(object):
             return
 
         if lib.raft_voting_change_is_in_progress(leader.raft):
-            # logging.error('{} voting change in progress'.format(server))
+            # logger.error('{} voting change in progress'.format(server))
             return
 
         if leader == server:
-            # logging.error('can not remove leader')
+            # logger.error('can not remove leader')
             return
 
         if server.connection_status in [NODE_CONNECTING, NODE_DISCONNECTING]:
-            # logging.error('can not remove server that is changing connection status')
+            # logger.error('can not remove server that is changing connection status')
             return
 
         if NODE_DISCONNECTED == server.connection_status:
@@ -593,7 +600,7 @@ class Network(object):
 
         e = leader.recv_entry(ety)
         if 0 != e:
-            logging.error(err2str(e))
+            logger.error(err2str(e))
             return
         else:
             self.num_membership_changes += 1
@@ -614,6 +621,8 @@ class Network(object):
             "Compactions": self.num_compactions,
         }
 
+        print('partitions:', ['{} -> {}'.format(*map(str, p)) for p in self.partitions])
+
         for k, v in info.items():
             print(k, v)
 
@@ -624,7 +633,6 @@ class Network(object):
 
         # Servers
         keys = sorted(net.servers[0].debug_statistics().keys())
-        print(keys)
         data = [list(map(abbreviate, keys))] + [
             [s.debug_statistics()[key] for key in keys]
             for s in net.servers
@@ -672,9 +680,12 @@ class RaftServer(object):
     def __repr__(self):
         return 'sv:{0}'.format(self.id)
 
+    def __lt__(self, other):
+        return self.id < other.id
+
     def set_connection_status(self, new_status):
         assert(not (self.connection_status == NODE_CONNECTED and new_status == NODE_CONNECTING))
-        # logging.warning('{}: {} -> {}'.format(
+        # logger.warning('{}: {} -> {}'.format(
         #     self,
         #     connectstatus2str(self.connection_status),
         #     connectstatus2str(new_status)))
@@ -685,7 +696,7 @@ class RaftServer(object):
         return [(i + first_idx, l.term, l.id) for i, l in enumerate(self.fsm_log)]
 
     def do_compaction(self):
-        # logging.warning('{} snapshotting'.format(self))
+        # logger.warning('{} snapshotting'.format(self))
         # entries_before = lib.raft_get_log_count(self.raft)
 
         e = lib.raft_begin_snapshot(self.raft)
@@ -706,7 +717,7 @@ class RaftServer(object):
 
         self.network.num_compactions += 1
 
-        # logging.warning('{} entries compacted {}'.format(
+        # logger.warning('{} entries compacted {}'.format(
         #     self,
         #     entries_before - lib.raft_get_log_count(self.raft)
         #     ))
@@ -728,7 +739,7 @@ class RaftServer(object):
             raise self.abort_exception
 
     def shutdown(self):
-        # logging.error('{} shutting down'.format(self))
+        # logger.error('{} shutting down'.format(self))
         self.set_connection_status(NODE_DISCONNECTED)
         self.network.remove_server(self)
 
@@ -794,16 +805,16 @@ class RaftServer(object):
                     except Exception as e:
                         ety1 = lib.raft_get_entry_from_idx(self.raft, idx)
                         ety2 = lib.raft_get_entry_from_idx(server.raft, idx)
-                        logging.error('ids', ety1.id, ety2.id)
-                        logging.error('{0}vs{1} idx:{2} terms:{3} {4} ids:{5} {6}'.format(
+                        logger.error('ids', ety1.id, ety2.id)
+                        logger.error('{0}vs{1} idx:{2} terms:{3} {4} ids:{5} {6}'.format(
                             self, server,
                             idx,
                             our_log.term, their_log.term,
                             our_log.id, their_log.id))
                         self.abort_exception = e
 
-                        logging.error(self.debug_log())
-                        logging.error(server.debug_log())
+                        logger.error(self.debug_log())
+                        logger.error(server.debug_log())
                         return lib.RAFT_ERR_SHUTDOWN
 
     def entry_apply(self, ety, idx):
@@ -823,7 +834,7 @@ class RaftServer(object):
 
         elif ety.type == lib.RAFT_LOGTYPE_DEMOTE_NODE:
             if change.node_id == lib.raft_get_nodeid(self.raft):
-                # logging.warning("{} shutting down because of demotion".format(self))
+                # logger.warning("{} shutting down because of demotion".format(self))
                 return lib.RAFT_ERR_SHUTDOWN
 
             # Follow up by removing the node by receiving new entry
@@ -840,7 +851,7 @@ class RaftServer(object):
 
         elif ety.type == lib.RAFT_LOGTYPE_REMOVE_NODE:
             if change.node_id == lib.raft_get_nodeid(self.raft):
-                # logging.warning("{} shutting down because of removal".format(self))
+                # logger.warning("{} shutting down because of removal".format(self))
                 return lib.RAFT_ERR_SHUTDOWN
 
         elif ety.type == lib.RAFT_LOGTYPE_ADD_NODE:
@@ -864,7 +875,7 @@ class RaftServer(object):
                 SnapshotMember(id, lib.raft_node_is_voting_committed(n)))
 
     def load_snapshot(self, snapshot, other):
-        # logging.warning('{} loading snapshot'.format(self))
+        # logger.warning('{} loading snapshot'.format(self))
         e = lib.raft_begin_load_snapshot(
             self.raft,
             snapshot.last_term,
@@ -935,8 +946,8 @@ class RaftServer(object):
 
         self.fsm_dict = dict(snapshot.image)
 
-        logging.warning('{} loaded snapshot t:{} idx:{}'.format(
-            self, snapshot.last_term, snapshot.last_idx))
+        # logger.warning('{} loaded snapshot t:{} idx:{}'.format(
+        #     self, snapshot.last_term, snapshot.last_idx))
 
     def send_snapshot(self, node):
         assert not lib.raft_snapshot_is_in_progress(self.raft)
@@ -981,7 +992,7 @@ class RaftServer(object):
                 other_id = prev_ety.id
                 assert other_id < ety.id
             except Exception as e:
-                logging.error(other_id, ety.id)
+                logger.error(other_id, ety.id)
                 self.abort_exception = e
                 raise
 
@@ -1015,7 +1026,7 @@ class RaftServer(object):
         return 0
 
     def entry_pop(self, ety, ety_idx):
-        # logging.warning("POP {} {}".format(self, ety_idx))
+        # logger.warning("POP {} {}".format(self, ety_idx))
 
         e = self._check_committed_entry_popping(ety_idx)
         if e != 0:
@@ -1034,7 +1045,7 @@ class RaftServer(object):
 
         elif ety.type == lib.RAFT_LOGTYPE_ADD_NONVOTING_NODE:
             if change.node_id == lib.raft_get_nodeid(self.raft):
-                logging.error("POP disconnect {} {}".format(self, ety_idx))
+                logger.error("POP disconnect {} {}".format(self, ety_idx))
                 self.set_connection_status(NODE_DISCONNECTED)
 
         elif ety.type == lib.RAFT_LOGTYPE_ADD_NODE:
@@ -1100,10 +1111,19 @@ if __name__ == '__main__':
 
     if args['--verbose'] or args['--log_level']:
         coloredlogs.install(fmt='%(asctime)s %(levelname)s %(message)s')
-        level = logging.DEBUG
+
         if args['--log_level']:
             level = int(args['--log_level'])
-        logging.basicConfig(level=level, format='%(asctime)s %(message)s')
+        else:
+            level = logging.DEBUG
+
+        logger.setLevel(level)
+
+        if args['--log_file']:
+            fh = logging.FileHandler(args['--log_file'])
+            fh.setLevel(level)
+            logger.addHandler(fh)
+            logger.propagate = False
 
     net = Network(int(args['--seed']))
 
@@ -1135,4 +1155,8 @@ if __name__ == '__main__':
             #     print(server, [l.term for l in server.fsm_log])
             raise
 
-    net.diagnotistic_info()
+    if args['--json_output']:
+        pass
+
+    if not args['--quiet']:
+        net.diagnotistic_info()
