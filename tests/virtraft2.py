@@ -213,8 +213,8 @@ def raft_node_has_sufficient_logs(raft, udata, node):
     return ffi.from_handle(udata).node_has_sufficient_entries(node)
 
 
-def raft_notify_membership_event(raft, udata, node, event_type):
-    return ffi.from_handle(udata).notify_membership_event(node, event_type)
+def raft_notify_membership_event(raft, udata, node, ety, event_type):
+    return ffi.from_handle(udata).notify_membership_event(node, ety, event_type)
 
 
 def raft_log(raft, node, udata, buf):
@@ -758,7 +758,7 @@ class RaftServer(object):
         self.raft_logentry_pop = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_logentry_pop)
         self.raft_logentry_get_node_id = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, raft_index_t)", raft_logentry_get_node_id)
         self.raft_node_has_sufficient_logs = ffi.callback("int(raft_server_t* raft, void *user_data, raft_node_t* node)", raft_node_has_sufficient_logs)
-        self.raft_notify_membership_event = ffi.callback("void(raft_server_t* raft, void *user_data, raft_node_t* node, raft_membership_e)", raft_notify_membership_event)
+        self.raft_notify_membership_event = ffi.callback("void(raft_server_t* raft, void *user_data, raft_node_t* node, raft_entry_t* ety, raft_membership_e)", raft_notify_membership_event)
         self.raft_log = ffi.callback("void(raft_server_t*, raft_node_t*, void*, const char* buf)", raft_log)
 
     def recv_entry(self, ety):
@@ -1072,7 +1072,7 @@ class RaftServer(object):
         assert e == 0
         return 0
 
-    def notify_membership_event(self, node, event_type):
+    def notify_membership_event(self, node, ety, event_type):
         # Convenience: Ensure that added node has udata set
         if event_type == lib.RAFT_MEMBERSHIP_ADD:
             node_id = lib.raft_node_get_id(node)
