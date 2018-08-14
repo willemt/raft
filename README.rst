@@ -445,19 +445,17 @@ It's highly recommended that when a node is added to the cluster that its node I
 
 1. Append the configuration change using ``raft_recv_entry``. Make sure the entry has the type set to ``RAFT_LOGTYPE_ADD_NONVOTING_NODE``
 
-2. Inside the ``log_offer`` callback, when a log with type ``RAFT_LOGTYPE_ADD_NONVOTING_NODE`` is detected, we add a non-voting node by calling ``raft_add_non_voting_node``.
-
-3. Once ``node_has_sufficient_logs`` callback fires, append a configuration finalization log entry using ``raft_recv_entry``. Make sure the entry has a type set to ``RAFT_LOGTYPE_ADD_NODE``
-
-4. Inside the ``log_offer`` callback, when you receive a log with type ``RAFT_LOGTYPE_ADD_NODE``, we then set the node to voting by using ``raft_add_node``
+2. Once ``node_has_sufficient_logs`` callback fires, append a configuration finalization log entry using ``raft_recv_entry``. Make sure the entry has a type set to ``RAFT_LOGTYPE_ADD_NODE``
 
 **Removing a node**
 
 1. Append the configuration change using ``raft_recv_entry``. Make sure the entry has the type set to ``RAFT_LOGTYPE_REMOVE_NODE``
 
-2. Inside the ``log_offer`` callback, when a log with type ``RAFT_LOGTYPE_REMOVE_NODE`` is detected, we remove the node by calling ``raft_remove_node``
+2. Once the ``RAFT_LOGTYPE_REMOVE_NODE`` configuration change log is applied in the ``applylog`` callback we shutdown the server if it is to be removed.
 
-3. Once the ``RAFT_LOGTYPE_REMOVE_NODE`` configuration change log is applied in the ``applylog`` callback we shutdown the server if it is to be removed.
+**Membership callback**
+
+The ``notify_membership_event`` callback can be used to track nodes as they are added and removed as a result of configuration change log entries. A typical use case is to create and destroy connections to nodes, using connection information obtained from the configuration change log entry.
 
 Log Compaction
 --------------
