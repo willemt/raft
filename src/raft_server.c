@@ -1287,7 +1287,7 @@ int raft_cancel_snapshot(raft_server_t *me_)
     me->snapshot_last_idx = me->saved_snapshot_last_idx;
     me->snapshot_last_term = me->saved_snapshot_last_term;
 
-    me->snapshot_in_progress = 1;
+    me->snapshot_in_progress = 0;
 
     return 0;
 }
@@ -1339,8 +1339,6 @@ int raft_end_snapshot(raft_server_t *me_)
                 me->cb.send_snapshot(me_, me->udata, node);
         }
     }
-
-    assert(raft_get_log_count(me_) == 1);
 
     return 0;
 }
