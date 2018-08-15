@@ -823,6 +823,16 @@ int raft_begin_snapshot(raft_server_t *me_);
  **/
 int raft_end_snapshot(raft_server_t *me_);
 
+/** Cancel snapshotting.
+ *
+ * If an error occurs during snapshotting, this function can be called instead
+ * of raft_end_snapshot() to cancel the operation.
+ *
+ * The user MUST be sure the original snapshot is left untouched and remains
+ * usable.
+ */
+int raft_cancel_snapshot(raft_server_t *me_);
+
 /** Get the entry index of the entry that was snapshotted
  **/
 raft_index_t raft_get_snapshot_entry_idx(raft_server_t *me_);
