@@ -699,7 +699,7 @@ class RaftServer(object):
         # logger.warning('{} snapshotting'.format(self))
         # entries_before = lib.raft_get_log_count(self.raft)
 
-        e = lib.raft_begin_snapshot(self.raft)
+        e = lib.raft_begin_snapshot(self.raft, 0)
         if e != 0:
             return
 
