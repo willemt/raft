@@ -73,6 +73,7 @@ typedef struct {
     int connected;
 
     int snapshot_in_progress;
+    int snapshot_flags;
 
     /* Last compacted snapshot */
     raft_index_t snapshot_last_idx;
