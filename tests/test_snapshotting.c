@@ -713,7 +713,7 @@ void TestRaft_cancel_snapshot_restores_state(CuTest* tc)
     raft_recv_entry(r, &ety, &cr);
     raft_set_commit_idx(r, 2);
 
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 0));
     CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
 
     /* more entries  */
@@ -726,7 +726,7 @@ void TestRaft_cancel_snapshot_restores_state(CuTest* tc)
 
     /* begin and cancel another snapshot */
     raft_set_commit_idx(r, 4);
-    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 0));
     CuAssertIntEquals(tc, 1, raft_snapshot_is_in_progress(r));
     CuAssertIntEquals(tc, 0, raft_cancel_snapshot(r));
 
