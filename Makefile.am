@@ -35,12 +35,37 @@ include_HEADERS += \
   include/raft_types.h
 
 # Tests
+clinkedlistqueue:
+	mkdir -p CLinkedListQueue/.git
+	git --git-dir=CLinkedListQueue/.git init 
+	pushd CLinkedListQueue; git pull http://github.com/willemt/CLinkedListQueue; popd
+
+.PHONY: CLinkedListQueue/linked_list_queue.c
+CLinkedListQueue/linked_list_queue.c:
+	if ! test -d CLinkedListQueue/.git; \
+	then make clinkedlistqueue; \
+	fi
+
+.PHONY: tests/main_test.c
+tests/main_test.c:
+	cd tests && sh make-tests.sh "test_*.c" > main_test.c && cd ..
+
 check_PROGRAMS += \
-	raft-test
+  raft-test
 raft_test_SOURCES = \
-  test/runner.c
+  CLinkedListQueue/linked_list_queue.c \
+  tests/main_test.c \
+  tests/CuTest.c \
+  tests/CuTest.h \
+  tests/mock_send_functions.c \
+  tests/mock_send_functions.h \
+  tests/test_log.c \
+  tests/test_node.c \
+  tests/test_scenario.c \
+  tests/test_server.c \
+  tests/test_snapshotting.c
 raft_test_CFLAGS = $(AM_CFLAGS)
-raft_test_CFLAGS += -I$(top_srcdir)/test -DMUNIT_NO_FORK
+raft_test_CFLAGS += -I$(top_srcdir)/tests -I$(top_srcdir)/CLinkedListQueue
 raft_test_LDADD = libraft.la
 raft_test_LDFLAGS =
 TESTS = raft-test

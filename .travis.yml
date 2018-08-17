@@ -30,4 +30,4 @@ matrix:
          - MATRIX_EVAL="CC=gcc-8"
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -g "./test*"
+  - bash <(curl -s https://codecov.io/bash) -g "./tests*"

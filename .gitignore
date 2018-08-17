@@ -1,5 +1,6 @@
 *.o
 *.gcno
+*.gcda
 *~
 libcraft.so
 libcraft.a
@@ -22,3 +23,6 @@ stamp-h1
 .libs/
 raft-test*
 test-suite.log
+tests/main_test.c
+CLinkedListQueue/
+coverage/
