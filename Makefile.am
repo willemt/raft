@@ -51,7 +51,9 @@ tests/main_test.c:
 	cd tests && sh make-tests.sh "test_*.c" > main_test.c && cd ..
 
 check_PROGRAMS += \
-  raft-test
+  raft-test \
+  test-unit
+
 raft_test_SOURCES = \
   CLinkedListQueue/linked_list_queue.c \
   tests/main_test.c \
@@ -68,7 +70,20 @@ raft_test_CFLAGS = $(AM_CFLAGS)
 raft_test_CFLAGS += -I$(top_srcdir)/tests -I$(top_srcdir)/CLinkedListQueue
 raft_test_LDADD = libraft.la
 raft_test_LDFLAGS =
-TESTS = raft-test
+
+test_lib_SOURCES = \
+  test/lib/munit.c \
+  test/lib/store.c
+
+test_unit_SOURCES = $(test_lib_SOURCES)
+test_unit_SOURCES += \
+  test/unit/main.c
+test_unit_CFLAGS = $(AM_CFLAGS)
+test_unit_CFLAGS += -I$(top_srcdir)/tests/unit
+test_unit_LDADD = libraft.la
+test_unit_LDFLAGS =
+
+TESTS = raft-test test-unit
 
 cov-reset:
 if DEBUG
