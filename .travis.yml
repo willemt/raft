@@ -1,18 +1,33 @@
+dist: trusty
+sudo: required
+
 language: c
-addons:
-  apt:
-    packages:
-      - "python3"
-      - "python3-pip"
+
 before_install:
-  - sudo pip install cpp-coveralls
-  - sudo pip3 install cffi
-  - sudo pip3 install colorama
-  - sudo pip3 install coloredlogs
-  - sudo pip3 install docopt
-  - sudo pip3 install terminaltables
+  - eval "${MATRIX_EVAL}"
+
 script:
-  - make tests
-  - make test_virtraft
+  - autoreconf -i
+  - ./configure --enable-debug "${AC_FLAGS}"
+  - make
+  - make ./raft-test
+  - ./raft-test
+
+compiler:
+  - gcc
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-8
+            - lcov
+      env:
+         - MATRIX_EVAL="CC=gcc-8"
+
 after_success:
-  - coveralls --verbose --exclude include --exclude tests --exclude CLinkedListQueue
+  - bash <(curl -s https://codecov.io/bash) -g "./test*"
