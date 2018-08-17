@@ -1,0 +1,4 @@
+BasedOnStyle: Chromium
+BreakBeforeBraces: Custom
+BraceWrapping:
+ AfterFunction: true

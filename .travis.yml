@@ -1,33 +1,9 @@
-dist: trusty
-sudo: required
-
 language: c
-
-before_install:
-  - eval "${MATRIX_EVAL}"
-
 script:
   - autoreconf -i
   - ./configure --enable-debug "${AC_FLAGS}"
   - make
   - make ./raft-test
   - ./raft-test
-
-compiler:
-  - gcc
-
-matrix:
-  include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-8
-            - lcov
-      env:
-         - MATRIX_EVAL="CC=gcc-8"
-
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -g "./test*"
+  - bash <(curl -s https://codecov.io/bash) -G "./src#*" -g "./#usr*"
