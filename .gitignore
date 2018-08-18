@@ -22,6 +22,7 @@ stamp-h1
 .deps/
 .libs/
 raft-test*
+test-unit*
 test-suite.log
 tests/main_test.c
 CLinkedListQueue/

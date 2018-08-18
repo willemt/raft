@@ -10,6 +10,9 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
+#include <stdint.h>
+#include <stdlib.h>
+
 #include "raft_types.h"
 
 typedef enum {
@@ -102,6 +105,51 @@ typedef struct
 
     raft_entry_data_t data;
 } raft_entry_t;
+
+typedef raft_entry_t raft_entry;
+
+/* Interface providing persistency functionality for raft data. */
+typedef struct raft_store
+{
+    /* API version of the interface provided by this instance. Currently 1. */
+    int version;
+
+  /* Custom user data, passed as first argument to all methods. */
+    void *data;
+
+    /* In all APIs below the function parameter 'cb' must be passed 0 upon
+       success (i.e. the change has been persisted to disk) or an error code
+       upon failure. */
+
+    /* Persist current term (and nil vote). */
+    void (*set_term)(void *data, uint64_t term, void (*cb)(int rv));
+
+    /* Persist who we voted for. */
+    void (*set_vote)(void *data, uint64_t node_id, void (*cb)(int rv));
+
+    /* Append the given entries to the log. */
+    void (*append_entries)(void *data,
+                           raft_entry *entries,
+                           size_t n,
+                           void (*cb)(int rv));
+
+    /* Delete all log entries from the given index onwards */
+    void (*delete_entries)(void *data, uint64_t index, void (*cb)(int rv));
+
+    /* Get 'n' log entries starting from the given 'index'. The 'entries'
+       parameter must point to an array of 'n' elements. */
+    void (*get_entries)(void *data,
+                        uint64_t index,
+                        size_t n,
+                        raft_entry *entries,
+                        void (*cb)(int rv));
+
+    /* Get the index of the first entry in the log. */
+    void (*first_index)(void *data, uint64_t *index, void (*cb)(int rv));
+
+    /* Get the number of entries in the log. */
+    void (*entries_count)(void *data, size_t *n, void (*cb)(int rv));
+} raft_store;
 
 /** Message sent from client to server.
  * The client sends this message to a server with the intention of having it

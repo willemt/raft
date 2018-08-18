@@ -4,6 +4,8 @@ script:
   - ./configure --enable-debug "${AC_FLAGS}"
   - make
   - make ./raft-test
+  - make ./test-unit
   - ./raft-test
+  - ./test-unit
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -G "./src#*" -g "./#usr*"
+  - bash <(curl -s https://codecov.io/bash) -G "./src*"
