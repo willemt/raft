@@ -24,6 +24,7 @@ endif
 lib_LTLIBRARIES += libraft.la
 libraft_la_LDFLAGS = -version-info 0:7:0
 libraft_la_SOURCES = \
+  src/server.c \
   src/raft_log.c \
   src/raft_node.c \
   src/raft_server.c \
@@ -72,8 +73,10 @@ raft_test_LDADD = libraft.la
 raft_test_LDFLAGS =
 
 test_lib_SOURCES = \
-  test/lib/munit.c \
-  test/lib/store.c
+  test/lib/fault.c \
+  test/lib/heap.c \
+  test/lib/io.c \
+  test/lib/munit.c
 
 test_unit_SOURCES = $(test_lib_SOURCES)
 test_unit_SOURCES += \

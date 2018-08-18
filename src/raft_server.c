@@ -102,7 +102,7 @@ void raft_set_callbacks(raft_server_t* me_, raft_cbs_t* funcs, void* udata)
     log_set_callbacks(me->log, &me->cb, me_);
 }
 
-void raft_free(raft_server_t* me_)
+void raft_free_(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
