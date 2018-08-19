@@ -2,6 +2,26 @@
 
 #include "../include/raft.h"
 
+void *raft_malloc(struct raft_heap *h, size_t size)
+{
+  return h->malloc(h->data, size);
+}
+
+void raft_free(struct raft_heap *h, void *ptr)
+{
+  return h->free(h->data, ptr);
+}
+
+void *raft_calloc(struct raft_heap *h, size_t nmemb, size_t size)
+{
+  return h->calloc(h->data, nmemb, size);
+}
+
+void *raft_realloc(struct raft_heap *h, void *ptr, size_t size)
+{
+  return h->realloc(h->data, ptr, size);
+}
+
 static void *raft__heap_malloc(void *data, size_t size)
 {
   (void)data;
