@@ -116,18 +116,22 @@ struct raft_io
      * API version of the interface provided by this instance. Currently %1.
      */
     int version;
+
     /**
      * Custom user data.
      */
     void *data;
+
     /**
      * Persist current term (and nil vote).
      */
     int (*write_term)(struct raft *r, uint64_t term, raft_io_cb cb);
+
     /**
      * Persist who we voted for.
      */
     int (*write_vote)(struct raft *r, uint64_t node_id, raft_io_cb cb);
+
     /**
      * Read metadata about the log (first index and number of entries).
      */
@@ -135,6 +139,7 @@ struct raft_io
                          size_t *n,
                          uint64_t *first_index,
                          raft_io_cb cb);
+
     /**
      * Read @n log entries starting from @index. The @entries parameter must
      * point to an array of @n elements.
@@ -144,6 +149,7 @@ struct raft_io
                     size_t n,
                     struct raft_entry *entries,
                     raft_io_cb cb);
+
     /**
      * Append the given entries to the log.
      */
@@ -151,10 +157,12 @@ struct raft_io
                      struct raft_entry *entries,
                      size_t n,
                      raft_io_cb cb);
+
     /**
      * Delete all log entries from the given index onwards.
      */
     int (*truncate_log)(struct raft *r, uint64_t index, raft_io_cb cb);
+
     /**
      * Send an RPC request to the given @server.
      */
@@ -193,10 +201,12 @@ struct raft
      * User-defined disk and network I/O interface implementation.
      */
     struct raft_io io;
+
     /**
      * Dynamic memory allocation routines (default to stdlib).
      */
     struct raft_heap heap;
+
     /**
      * The fields below hold a cache of the server's persistent state,
      * updated on stable storage before responding to RPCs (Figure 3.1).
@@ -204,6 +214,7 @@ struct raft
     uint64_t current_term; /* The server's opinion on the current term. */
     uint64_t voted_for;    /* Candidate the server voted for in current term. */
     struct raft_log log;   /* Log entries. */
+
     /**
      * The fields below hold the part of the server's volatile state which
      * is always applicable regardless of the whether the server is
@@ -212,6 +223,7 @@ struct raft
      */
     uint64_t commit_index; /* Highest log entry known to be committed */
     uint64_t last_applied; /* Highest log entry applied to the FSM */
+
     /**
      * The fields below hold the part of the server's volatile state which
      * specific to leaders (Figure 3.1). This state is reinitialized after
@@ -219,6 +231,7 @@ struct raft
      */
     uint64_t *next_index;  /* For each server, next log entry to send to it */
     uint64_t *match_index; /* For each server, highest applied log entry */
+
     /**
      * The fields below are used for internal bookkeeping or configuration.
      */
@@ -229,6 +242,21 @@ struct raft
  * Initialize a raft instance.
  */
 void raft_init(struct raft *r, struct raft_io *io);
+
+/**
+ * Bootstrap the initial state of the raft instance.
+ */
+int raft_bootstrap(struct raft *r);
+
+/**
+ * Restart a raft instance loading persistent state from disk.
+ */
+int raft_restart(struct raft *r);
+
+/**
+ * Set a user-defined dynamic memory allocator.
+ */
+void raft_set_heap(struct raft *r, struct raft_heap *heap);
 
 /**
  * Close a raft instance, deallocating all used resources.

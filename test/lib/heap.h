@@ -26,8 +26,8 @@
  */
 #define TEST_HEAP_FAULT_REPEAT "heap-fault-repeat"
 
-void raft_heap_setup(const MunitParameter params[], struct raft_heap *h);
+void test_heap_setup(const MunitParameter params[], struct raft_heap *h);
 
-void raft_heap_tear_down(struct raft_heap *h);
+void test_heap_tear_down(struct raft_heap *h);
 
 #endif /* TEST_HEAP_H */

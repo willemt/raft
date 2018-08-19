@@ -25,6 +25,7 @@ lib_LTLIBRARIES += libraft.la
 libraft_la_LDFLAGS = -version-info 0:7:0
 libraft_la_SOURCES = \
   src/server.c \
+  src/heap.c \
   src/raft_log.c \
   src/raft_node.c \
   src/raft_server.c \
