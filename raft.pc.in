@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: raft
+Description: C implementation of the Raft Consensus protocol
+Version:  @PACKAGE_VERSION@
+Libs: -L${libdir} -lraft
+Cflags: -I${includedir}

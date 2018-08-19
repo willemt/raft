@@ -61,7 +61,7 @@ void raft_randomize_election_timeout(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    /* [election_timeout, 2 * election_timeout) */
+    /* [election_timeout, 2 * election_timeout) (§9.3) */
     me->election_timeout_rand = me->election_timeout + rand() % me->election_timeout;
     __log(me_, NULL, "randomize election timeout to %d", me->election_timeout_rand);
 }
@@ -102,7 +102,7 @@ void raft_set_callbacks(raft_server_t* me_, raft_cbs_t* funcs, void* udata)
     log_set_callbacks(me->log, &me->cb, me_);
 }
 
-void raft_free(raft_server_t* me_)
+void raft_free_(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -742,6 +742,13 @@ int raft_recv_entry(raft_server_t* me_,
     int e = raft_append_entry(me_, ety);
     if (0 != e)
         return e;
+
+    /* Reset the heartbeat timer: for a full request_timeout period we'll be
+     * good and we won't need to contact followers again, since this was not an
+     * idle period ("Upon election: send initial empty AppendEntries RPCs
+     * (heartbeat) to each server; repeat during idle periods to prevent
+     * election timeouts"). */
+    me->timeout_elapsed = 0;
 
     for (i = 0; i < me->num_nodes; i++)
     {

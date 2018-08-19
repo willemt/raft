@@ -1,0 +1,7 @@
+BasedOnStyle: Chromium
+BreakBeforeBraces: Custom
+BraceWrapping:
+ AfterFunction: true
+ AfterStruct: true
+IndentWidth: 4
+PointerAlignment: Right
