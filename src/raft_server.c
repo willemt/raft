@@ -357,11 +357,11 @@ int raft_recv_appendentries_response(raft_server_t* me_,
             int i, votes = 1;
             for (i = 0; i < me->num_nodes; i++)
             {
-                raft_node_t* node = me->nodes[i];
-                if (me->node != node &&
-                    raft_node_is_active(node) &&
-                    raft_node_is_voting(node) &&
-                    point <= raft_node_get_match_idx(node))
+                raft_node_t* tmpnode = me->nodes[i];
+                if (me->node != tmpnode &&
+                    raft_node_is_active(tmpnode) &&
+                    raft_node_is_voting(tmpnode) &&
+                    point <= raft_node_get_match_idx(tmpnode))
                 {
                     votes++;
                 }
@@ -1235,9 +1235,9 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
                     }
                     else if (!node)
                     {
-                        raft_node_t* node = raft_add_non_voting_node(
+                        raft_node_t* tmpnode = raft_add_non_voting_node(
                                                 me_, NULL, node_id, is_self);
-                        assert(node);
+                        assert(tmpnode);
                     }
                 }
                 break;
