@@ -64,7 +64,7 @@ static int __log_pop_failing(
     return -1;
 }
 
-raft_cbs_t funcs = {
+raft_cbs_t g_funcs = {
     .log_pop = __log_pop,
     .log_get_node_id = __logentry_get_node_id
 };
@@ -79,7 +79,7 @@ void* __set_up()
 {
     void* queue = llqueue_new();
     void *r = raft_new();
-    raft_set_callbacks(r, &funcs, queue);
+    raft_set_callbacks(r, &g_funcs, queue);
     return r;
 }
 
@@ -440,7 +440,7 @@ void TestLog_front_pushes_across_boundary(CuTest * tc)
     e3.id = 3;
 
     l = log_alloc(1);
-    log_set_callbacks(l, &funcs, r);
+    log_set_callbacks(l, &g_funcs, r);
 
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     CuAssertIntEquals(tc, 0, log_poll(l, 1));
