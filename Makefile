@@ -2,9 +2,10 @@ CONTRIB_DIR = .
 TEST_DIR = ./tests
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 VPATH = src
+BUILDDIR ?= .
 
-GCOV_OUTPUT = *.gcda *.gcno *.gcov 
-GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
+GCOV_OUTPUT = $(BUILDDIR)/*.gcda $(BUILDDIR)/*.gcno $(BUILDDIR)/*.gcov
+GCOV_CCFLAGS ?= -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
 	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
@@ -25,9 +26,15 @@ SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
-OBJECTS = raft_server.o raft_server_properties.o raft_node.o raft_log.o
+OBJECTS = $(BUILDDIR)/raft_server.o $(BUILDDIR)/raft_server_properties.o $(BUILDDIR)/raft_node.o $(BUILDDIR)/raft_log.o
 
 all: static shared
+
+$(BUILDDIR):
+	mkdir -p $@
+
+$(BUILDDIR)/%.o: %.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
@@ -45,19 +52,21 @@ $(TEST_DIR)/main_test.c:
 
 .PHONY: shared
 shared: $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) $(CFLAGS) -fPIC $(SHAREDFLAGS) -o libraft.$(SHAREDEXT)
+	$(CC) $(OBJECTS) $(LDFLAGS) $(CFLAGS) -fPIC $(SHAREDFLAGS) -o $(BUILDDIR)/libraft.$(SHAREDEXT)
 
 .PHONY: static
 static: $(OBJECTS)
-	ar -r libraft.a $(OBJECTS)
+	ar -r $(BUILDDIR)/libraft.a $(OBJECTS)
 
 tests_main: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_snapshotting.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $(BUILDDIR)/$@ $^
 
 .PHONY: tests
 tests: tests_main
 	./tests_main
-	gcov raft_server.c
+	if [ -n "$(GCOV_CCFLAGS)" ]; then \
+	    gcov raft_server.c;           \
+	fi
 
 .PHONY: fuzzer_tests
 fuzzer_tests:
@@ -76,7 +85,7 @@ do_infer:
 	infer -- make static
 
 clean:
-	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
-	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
-	if [ -f libraft.a ]; then rm libraft.a; fi;\
-	if [ -f tests_main ]; then rm tests_main; fi;
+	@rm -f $(TEST_DIR)/main_test.c $(BUILDDIR)/*.o $(GCOV_OUTPUT); \
+	if [ -f "$(BUILDDIR)/libraft.$(SHAREDEXT)" ]; then rm $(BUILDDIR)/libraft.$(SHAREDEXT); fi;\
+	if [ -f $(BUILDDIR)/libraft.a ]; then rm $(BUILDDIR)/libraft.a; fi;\
+	if [ -f $(BUILDDIR)/tests_main ]; then rm $(BUILDDIR)/tests_main; fi;
