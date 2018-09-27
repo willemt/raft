@@ -824,7 +824,7 @@ int raft_apply_entry(raft_server_t* me_)
         return -1;
 
     __log(me_, NULL, "applying log: %d, id: %d size: %d",
-          me->last_applied_idx, ety->id, ety->data.len);
+          log_idx, ety->id, ety->data.len);
 
     me->last_applied_idx++;
     if (me->cb.applylog)
