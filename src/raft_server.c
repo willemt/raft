@@ -311,7 +311,8 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         raft_index_t next_idx = raft_node_get_next_idx(node);
         assert(0 < next_idx);
         /* Stale response -- ignore */
-        assert(match_idx <= next_idx - 1);
+        if (r->current_idx < match_idx)
+            return 0;
         if (r->current_idx < next_idx - 1)
             raft_node_set_next_idx(node, min(r->current_idx + 1, raft_get_current_idx(me_)));
         else
