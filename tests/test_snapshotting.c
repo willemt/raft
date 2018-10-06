@@ -66,6 +66,16 @@ static int __raft_send_appendentries_capture(raft_server_t* raft,
     return 0;
 }
 
+static int __raft_send_snapshot_increment(raft_server_t* raft,
+        void* udata,
+        raft_node_t* node)
+{
+    int *counter = udata;
+
+    (*counter)++;
+    return 0;
+}
+
 /* static raft_cbs_t generic_funcs = { */
 /*     .persist_term = __raft_persist_term, */
 /*     .persist_vote = __raft_persist_vote, */
@@ -733,5 +743,75 @@ void TestRaft_cancel_snapshot_restores_state(CuTest* tc)
     /* snapshot no longer in progress, index must not have changed */
     CuAssertIntEquals(tc, 0, raft_snapshot_is_in_progress(r));
     CuAssertIntEquals(tc, 2, raft_get_snapshot_last_idx(r));
+}
+
+void TestRaft_leader_sends_snapshot_if_log_was_compacted(CuTest* tc)
+{
+    raft_cbs_t funcs = {
+        .send_snapshot = __raft_send_snapshot_increment,
+        .send_appendentries = __raft_send_appendentries
+    };
+
+    int send_snapshot_count = 0;
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, &send_snapshot_count);
+
+    raft_node_t* node;
+    raft_add_node(r, NULL, 1, 1);
+    node = raft_add_node(r, NULL, 2, 0);
+    raft_add_node(r, NULL, 3, 0);
+
+    raft_set_state(r, RAFT_STATE_LEADER);
+    raft_set_current_term(r, 1);
+
+    /* entry 1 */
+    char *str = "aaa";
+    raft_entry_t ety = {};
+    ety.term = 1;
+    ety.id = 1;
+    ety.data.buf = str;
+    ety.data.len = 3;
+    raft_append_entry(r, &ety);
+
+    /* entry 2 */
+    ety.term = 1;
+    ety.id = 2;
+    ety.data.buf = str;
+    ety.data.len = 3;
+    raft_append_entry(r, &ety);
+
+    /* entry 3 */
+    ety.term = 1;
+    ety.id = 3;
+    ety.data.buf = str;
+    ety.data.len = 3;
+    raft_append_entry(r, &ety);
+    CuAssertIntEquals(tc, 3, raft_get_current_idx(r));
+
+    /* compact entry 1 & 2 */
+    raft_set_commit_idx(r, 2);
+    CuAssertIntEquals(tc, 0, raft_begin_snapshot(r, 0));
+    CuAssertIntEquals(tc, 0, raft_end_snapshot(r));
+    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
+
+    /* at this point a snapshot should have been sent; we'll continue
+     * assuming the node was not available to get it.
+     */
+    CuAssertIntEquals(tc, 2, send_snapshot_count);
+    send_snapshot_count = 0;
+
+    /* node wants an entry that was compacted */
+    raft_node_set_match_idx(node, 1);
+    raft_node_set_next_idx(node, 2);
+
+    msg_appendentries_response_t aer;
+    aer.term = 1;
+    aer.success = 0;
+    aer.current_idx = 1;
+    aer.first_idx = 4;
+
+    raft_recv_appendentries_response(r, node, &aer);
+    CuAssertIntEquals(tc, 1, send_snapshot_count);
 }
 
