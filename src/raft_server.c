@@ -833,8 +833,11 @@ int raft_apply_entry(raft_server_t* me_)
             return RAFT_ERR_SHUTDOWN;
     }
 
-    /* voting cfg change is now complete */
-    if (log_idx == me->voting_cfg_change_log_idx)
+    /* voting cfg change is now complete.
+     * TODO: there seem to be a possible off-by-one bug hidden here, requiring
+     * checking log_idx >= voting_cfg_change_log_idx rather than plain ==.
+     */
+    if (log_idx >= me->voting_cfg_change_log_idx)
         me->voting_cfg_change_log_idx = -1;
 
     if (!raft_entry_is_cfg_change(ety))
