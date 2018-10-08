@@ -682,7 +682,10 @@ void TestRaft_leader_sends_appendentries_with_correct_prev_log_idx_when_snapshot
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
 
-    raft_node_t* p = raft_get_node_from_idx(r, 1);
+    /* reload node configuration; we expect the app to decode it from
+     * the loaded snapshot.
+     */
+    raft_node_t* p = raft_add_node(r, NULL, 2, 0);
     CuAssertTrue(tc, NULL != p);
     raft_node_set_next_idx(p, 4);
 
