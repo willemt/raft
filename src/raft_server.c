@@ -125,6 +125,7 @@ void raft_clear(raft_server_t* me_)
     me->last_applied_idx = 0;
     me->num_nodes = 0;
     me->node = NULL;
+    log_clear_entries(me->log);
     log_clear(me->log);
 }
 
