@@ -43,7 +43,7 @@ clinkedlistqueue:
 
 download-contrib: clinkedlistqueue
 
-$(TEST_DIR)/main_test.c:
+$(TEST_DIR)/main_test.c: $(TEST_DIR)/test_*.c
 	if test -d $(LLQUEUE_DIR); \
 	then echo have contribs; \
 	else make download-contrib; \
@@ -58,7 +58,7 @@ shared: $(OBJECTS)
 static: $(OBJECTS)
 	ar -r $(BUILDDIR)/libraft.a $(OBJECTS)
 
-tests_main: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_snapshotting.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_main: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_*.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CFLAGS) -o $(BUILDDIR)/$@ $^
 
 .PHONY: tests
