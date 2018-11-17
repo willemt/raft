@@ -407,6 +407,12 @@ typedef struct
      *  time to free the memory. */
     func_logentry_event_f log_pop;
 
+    /** Callback called for every existing log entry when clearing the log.
+     * If memory was malloc'd in log_offer and the entry doesn't get a chance
+     * to go through log_poll or log_pop, this is the last chance to free it.
+     */
+    func_logentry_event_f log_clear;
+
     /** Callback for determining which node this configuration log entry
      * affects. This call only applies to configuration change log entries.
      * @return the node ID of the node */

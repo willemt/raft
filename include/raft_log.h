@@ -15,6 +15,8 @@ void log_free(log_t* me_);
 
 void log_clear(log_t* me_);
 
+void log_clear_entries(log_t* me_);
+
 /**
  * Add entry to log.
  * Don't add entry if we've already added this entry (based off ID)

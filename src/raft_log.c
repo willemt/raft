@@ -79,6 +79,7 @@ int log_load_from_snapshot(log_t *me_, raft_index_t idx, raft_term_t term)
 {
     log_private_t* me = (log_private_t*)me_;
 
+    log_clear_entries(me_);
     log_clear(me_);
     me->base = idx;
 
@@ -120,6 +121,21 @@ void log_clear(log_t* me_)
     me->back = 0;
     me->front = 0;
     me->base = 0;
+}
+
+void log_clear_entries(log_t* me_)
+{
+    log_private_t* me = (log_private_t*)me_;
+    raft_index_t i;
+
+    if (!me->count || !me->cb || !me->cb->log_clear)
+        return;
+
+    for (i = me->base; i <= me->base + me->count; i++)
+    {
+        me->cb->log_clear(me->raft, raft_get_udata(me->raft),
+                          &me->entries[(me->front + i - me->base) % me->size], i);
+    }
 }
 
 /** TODO: rename log_append */
