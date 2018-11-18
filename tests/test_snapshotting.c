@@ -540,6 +540,10 @@ void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTe
     CuAssertIntEquals(tc, 0, raft_end_load_snapshot(r));
     CuAssertIntEquals(tc, 3, raft_get_current_idx(r));
 
+    /* reconfigure nodes based on config data "embedded in snapshot" */
+    node = raft_add_node(r, NULL, 2, 0);
+    raft_add_node(r, NULL, 3, 0);
+
     /* node wants an entry that was compacted */
     raft_node_set_next_idx(node, raft_get_current_idx(r));
 
