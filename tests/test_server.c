@@ -129,6 +129,35 @@ void TestRaft_server_get_my_node(CuTest * tc)
     CuAssertTrue(tc, me == raft_get_my_node(r));
 }
 
+void TestRaft_server_can_run_with_empty_configuration(CuTest * tc)
+{
+    void *r = raft_new();
+    CuAssertIntEquals(tc, 0, raft_periodic(r, 1));
+
+    msg_entry_response_t mr;
+    msg_entry_t e[2] = { 0 };
+    e[0].id = 1;
+    e[1].id = 2;
+
+    CuAssertTrue(tc, RAFT_ERR_NOT_LEADER == raft_recv_entry(r, &e[0], &mr));
+
+    msg_appendentries_t ae = { 0 };
+    msg_appendentries_response_t aer;
+    ae.term = 1;
+    ae.prev_log_idx = 0;
+    ae.prev_log_term = 1;
+
+    ae.entries = e;
+    ae.n_entries = 2;
+    raft_recv_appendentries(r, NULL, &ae, &aer);
+
+    CuAssertTrue(tc, 1 == aer.success);
+    CuAssertTrue(tc, 2 == raft_get_log_count(r));
+
+    CuAssertIntEquals(tc, 0, raft_periodic(r, 1));
+    CuAssertTrue(tc, 2 == raft_get_current_idx(r));
+}
+
 void TestRaft_server_idx_starts_at_1(CuTest * tc)
 {
     void *r = raft_new();
@@ -2909,7 +2938,7 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_for_nod
     raft_add_node(r, NULL, 2, 0);
     raft_add_node(r, NULL, 3, 0);
     raft_add_node(r, NULL, 4, 0);
-    raft_node_t* node = raft_add_node(r, NULL, 5, 0);
+    raft_node_t* node = raft_add_non_voting_node(r, NULL, 5, 0);
 
     int has_sufficient_logs_flag = 0;
     raft_set_callbacks(r, &funcs, &has_sufficient_logs_flag);
@@ -2941,7 +2970,6 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_for_nod
     aer.current_idx = 2;
     aer.first_idx = 1;
 
-    raft_node_set_voting(node, 0);
     raft_recv_appendentries_response(r, node, &aer);
     CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
 

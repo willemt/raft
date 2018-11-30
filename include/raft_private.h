@@ -112,11 +112,21 @@ raft_node_t* raft_node_new(void* udata, int id);
 
 void raft_node_free(raft_node_t* me_);
 
+void raft_node_set_server(raft_node_t* me_, raft_server_t *server);
+
 void raft_node_set_next_idx(raft_node_t* node, int nextIdx);
 
 void raft_node_set_match_idx(raft_node_t* node, int matchIdx);
 
 int raft_node_get_match_idx(raft_node_t* me_);
+
+void raft_node_set_offered_idx(raft_node_t* me_, int offeredIdx);
+
+int raft_node_get_offered_idx(raft_node_t* me_);
+
+void raft_node_set_applied_idx(raft_node_t* me_, int appliedIdx);
+
+int raft_node_get_applied_idx(raft_node_t* me_);
 
 void raft_node_vote_for_me(raft_node_t* me_, const int vote);
 
@@ -127,10 +137,10 @@ void raft_node_set_has_sufficient_logs(raft_node_t* me_);
 int raft_votes_is_majority(const int nnodes, const int nvotes);
 
 void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
-                    const int n_entries, const int idx);
+                    int n_entries, int idx);
 
 void raft_pop_log(raft_server_t* me_, raft_entry_t* entries,
-                    const int n_entries, const int idx);
+                  int n_entries, int idx);
 
 int raft_get_num_snapshottable_logs(raft_server_t* me_);
 
