@@ -33,7 +33,7 @@ all: static shared
 $(BUILDDIR):
 	mkdir -p $@
 
-$(BUILDDIR)/%.o: %.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: %.c $(wildcard include/*.h) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clinkedlistqueue:
