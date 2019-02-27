@@ -83,6 +83,14 @@ static int __raft_log_offer(raft_server_t* raft,
         int entry_idx,
         int *n_entries)
 {
+    int i;
+    for (i = 0; i < *n_entries; ++i)
+    {
+        raft_entry_t *ety = &entries[i];
+
+        if (ety->type == RAFT_LOGTYPE_ADD_NONVOTING_NODE)
+            raft_add_non_voting_node(raft, NULL, atoi(ety->data.buf), false);
+    }
     return 0;
 }
 
