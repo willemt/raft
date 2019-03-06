@@ -2622,7 +2622,7 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
 
-    raft_entry_t etys[3];
+    raft_entry_t etys[3] = {};
     int i;
     for (i = 0; i < 3; i++)
     {
