@@ -194,5 +194,5 @@ int raft_node_is_addition_committed(raft_node_t* me_)
 int raft_node_get_id(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
-    return me->id;
+    return (NULL == me) ? -1 : me->id;
 }

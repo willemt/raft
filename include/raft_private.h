@@ -52,16 +52,16 @@ typedef struct {
     int election_timeout_rand;
     int request_timeout;
 
-    /* what this node thinks is the node ID of the current leader, or NULL if
-     * there isn't a known current leader. */
-    raft_node_t* current_leader;
+    /* what this node thinks is the node ID of the current leader,
+     * or -1 if there isn't a known current leader. */
+    int leader_id;
+
+    /* my node ID */
+    int node_id;
 
     /* callbacks */
     raft_cbs_t cb;
     void* udata;
-
-    /* my node ID */
-    raft_node_t* node;
 
     /* the log which has a voting cfg change, otherwise -1 */
     int voting_cfg_change_log_idx;
@@ -107,6 +107,10 @@ void raft_set_last_applied_idx(raft_server_t* me, int idx);
 void raft_set_state(raft_server_t* me_, int state);
 
 int raft_get_state(raft_server_t* me_);
+
+/**
+ * @return 1 if node ID matches the server; 0 otherwise */
+int raft_is_self(raft_server_t* me_, raft_node_t* node);
 
 raft_node_t* raft_node_new(void* udata, int id);
 

@@ -35,9 +35,7 @@ void raft_set_request_timeout(raft_server_t* me_, int millisec)
 int raft_get_nodeid(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    if (!me->node)
-        return -1;
-    return raft_node_get_id(me->node);
+    return me->node_id;
 }
 
 int raft_get_election_timeout(raft_server_t* me_)
@@ -140,7 +138,7 @@ void raft_set_state(raft_server_t* me_, int state)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     /* if became the leader, then update the current leader entry */
     if (state == RAFT_STATE_LEADER)
-        me->current_leader = me->node;
+        me->leader_id = me->node_id;
     me->state = state;
 }
 
@@ -164,13 +162,7 @@ raft_node_t* raft_get_node(raft_server_t *me_, int nodeid)
 raft_node_t* raft_get_my_node(raft_server_t *me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
-    int i;
-
-    for (i = 0; i < me->num_nodes; i++)
-        if (raft_get_nodeid(me_) == raft_node_get_id(me->nodes[i]))
-            return me->nodes[i];
-
-    return NULL;
+    return raft_get_node(me_, me->node_id);
 }
 
 raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const int idx)
@@ -182,15 +174,13 @@ raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const int idx)
 int raft_get_current_leader(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
-    if (me->current_leader)
-        return raft_node_get_id(me->current_leader);
-    return -1;
+    return me->leader_id;
 }
 
 raft_node_t* raft_get_current_leader_node(raft_server_t* me_)
 {
     raft_server_private_t* me = (void*)me_;
-    return me->current_leader;
+    return raft_get_node(me_, me->leader_id);
 }
 
 void* raft_get_udata(raft_server_t* me_)
@@ -211,6 +201,12 @@ int raft_is_leader(raft_server_t* me_)
 int raft_is_candidate(raft_server_t* me_)
 {
     return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
+}
+
+int raft_is_self(raft_server_t* me_, raft_node_t* node)
+{
+    raft_server_private_t* me = (void*)me_;
+    return (node && raft_node_get_id(node) == me->node_id);
 }
 
 int raft_get_last_log_term(raft_server_t* me_)

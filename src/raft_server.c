@@ -71,7 +71,7 @@ raft_server_t* raft_new()
     }
     me->voting_cfg_change_log_idx = -1;
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
-    me->current_leader = NULL;
+    me->leader_id = -1;
 
     me->snapshot_in_progress = 0;
     raft_set_snapshot_metadata((raft_server_t*)me, 0, 0);
@@ -106,11 +106,11 @@ void raft_clear(raft_server_t* me_)
     raft_randomize_election_timeout(me_);
     me->voting_cfg_change_log_idx = -1;
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
-    me->current_leader = NULL;
+    me->leader_id = -1;
     me->commit_idx = 0;
     me->last_applied_idx = 0;
     me->num_nodes = 0;
-    me->node = NULL;
+    me->node_id = -1;
     log_clear(me->log);
 }
 
@@ -150,7 +150,7 @@ void raft_become_leader(raft_server_t* me_)
     {
         raft_node_t* node = me->nodes[i];
 
-        if (me->node == node || !raft_node_is_active(node))
+        if (raft_is_self(me_, node) || !raft_node_is_active(node))
             continue;
 
         raft_node_set_next_idx(node, raft_get_current_idx(me_) + 1);
@@ -171,8 +171,8 @@ int raft_become_candidate(raft_server_t* me_)
         return e;
     for (i = 0; i < me->num_nodes; i++)
         raft_node_vote_for_me(me->nodes[i], 0);
-    raft_vote(me_, me->node);
-    me->current_leader = NULL;
+    raft_vote_for_nodeid(me_, me->node_id);
+    me->leader_id = -1;
     raft_set_state(me_, RAFT_STATE_CANDIDATE);
 
     raft_randomize_election_timeout(me_);
@@ -182,7 +182,7 @@ int raft_become_candidate(raft_server_t* me_)
     {
         raft_node_t* node = me->nodes[i];
 
-        if (me->node != node &&
+        if (!raft_is_self(me_, node) &&
             raft_node_is_active(node) &&
             raft_node_is_voting(node))
         {
@@ -308,7 +308,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         if (0 != e)
             return e;
         raft_become_follower(me_);
-        me->current_leader = NULL;
+        me->leader_id = -1;
         return 0;
     }
     else if (me->current_term != r->term)
@@ -370,7 +370,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
             for (i = 0; i < me->num_nodes; i++)
             {
                 raft_node_t* tmpnode = me->nodes[i];
-                if (me->node != tmpnode &&
+                if (!raft_is_self(me_, tmpnode) &&
                     raft_node_is_active(tmpnode) &&
                     raft_node_is_voting(tmpnode) &&
                     point <= raft_node_get_match_idx(tmpnode))
@@ -434,7 +434,7 @@ int raft_recv_appendentries(
     }
 
     /* update current leader because ae->term is up to date */
-    me->current_leader = node;
+    me->leader_id = raft_node_get_id(node);
 
     me->timeout_elapsed = 0;
 
@@ -587,7 +587,7 @@ int raft_recv_requestvote(raft_server_t* me_,
             goto done;
         }
         raft_become_follower(me_);
-        me->current_leader = NULL;
+        me->leader_id = -1;
     }
 
     if (__should_grant_vote(me, vr))
@@ -603,7 +603,7 @@ int raft_recv_requestvote(raft_server_t* me_,
             r->vote_granted = 0;
 
         /* there must be in an election. */
-        me->current_leader = NULL;
+        me->leader_id = -1;
 
         me->timeout_elapsed = 0;
     }
@@ -661,7 +661,7 @@ int raft_recv_requestvote_response(raft_server_t* me_,
         if (0 != e)
             return e;
         raft_become_follower(me_);
-        me->current_leader = NULL;
+        me->leader_id = -1;
         return 0;
     }
     else if (raft_get_current_term(me_) != r->term)
@@ -730,7 +730,7 @@ int raft_recv_installsnapshot(raft_server_t* me_,
     if (!raft_is_follower(me_))
         raft_become_follower(me_);
 
-    me->current_leader = node;
+    me->leader_id = raft_node_get_id(node);
     me->timeout_elapsed = 0;
 
     if (is->last_idx <= raft_get_commit_idx(me_))
@@ -778,7 +778,7 @@ int raft_recv_installsnapshot_response(raft_server_t* me_,
         if (0 != e)
             return e;
         raft_become_follower(me_);
-        me->current_leader = NULL;
+        me->leader_id = -1;
         return 0;
     }
     else if (me->current_term != r->term)
@@ -841,8 +841,7 @@ int raft_recv_entry(raft_server_t* me_,
     {
         raft_node_t* node = me->nodes[i];
 
-        if (me->node == node ||
-            !node ||
+        if (!node || raft_is_self(me_, node) ||
             !raft_node_is_active(node) ||
             !raft_node_is_voting(node))
             continue;
@@ -875,7 +874,7 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     int e = 0;
 
     assert(node);
-    assert(node != me->node);
+    assert(!raft_is_self(me_, node));
 
     __log(me_, node, "sending requestvote to: %d", raft_node_get_id(node));
 
@@ -932,7 +931,7 @@ int raft_apply_entry(raft_server_t* me_)
 
     int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, log_idx);
     raft_node_t* node = raft_get_node(me_, node_id);
-    assert(node);
+    assert(node || ety->type == RAFT_LOGTYPE_REMOVE_NODE);
 
     switch (ety->type) {
         case RAFT_LOGTYPE_ADD_NODE:
@@ -943,13 +942,16 @@ int raft_apply_entry(raft_server_t* me_)
             break;
         case RAFT_LOGTYPE_REMOVE_NODE:
             /* Do not remove node if there are pending entries that affect it */
-            if (raft_node_get_offered_idx(node) == log_idx)
+            if (node && raft_node_get_offered_idx(node) == log_idx)
                 raft_remove_node(me_, node);
             break;
     }
-    raft_node_set_applied_idx(node, log_idx);
-    if (raft_node_get_offered_idx(node) == log_idx)
-        raft_node_set_offered_idx(node, -1);
+    if (node)
+    {
+        raft_node_set_applied_idx(node, log_idx);
+        if (raft_node_get_offered_idx(node) == log_idx)
+            raft_node_set_offered_idx(node, -1);
+    }
 
     return 0;
 }
@@ -985,7 +987,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     assert(node);
-    assert(node != me->node);
+    assert(!raft_is_self(me_, node));
 
     if (!(me->cb.send_appendentries))
         return -1;
@@ -1026,7 +1028,8 @@ int raft_send_appendentries_all(raft_server_t* me_)
     me->timeout_elapsed = 0;
     for (i = 0; i < me->num_nodes; i++)
     {
-        if (me->node == me->nodes[i] || !raft_node_is_active(me->nodes[i]))
+        if (raft_is_self(me_, me->nodes[i]) ||
+            !raft_node_is_active(me->nodes[i]))
             continue;
 
         e = raft_send_appendentries(me_, me->nodes[i]);
@@ -1060,7 +1063,7 @@ raft_node_t* raft_add_node_internal(raft_server_t* me_, raft_entry_t *ety, void*
     me->nodes = p;
     me->nodes[me->num_nodes - 1] = node;
     if (is_self)
-        me->node = me->nodes[me->num_nodes - 1];
+        me->node_id = id;
 
     node = me->nodes[me->num_nodes - 1];
 
@@ -1125,7 +1128,7 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
 
     for (i = 0, votes = 0; i < me->num_nodes; i++)
     {
-        if (me->node != me->nodes[i] &&
+        if (!raft_is_self(me_, me->nodes[i]) &&
             raft_node_is_active(me->nodes[i]) &&
             raft_node_is_voting(me->nodes[i]) &&
             raft_node_has_vote_for_me(me->nodes[i]))
@@ -1241,8 +1244,9 @@ void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
         int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_),
                                              ety, idx + i);
         raft_node_t* node = raft_get_node(me_, node_id);
-        assert(node);
-        raft_node_set_offered_idx(node, idx + i);
+        assert(node || ety->type == RAFT_LOGTYPE_REMOVE_NODE);
+        if (node)
+            raft_node_set_offered_idx(node, idx + i);
     }
 }
 
@@ -1422,7 +1426,9 @@ static void raft_reset_node_indices(raft_server_t *me_, int max_idx)
             continue;
         int node_id = me->cb.log_get_node_id(me_, raft_get_udata(me_), ety, idx);
         raft_node_t* node = raft_get_node(me_, node_id);
-        assert(node);
+        assert(node || ety->type == RAFT_LOGTYPE_REMOVE_NODE);
+        if (!node)
+            continue;
         int off_idx = raft_node_get_offered_idx(node);
         if (off_idx > max_idx || off_idx < idx)
         {
