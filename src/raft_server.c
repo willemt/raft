@@ -107,6 +107,8 @@ void raft_free(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     log_free(me->log);
+    if (me->nodes)
+        __raft_free(me->nodes);
     __raft_free(me_);
 }
 
