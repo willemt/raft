@@ -1,0 +1,52 @@
+%global commit0 @GIT_SHA1@
+%global shortcommit0 %%(c=%%{commit0}; echo ${c:0:7})
+
+%bcond_with use_release
+
+Name:		raft
+Version:	@PACKAGE_VERSION@
+Release:	1.git.@GIT_NUM_COMMITS@.%{shortcommit0}%{?dist}
+
+Summary:	C implementation of the Raft Consensus protocol, BSD licensed
+
+License:	BSD
+URL:		https://github.com/daos-stack/%{name}
+%if %{with use_release}
+Source0:	https://github.com/daos-stack/%{name}/releases/download/%{shortcommit0}/%{name}-%{shortcommit0}.tar.bz2
+%else
+Source0:	https://github.com/willemt/%{name}/archive/v%{version}.tar.gz
+%endif
+
+%description
+C implementation of the Raft consensus protocol, BSD licensed.
+
+%package devel
+Summary:	Development libs for Raft.
+
+%description devel
+Development libs for Raft.
+
+%prep
+%setup -q
+
+%build
+%make_build
+
+%install
+mkdir -p %{buildroot}/%{_libdir}
+cp -a libraft.so libraft.a %{buildroot}/%{_libdir}
+mkdir -p %{buildroot}/%{_includedir}
+cp -a include/* %{buildroot}/%{_includedir}
+
+%files
+%doc README.rst
+%license LICENSE
+
+%files devel
+%{_libdir}/*
+%{_includedir}/*
+
+
+%changelog
+* Mon Apr 08 2019 Brian J. Murrell <brian.murrell@intel> -0.5.0-1
+- initial package
