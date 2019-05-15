@@ -1,11 +1,19 @@
-%global commit0 @GIT_SHA1@
+# doesn't seem to work on sles 12.3: %{!?make_build:%define make_build %{__make} %{?_smp_mflags}}
+# so...
+%if 0%{?suse_version} <= 1320
+%define make_build  %{__make} %{?_smp_mflags}
+%endif
+
+%{!?commit0:%global commit0 @GIT_SHA1@}
 %global shortcommit0 %%(c=%%{commit0}; echo ${c:0:7})
+%{!?package_version:%global package_version @PACKAGE_VERSION@}
+%{!?num_commits:%global num_commits @GIT_NUM_COMMITS@}
 
 %bcond_with use_release
 
 Name:		raft
-Version:	@PACKAGE_VERSION@
-Release:	1.git.@GIT_NUM_COMMITS@.%{shortcommit0}%{?dist}
+Version:	%{package_version}
+Release:	1.git.%{num_commits}.%{shortcommit0}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
 

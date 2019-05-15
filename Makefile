@@ -28,24 +28,33 @@ endif
 
 OBJECTS = $(BUILDDIR)/raft_server.o $(BUILDDIR)/raft_server_properties.o $(BUILDDIR)/raft_node.o $(BUILDDIR)/raft_log.o
 
-NAME            := raft
-VERSION         := 0.5.0
-RELEASE         := 1
+NAME    := raft
+SRC_EXT := gz
+SOURCE   = v$(VERSION).tar.$(SRC_EXT)
 GIT_SHA1        := $(shell git rev-parse HEAD)
 GIT_SHA1_SHORT  := $(shell git describe --always --abbrev=7)
 GIT_NUM_COMMITS := $(shell git rev-list HEAD --count)
-DIST            := $(shell rpm --eval %{dist})
-SRPM            := _topdir/SRPMS/$(NAME)-$(VERSION)-$(RELEASE).git.$(GIT_NUM_COMMITS).$(GIT_SHA1_SHORT)$(DIST).src.rpm
-RPMS            := _topdir/RPMS/x86_64/$(NAME)-$(VERSION)-$(RELEASE)$(DIST).x86_64.rpm           \
-	           _topdir/RPMS/x86_64/$(NAME)-devel-$(VERSION)-$(RELEASE)$(DIST).x86_64.rpm     \
-	           _topdir/RPMS/x86_64/$(NAME)-debuginfo-$(VERSION)-$(RELEASE)$(DIST).x86_64.rpm
-SPEC            := $(NAME).spec
-SRC_EXT         := gz
-#SOURCE0         := $(NAME)-$(VERSION).tar.$(SRC_EXT)
-#SOURCES         := _topdir/SOURCES/$(NAME)-$(VERSION).tar.$(SRC_EXT)
-SOURCE0         := v$(VERSION).tar.$(SRC_EXT)
-SOURCES         := _topdir/SOURCES/v$(VERSION).tar.$(SRC_EXT)
-TARGETS         := $(RPMS) $(SRPM)
+
+COMMON_RPM_ARGS := --define "%_topdir $$PWD/_topdir"
+DIST    := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
+ifeq ($(DIST),)
+SED_EXPR := 1p
+else
+SED_EXPR := 1s/$(DIST)//p
+endif
+# TODO: Figure out how to restructure so as to not need a raft.spec.in
+#VERSION  = $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{version}\n' $(NAME).spec | sed -n '1p')
+#RELEASE  = $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{release}\n' $(NAME).spec | sed -n '$(SED_EXPR)')
+VERSION := 0.5.0
+RELEASE := 1
+SRPM    := _topdir/SRPMS/$(NAME)-$(VERSION)-$(RELEASE).git.$(GIT_NUM_COMMITS).$(GIT_SHA1_SHORT)$(DIST).src.rpm
+#RPMS     = $(addsuffix .rpm,$(addprefix _topdir/RPMS/x86_64/,$(shell rpm --specfile $(NAME).spec)))
+RPMS    := _topdir/RPMS/x86_64/$(NAME)-$(VERSION)-$(RELEASE)$(DIST).x86_64.rpm           \
+	   _topdir/RPMS/x86_64/$(NAME)-devel-$(VERSION)-$(RELEASE)$(DIST).x86_64.rpm     \
+	   _topdir/RPMS/x86_64/$(NAME)-debuginfo-$(VERSION)-$(RELEASE)$(DIST).x86_64.rpm
+SPEC    := $(NAME).spec
+SOURCES := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE)) $(PATCHES))
+TARGETS := $(RPMS) $(SRPM)
 
 all: static shared
 
@@ -119,7 +128,7 @@ $(NAME)-$(VERSION).tar:
 v$(VERSION).tar: $(NAME)-$(VERSION).tar
 	mv $< $@
 
-$(NAME).spec: $(NAME).spec.in Makefile
+$(NAME).spec: $(NAME).spec.in Makefile force
 	sed -e 's/@PACKAGE_VERSION@/$(VERSION)/g'                   \
 	    -e 's/@GIT_SHA1@/$(GIT_SHA1)/g'                         \
 	    -e 's/@GIT_SHA1_SHORT@/$(GIT_SHA1_SHORT)/g'             \
@@ -136,10 +145,10 @@ _topdir/SOURCES/%: % | _topdir/SOURCES/
 # the "rpm" for "%" to effectively turn this into a multiple matching
 # target pattern rule
 $(subst rpm,%,$(RPMS)): $(SPEC) $(SOURCES)
-	rpmbuild -bb --define "%_topdir $$PWD/_topdir" $(SPEC)
+	rpmbuild -bb $(COMMON_RPM_ARGS) $(RPM_BUILD_OPTIONS) $(SPEC)
 
 $(SRPM): $(SPEC) $(SOURCES)
-	rpmbuild -bs --define "%_topdir $$PWD/_topdir" $(SPEC)
+	rpmbuild -bs $(COMMON_RPM_ARGS) $(SPEC)
 
 srpm: $(SRPM)
 
@@ -151,9 +160,27 @@ ls: $(TARGETS)
 	ls -ld $^
 
 mockbuild: $(SRPM) Makefile
-	mock $<
+	mock $(MOCK_OPTIONS) $<
 
 rpmlint: $(SPEC)
 	rpmlint $<
 
-.PHONY: srpm rpms mockbuild rpmlint FORCE
+show_git_metadata:
+	@echo $(GIT_SHA1):$(GIT_SHA1_SHORT):$(GIT_NUM_COMMITS)
+
+show_version:
+	@echo $(VERSION)
+
+show_release:
+	@echo $(RELEASE)
+
+show_rpms:
+	@echo $(RPMS)
+
+show_source:
+	@echo $(SOURCE)
+
+show_sources:
+	@echo $(SOURCES)
+
+.PHONY: srpm rpms ls mockbuild rpmlint FORCE show_version show_release show_rpms show_source show_sources force
