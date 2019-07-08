@@ -1,0 +1,30 @@
+#
+# Copyright 2019, Intel Corporation
+#
+# 'recipe' for Docker to build an RPM
+#
+
+# Pull base image
+FROM opensuse/leap:42.3
+MAINTAINER Brian J. Murrell <brian.murrell@intel.com>
+
+# use same UID as host and default value of 1000 if not specified
+ARG UID=1000
+
+# Add build user (to keep rpmbuild happy)
+ENV USER build
+ENV PASSWD build
+RUN useradd -u $UID -ms /bin/bash $USER
+RUN groupadd -g $UID $USER
+RUN echo "$USER:$PASSWD" | chpasswd
+
+# Install basic tools
+RUN zypper --non-interactive update
+# basic building
+RUN zypper --non-interactive install make rpm-build curl createrepo git    \
+                                     lsb-release autoconf automake libtool \
+                                     ca-certificates-mozilla
+
+# force an upgrade to get any newly built RPMs
+ARG CACHEBUST=1
+RUN zypper --non-interactive up
