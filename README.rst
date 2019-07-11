@@ -397,8 +397,8 @@ For this callback the user needs to remove the youngest log entry [#]_. The log 
 .. [#] The log entry at the front of the log
 .. [#] The log entry at the back of the log
 
-Receving traffic from peers
----------------------------
+Receiving traffic from peers
+----------------------------
 
 To receive ``Append Entries``, ``Append Entries response``, ``Request Vote``, and ``Request Vote response`` messages, you need to deserialize the bytes into the message's corresponding struct.
 
