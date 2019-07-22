@@ -1,0 +1,7 @@
+raft (0.5.0-1) unstable; urgency=medium
+
+  [ John Malmberg ]
+  * Upstream release
+  * Experimental build for daos-stack project
+
+ -- John Malmberg <john.e.malmberg@intel.com>  Wed, 03 Jul 2019 19:59:53 +0000
