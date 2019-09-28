@@ -1,5 +1,3 @@
-*.o
-*.gcno
-*~
-libcraft.so
-libcraft.a
+.idea/
+build/
+cmake-build-debug/
