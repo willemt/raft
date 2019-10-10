@@ -1,3 +1,11 @@
+raft (0.5.0-2) unstable; urgency=medium
+
+  [ John Malmberg ]
+  * Packaging changes
+  * Experimental build for daos-stack project
+
+ -- John Malmberg <john.e.malmberg@intel.com>  Mon, 07 Oct 2019 14:43:00 +0000
+
 raft (0.5.0-1) unstable; urgency=medium
 
   [ John Malmberg ]

@@ -6,7 +6,7 @@
 
 # Pull base image
 FROM centos:7
-MAINTAINER Brian J. Murrell <brian.murrell@intel.com>
+MAINTAINER daos-stack <daos@daos.groups.io>
 
 # use same UID as host and default value of 1000 if not specified
 ARG UID=1000
@@ -17,7 +17,7 @@ ARG UID=1000
 # Install basic tools
 RUN yum install -y epel-release
 RUN yum install -y mock make rpm-build curl createrepo rpmlint redhat-lsb-core \
-                   git
+                   git python-srpm-macros
 
 # Add build user (to keep rpmbuild happy)
 ENV USER build
@@ -30,3 +30,5 @@ RUN usermod -a -G mock $USER
 # mock in Docker needs to use the old-chroot option
 RUN grep use_nspawn || \
     echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
+
+RUN chmod g+w /etc/mock/default.cfg
