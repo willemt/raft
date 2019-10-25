@@ -7,12 +7,6 @@
 # Put site overrides (i.e. REPOSITORY_URL, DAOS_STACK_*_LOCAL_REPO) in here
 -include Makefile.local
 
-# alternate sources
-#OPENSUSE_MIRROR               ?= https://provo-mirror.opensuse.org
-#OPENSUSE_REPOS_MIRROR         ?= https://opensuse.mirror.liquidtelecom.com
-OPENSUSE_MIRROR               ?= https://download.opensuse.org
-OPENSUSE_REPOS_MIRROR         ?= $(OPENSUSE_MIRROR)
-
 ifeq ($(DEB_NAME),)
 DEB_NAME := $(NAME)
 endif
@@ -35,6 +29,30 @@ endif
 DISTRO_ID := ubuntu$(VERSION_ID)
 DISTRO_BASE = $(basename UBUNTU_$(VERSION_ID))
 VERSION_ID_STR := $(subst $(DOT),_,$(VERSION_ID))
+endif
+ifeq ($(ID),fedora)
+# a Fedora-based mock builder
+# derive the the values of:
+# VERSION_ID (i.e. 7)
+# DISTRO_ID (i.e. el7)
+# DISTRO_BASE (i.e. EL_7)
+# from the CHROOT_NAME
+ifeq ($(CHROOT_NAME),epel-7-x86_64)
+VERSION_ID  := 7
+DISTRO_ID   := el7
+DISTRO_BASE := EL_7
+endif
+ifeq ($(CHROOT_NAME),opensuse-leap-15.1-x86_64)
+VERSION_ID  := 15.1
+DISTRO_ID   := sl15.1
+DISTRO_BASE := LEAP_15
+endif
+ifeq ($(CHROOT_NAME),leap-42.3-x86_64)
+# TBD if support is ever resurrected
+endif
+ifeq ($(CHROOT_NAME),sles-12.3-x86_64)
+# TBD if support is ever resurrected
+endif
 endif
 ifeq ($(ID),centos)
 DISTRO_ID := el$(VERSION_ID)
@@ -65,9 +83,10 @@ define install_repo
 endef
 endif
 
-BUILD_OS ?= leap.42.3
+BUILD_OS ?= leap.15
+CHROOT_NAME ?= opensuse-leap-15.1-x86_64
 PACKAGING_CHECK_DIR ?= ../packaging
-COMMON_RPM_ARGS := --define "%_topdir $$PWD/_topdir"
+COMMON_RPM_ARGS := --define "%_topdir $$PWD/_topdir" $(BUILD_DEFINES)
 DIST    := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
 ifeq ($(DIST),)
 SED_EXPR := 1p
@@ -129,7 +148,7 @@ define install_repos
 	        ;;                                                          \
 	        sl42.3) distro="leap42.3";                                  \
 	        ;;                                                          \
-	        sl15.1) distro="leap15.1";                                  \
+	        sl15.1) distro="leap15";                                    \
 	        ;;                                                          \
 	    esac;                                                           \
 	    baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/job/$$branch/; \
@@ -318,47 +337,9 @@ endif
 ifneq ($(DAOS_STACK_$(DISTRO_BASE)_GROUP_REPO),)
 $(DISTRO_BASE)_LOCAL_REPOS  += $(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_GROUP_REPO)/
 endif
-SUSE_REPO_KEYS := $(OPENSUSE_MIRROR)/repositories/home:/jhli/SLE_15/repodata/repomd.xml.key
-# Only needed for LEAP 42.3
-SUSE_REPO_KEYS += $(OPENSUSE_MIRROR)/repositories/science:/HPC/openSUSE_Leap_42.3/repodata/repomd.xml.key
 endif
 
-ifeq ($(ID_LIKE),rhel fedora)
-chrootbuild: $(SRPM) $(CALLING_MAKEFILE)
-	if [ -w /etc/mock/default.cfg ]; then                                      \
-	    echo -e "config_opts['yum.conf'] += \"\"\"\n" >> /etc/mock/default.cfg;\
-	    for repo in $($(DISTRO_BASE)_PR_REPOS) $(PR_REPOS); do                   \
-	        branch="master";                                                   \
-	        build_number="lastSuccessfulBuild";                                \
-	        if [[ $$repo = *@* ]]; then                                        \
-	            branch="$${repo#*@}";                                          \
-	            repo="$${repo%@*}";                                            \
-	            if [[ $$branch = *:* ]]; then                                  \
-	                build_number="$${branch#*:}";                              \
-	                branch="$${branch%:*}";                                    \
-	            fi;                                                            \
-	        fi;                                                                \
-	        echo -e "[$$repo:$$branch:$$build_number]\n\
-name=$$repo:$$branch:$$build_number\n\
-baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/job/$$branch/$$build_number/artifact/artifacts/centos7/\n\
-enabled=1\n\
-gpgcheck = False\n" >> /etc/mock/default.cfg;                                  \
-	    done;                                                                  \
-	    for repo in $($(DISTRO_BASE)_LOCAL_REPOS) $($(DISTRO_BASE)_REPOS); do  \
-	        repo_name=$${repo##*://};                                          \
-	        repo_name=$${repo_name//\//_};                                     \
-	        echo -e "[$$repo_name]\n\
-name=$${repo_name}\n\
-baseurl=$${repo}\n\
-enabled=1\n" >> /etc/mock/default.cfg;                                         \
-	    done;                                                                  \
-	    echo "\"\"\"" >> /etc/mock/default.cfg;                                \
-	else                                                                       \
-	    echo "Unable to update /etc/mock/default.cfg.";                        \
-            echo "You need to make sure it has the needed repos in it yourself."; \
-	fi
-	mock $(MOCK_OPTIONS) $(RPM_BUILD_OPTIONS) $<
-else ifeq ($(ID_LIKE),debian)
+ifeq ($(ID_LIKE),debian)
 ifneq ($(DAOS_STACK_REPO_SUPPORT),)
 TEST_STR := $(DAOS_STACK_REPO_UBUNTU_$(VERSION_ID_STR)_LIST)
 ifneq ($(TEST_STR),)
@@ -391,62 +372,50 @@ endif
 	cd $(DEB_TOP); sudo pbuilder --update --override-config $(UBUNTU_ADD_REPOS)
 	cd $(DEB_TOP); sudo pbuilder build $(DEB_DSC)
 else
-SLES_12_REPOS += http://cobbler/cobbler/repo_mirror/sdkupdate-sles12.3-x86_64/ \
-        http://cobbler/cobbler/repo_mirror/sdk-sles12.3-x86_64                 \
-        $(OPENSUSE_MIRROR)/repositories/openSUSE:/Backports:/SLE-12/standard/  \
-        http://cobbler/cobbler/repo_mirror/updates-sles12.3-x86_64             \
-        http://cobbler/cobbler/pub/SLES-12.3-x86_64/
-
-LEAP_42_REPOS += $(OPENSUSE_MIRROR)/update/leap/42.3/oss/                      \
-	    $(OPENSUSE_MIRROR)/distribution/leap/42.3/repo/oss/suse/
-
-LEAP_15_REPOS += $(OPENSUSE_MIRROR)/update/leap/15.1/oss/                      \
-	    $(OPENSUSE_MIRROR)/distribution/leap/15.1/repo/oss/
-
-define install_gpg_key
-	curl -L -f -O "$(1)";                         \
-	if ! sudo rpm --import repomd.xml.key; then   \
-	    cat repomd.xml.key;                       \
-	fi
-endef
-
 chrootbuild: $(SRPM) $(CALLING_MAKEFILE)
-	add_repos="";                                                       \
-	for repo in $($(DISTRO_BASE)_PR_REPOS) $(PR_REPOS); do              \
-	    branch="master";                                                \
-	    build_number="lastSuccessfulBuild";                             \
-	    if [[ $$repo = *@* ]]; then                                     \
-	        branch="$${repo#*@}";                                       \
-	        repo="$${repo%@*}";                                         \
-	        if [[ $$branch = *:* ]]; then                               \
-	            build_number="$${branch#*:}";                           \
-	            branch="$${branch%:*}";                                 \
-	        fi;                                                         \
-	    fi;                                                             \
-	    case $(DISTRO_ID) in                                            \
-	        sle12.3) distro="sles12.3";                                 \
-	        ;;                                                          \
-	        sl42.3) distro="leap42.3";                                  \
-	        ;;                                                          \
-	        sl15.1) distro="leap15";                                    \
-	        ;;                                                          \
-	    esac;                                                           \
-	    baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/job/$$branch/; \
-	    baseurl+=$$build_number/artifact/artifacts/$$distro/;           \
-            add_repos+=" --repo $$baseurl";                             \
-    done;                                                               \
-	distro_repos="";                                                    \
-	for repo_key in $(SUSE_REPO_KEYS); do                               \
-	    $(call install_gpg_key,$$repo_key);                             \
-	done;                                                               \
-	for repo in $($(DISTRO_BASE)_LOCAL_REPOS)                           \
-	            $($(DISTRO_BASE)_REPOS); do                             \
-		distro_repos+=" --repo $$repo";                                 \
-	    $(call install_gpg_key,$$repo/repodata/repomd.xml.key);         \
-	done;                                                               \
-	sudo build $(BUILD_OPTIONS) $$add_repos                             \
-	     $$distro_repos                                                 \
-	     --dist $(DISTRO_ID) $(RPM_BUILD_OPTIONS) $(SRPM)
+	if [ -w /etc/mock/$(CHROOT_NAME).cfg ]; then                                        \
+	    echo -e "config_opts['yum.conf'] += \"\"\"\n" >> /etc/mock/$(CHROOT_NAME).cfg;  \
+	    case $(DISTRO_ID) in                                                            \
+	        el7) distro="centos7";                                                      \
+	        ;;                                                                          \
+	        sle12.3) distro="sles12.3";                                                 \
+	        ;;                                                                          \
+	        sl42.3) distro="leap42.3";                                                  \
+	        ;;                                                                          \
+	        sl15.1) distro="leap15";                                                    \
+	        ;;                                                                          \
+	    esac;                                                                           \
+	    for repo in $($(DISTRO_BASE)_PR_REPOS) $(PR_REPOS); do                          \
+	        branch="master";                                                            \
+	        build_number="lastSuccessfulBuild";                                         \
+	        if [[ $$repo = *@* ]]; then                                                 \
+	            branch="$${repo#*@}";                                                   \
+	            repo="$${repo%@*}";                                                     \
+	            if [[ $$branch = *:* ]]; then                                           \
+	                build_number="$${branch#*:}";                                       \
+	                branch="$${branch%:*}";                                             \
+	            fi;                                                                     \
+	        fi;                                                                         \
+	        echo -e "[$$repo:$$branch:$$build_number]\n\
+name=$$repo:$$branch:$$build_number\n\
+baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/job/$$branch/$$build_number/artifact/artifacts/$$distro/\n\
+enabled=1\n\
+gpgcheck=False\n" >> /etc/mock/$(CHROOT_NAME).cfg;                                          \
+	    done;                                                                           \
+	    for repo in $($(DISTRO_BASE)_LOCAL_REPOS) $($(DISTRO_BASE)_REPOS); do           \
+	        repo_name=$${repo##*://};                                                   \
+	        repo_name=$${repo_name//\//_};                                              \
+	        echo -e "[$$repo_name]\n\
+name=$${repo_name}\n\
+baseurl=$${repo}\n\
+enabled=1\n" >> /etc/mock/$(CHROOT_NAME).cfg;                                               \
+	    done;                                                                           \
+	    echo "\"\"\"" >> /etc/mock/$(CHROOT_NAME).cfg;                                  \
+	else                                                                                \
+	    echo "Unable to update /etc/mock/$(CHROOT_NAME).cfg.";                          \
+            echo "You need to make sure it has the needed repos in it yourself.";           \
+	fi
+	mock -r $(CHROOT_NAME) $(MOCK_OPTIONS) $(RPM_BUILD_OPTIONS) $<
 endif
 
 docker_chrootbuild:
@@ -518,4 +487,4 @@ show_git_metadata:
 
 .PHONY: srpm rpms debs deb_detar ls chrootbuild rpmlint FORCE        \
         show_version show_release show_rpms show_source show_sources \
-        show_targets check-env show_git_metadata
+        show_targets check-env show_git_metadata 
