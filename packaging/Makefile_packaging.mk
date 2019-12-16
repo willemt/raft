@@ -37,10 +37,21 @@ ifeq ($(ID),fedora)
 # DISTRO_ID (i.e. el7)
 # DISTRO_BASE (i.e. EL_7)
 # from the CHROOT_NAME
+ifndef LANG
+export LANG = C
+endif
+ifndef LC_ALL
+export LC_ALL = C
+endif
 ifeq ($(CHROOT_NAME),epel-7-x86_64)
 VERSION_ID  := 7
 DISTRO_ID   := el7
 DISTRO_BASE := EL_7
+endif
+ifeq ($(CHROOT_NAME),epel-8-x86_64)
+VERSION_ID  := 8
+DISTRO_ID   := el8
+DISTRO_BASE := EL_8
 endif
 ifeq ($(CHROOT_NAME),opensuse-leap-15.1-x86_64)
 VERSION_ID  := 15.1
@@ -143,6 +154,8 @@ define install_repos
 	    fi;                                                             \
 	    case $(DISTRO_ID) in                                            \
 	        el7) distro="centos7";                                      \
+	        ;;                                                          \
+	        el8) distro="centos8";                                      \
 	        ;;                                                          \
 	        sle12.3) distro="sles12.3";                                 \
 	        ;;                                                          \
@@ -378,6 +391,8 @@ chrootbuild: $(SRPM) $(CALLING_MAKEFILE)
 	    case $(DISTRO_ID) in                                                            \
 	        el7) distro="centos7";                                                      \
 	        ;;                                                                          \
+	        el8) distro="centos8";                                                      \
+	        ;;                                                                          \
 	        sle12.3) distro="sles12.3";                                                 \
 	        ;;                                                                          \
 	        sl42.3) distro="leap42.3";                                                  \
@@ -487,4 +502,4 @@ show_git_metadata:
 
 .PHONY: srpm rpms debs deb_detar ls chrootbuild rpmlint FORCE        \
         show_version show_release show_rpms show_source show_sources \
-        show_targets check-env show_git_metadata 
+        show_targets check-env show_git_metadata

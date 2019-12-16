@@ -1,7 +1,7 @@
 #
 # Copyright 2018-2019, Intel Corporation
 #
-# 'recipe' for Docker to build an RPM
+# 'recipe' for Docker to build for a Coverity scan.
 #
 
 # Pull base image
@@ -14,6 +14,7 @@ ARG UID=1000
 # Install basic tools
 RUN dnf -y install mock make rpm-build curl createrepo rpmlint redhat-lsb-core \
                    git python-srpm-macros rpmdevtools
+RUN dnf -y makecache && dnf -y install gcc
 
 # Add build user (to keep rpmbuild happy)
 ENV USER build
@@ -28,3 +29,4 @@ RUN grep use_nspawn || \
     echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
 
 RUN chmod g+w /etc/mock/*
+

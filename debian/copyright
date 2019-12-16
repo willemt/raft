@@ -4,7 +4,7 @@ Source: https://github.com/daos-stack/raft
 
 Files: *
 Copyright: 2013, Willem-Hendrik Thiart
-License: Raft_Open_Source_License
+License: BSD-3-Clause
  Copyright (c) 2013, Willem-Hendrik Thiart
  All rights reserved.
  .
