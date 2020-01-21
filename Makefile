@@ -39,7 +39,7 @@ $(BUILDDIR)/%.o: %.c $(wildcard include/*.h) | $(BUILDDIR)
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
 	git --git-dir=$(LLQUEUE_DIR)/.git init 
-	pushd $(LLQUEUE_DIR); git pull http://github.com/willemt/CLinkedListQueue; popd
+	pushd $(LLQUEUE_DIR); git pull http://github.com/willemt/CLinkedListQueue master; popd
 
 download-contrib: clinkedlistqueue
 
