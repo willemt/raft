@@ -943,7 +943,10 @@ int raft_apply_entry(raft_server_t* me_)
         case RAFT_LOGTYPE_REMOVE_NODE:
             /* Do not remove node if there are pending entries that affect it */
             if (node && raft_node_get_offered_idx(node) == log_idx)
+            {
                 raft_remove_node(me_, node);
+                node = NULL;
+            }
             break;
     }
     if (node)
