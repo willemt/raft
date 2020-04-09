@@ -8,7 +8,7 @@
 
 Name:		raft
 Version:	0.5.0
-Release:	2%{?relval}%{?dist}
+Release:	3%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
 
@@ -36,11 +36,12 @@ Development libs for Raft consensus protocol
 %setup -q
 
 %build
-%make_build
+# only build the static lib
+%make_build static
 
 %install
 mkdir -p %{buildroot}/%{_libdir}
-cp -a libraft.so libraft.a %{buildroot}/%{_libdir}
+cp -a libraft.a %{buildroot}/%{_libdir}
 mkdir -p %{buildroot}/%{_includedir}
 cp -a include/* %{buildroot}/%{_includedir}
 
@@ -56,6 +57,9 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Thu Apr 09 2020 Brian J. Murrell <brian.murrell@intel> -0.5.0-3
+- Only build the static library
+
 * Fri Oct 04 2019 John E. Malmberg <john.e.malmberg@intel> -0.5.0-2
 - SUSE rpmlint fixups
 

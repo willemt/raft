@@ -1,6 +1,5 @@
 NAME    := raft
 SRC_EXT := gz
-SOURCE   = raft-$(VERSION).tar.$(SRC_EXT)
 
 GIT_SHA1        := $(shell git rev-parse HEAD)
 GIT_SHORT       := $(shell git rev-parse --short HEAD)

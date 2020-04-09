@@ -12,8 +12,9 @@ MAINTAINER daos-stack <daos@daos.groups.io>
 ARG UID=1000
 
 # Install basic tools
-RUN dnf -y install mock make rpm-build curl createrepo rpmlint redhat-lsb-core \
-                   git python-srpm-macros rpmdevtools
+RUN dnf -y install mock\ \<\ 2 mock-core-configs\ \<\ 32 make \
+                   rpm-build curl createrepo rpmlint redhat-lsb-core git \
+                   python-srpm-macros rpmdevtools
 
 # Add build user (to keep rpmbuild happy)
 ENV USER build

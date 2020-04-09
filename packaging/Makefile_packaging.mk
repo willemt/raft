@@ -2,10 +2,13 @@
 # Needs the following variables set at a minium:
 # NAME :=
 # SRC_EXT :=
-# SOURCE =
 
 # Put site overrides (i.e. REPOSITORY_URL, DAOS_STACK_*_LOCAL_REPO) in here
 -include Makefile.local
+
+# default to Leap 15 distro for chrootbuild
+CHROOT_NAME ?= opensuse-leap-15.1-x86_64
+include packaging/Makefile_distro_vars.mk
 
 ifeq ($(DEB_NAME),)
 DEB_NAME := $(NAME)
@@ -15,111 +18,31 @@ CALLING_MAKEFILE := $(word 1, $(MAKEFILE_LIST))
 
 DOT     := .
 RPM_BUILD_OPTIONS += $(EXTERNAL_RPM_BUILD_OPTIONS)
-# Find out what we are
-ID_LIKE := $(shell . /etc/os-release; echo $$ID_LIKE)
-# Of course that does not work for SLES-12
-ID := $(shell . /etc/os-release; echo $$ID)
-VERSION_ID := $(shell . /etc/os-release; echo $$VERSION_ID)
-ifeq ($(ID_LIKE),debian)
-UBUNTU_VERS := $(shell . /etc/os-release; echo $$VERSION)
-ifeq ($(VERSION_ID),19.04)
-# Bug - distribution is set to "devel"
-DISTRO_ID_OPT = --distribution disco
-endif
-DISTRO_ID := ubuntu$(VERSION_ID)
-DISTRO_BASE = $(basename UBUNTU_$(VERSION_ID))
-VERSION_ID_STR := $(subst $(DOT),_,$(VERSION_ID))
-endif
-ifeq ($(ID),fedora)
-# a Fedora-based mock builder
-# derive the the values of:
-# VERSION_ID (i.e. 7)
-# DISTRO_ID (i.e. el7)
-# DISTRO_BASE (i.e. EL_7)
-# from the CHROOT_NAME
-ifndef LANG
-export LANG = C
-endif
-ifndef LC_ALL
-export LC_ALL = C
-endif
-ifeq ($(CHROOT_NAME),epel-7-x86_64)
-VERSION_ID  := 7
-DISTRO_ID   := el7
-DISTRO_BASE := EL_7
-endif
-ifeq ($(CHROOT_NAME),epel-8-x86_64)
-VERSION_ID  := 8
-DISTRO_ID   := el8
-DISTRO_BASE := EL_8
-endif
-ifeq ($(CHROOT_NAME),opensuse-leap-15.1-x86_64)
-VERSION_ID  := 15.1
-DISTRO_ID   := sl15.1
-DISTRO_BASE := LEAP_15
-endif
-ifeq ($(CHROOT_NAME),leap-42.3-x86_64)
-# TBD if support is ever resurrected
-endif
-ifeq ($(CHROOT_NAME),sles-12.3-x86_64)
-# TBD if support is ever resurrected
-endif
-endif
-ifeq ($(ID),centos)
-DISTRO_ID := el$(VERSION_ID)
-DISTRO_BASE := $(basename EL_$(VERSION_ID))
-define install_repo
-	if yum-config-manager --add-repo=$(1); then                  \
-	    repo_file=$$(ls -tar /etc/yum.repos.d/*.repo | tail -1); \
-	    sed -i -e 1d -e '$$s/^/gpgcheck=False/' $$repo_file;     \
-	else                                                         \
-	    exit 1;                                                  \
-	fi
-endef
-endif
-ifeq ($(findstring opensuse,$(ID)),opensuse)
-ID_LIKE := suse
-DISTRO_ID := sl$(VERSION_ID)
-DISTRO_BASE := $(basename LEAP_$(VERSION_ID))
-endif
-ifeq ($(ID),sles)
-# SLES-12 or 15 detected.
-ID_LIKE := suse
-DISTRO_ID := sle$(VERSION_ID)
-DISTRO_BASE := $(basename SLES_$(VERSION_ID))
-endif
-ifeq ($(ID_LIKE),suse)
-define install_repo
-	zypper --non-interactive ar $(1)
-endef
-endif
 
+# some defaults the caller can override
 BUILD_OS ?= leap.15
-CHROOT_NAME ?= opensuse-leap-15.1-x86_64
 PACKAGING_CHECK_DIR ?= ../packaging
-COMMON_RPM_ARGS := --define "%_topdir $$PWD/_topdir" $(BUILD_DEFINES)
-DIST    := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
-ifeq ($(DIST),)
-SED_EXPR := 1p
-else
-SED_EXPR := 1s/$(DIST)//p
-endif
-SPEC    := $(NAME).spec
-VERSION := $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{version}\n' $(SPEC) | sed -n '1p')
-DEB_VERS := $(subst rc,~rc,$(VERSION))
-DEB_RVERS := $(subst $(DOT),\$(DOT),$(DEB_VERS))
-DEB_BVERS := $(basename $(subst ~rc,$(DOT)rc,$(DEB_VERS)))
-RELEASE := $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{release}\n' $(SPEC) | sed -n '$(SED_EXPR)')
-SRPM    := _topdir/SRPMS/$(NAME)-$(VERSION)-$(RELEASE)$(DIST).src.rpm
-RPMS    := $(addsuffix .rpm,$(addprefix _topdir/RPMS/x86_64/,$(shell rpm --specfile $(SPEC))))
-DEB_TOP := _topdir/BUILD
-DEB_BUILD := $(DEB_TOP)/$(NAME)-$(DEB_VERS)
-DEB_TARBASE := $(DEB_TOP)/$(DEB_NAME)_$(DEB_VERS)
-SOURCES := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE)) $(PATCHES))
+LOCAL_REPOS ?= true
+
+COMMON_RPM_ARGS  := --define "%_topdir $$PWD/_topdir" $(BUILD_DEFINES)
+SPEC             := $(shell if [ -f $(NAME)-$(DISTRO_BASE).spec ]; then echo $(NAME)-$(DISTRO_BASE).spec; else echo $(NAME).spec; fi)
+VERSION           = $(eval VERSION := $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{version}\n' $(SPEC) | sed -n '1p'))$(VERSION)
+DEB_VERS         := $(subst rc,~rc,$(VERSION))
+DEB_RVERS        := $(subst $(DOT),\$(DOT),$(DEB_VERS))
+DEB_BVERS        := $(basename $(subst ~rc,$(DOT)rc,$(DEB_VERS)))
+RELEASE           = $(eval RELEASE := $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{release}\n' $(SPEC) | sed -n '$(SED_EXPR)'))$(RELEASE)
+SRPM              = _topdir/SRPMS/$(NAME)-$(VERSION)-$(RELEASE)$(DIST).src.rpm
+RPMS              = $(eval RPMS := $(addsuffix .rpm,$(addprefix _topdir/RPMS/x86_64/,$(shell rpm --specfile $(SPEC)))))$(RPMS)
+DEB_TOP          := _topdir/BUILD
+DEB_BUILD        := $(DEB_TOP)/$(NAME)-$(DEB_VERS)
+DEB_TARBASE      := $(DEB_TOP)/$(DEB_NAME)_$(DEB_VERS)
+SOURCE           ?= $(eval SOURCE := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) -S -l $(SPEC) | sed -e 2,\$$d -e 's/.*:  *//'))$(SOURCE)
+PATCHES          ?= $(eval PATCHES := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) -l $(SPEC) | sed -e 1d -e 's/.*:  *//' -e 's/.*\///'))$(PATCHES)
+SOURCES          := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE)) $(PATCHES))
 ifeq ($(ID_LIKE),debian)
-DEBS    := $(addsuffix _$(DEB_VERS)-1_amd64.deb,$(shell sed -n '/-udeb/b; s,^Package:[[:blank:]],$(DEB_TOP)/,p' debian/control))
+DEBS             := $(addsuffix _$(DEB_VERS)-1_amd64.deb,$(shell sed -n '/-udeb/b; s,^Package:[[:blank:]],$(DEB_TOP)/,p' debian/control))
 DEB_PREV_RELEASE := $(shell dpkg-parsechangelog -S version)
-DEB_DSC := $(DEB_NAME)_$(DEB_PREV_RELEASE)$(GIT_INFO).dsc
+DEB_DSC          := $(DEB_NAME)_$(DEB_PREV_RELEASE)$(GIT_INFO).dsc
 #Ubuntu Containers do not set a UTF-8 environment by default.
 ifndef LANG
 export LANG = C.UTF-8
@@ -139,6 +62,21 @@ endif
 TARGETS := $(RPMS) $(SRPM)
 endif
 
+define distro_map
+	    case $(DISTRO_ID) in           \
+	        el7) distro="centos7"      \
+	        ;;                         \
+	        el8) distro="centos8"      \
+	        ;;                         \
+	        sle12.3) distro="sles12.3" \
+	        ;;                         \
+	        sl42.3) distro="leap42.3"  \
+	        ;;                         \
+	        sl15.1) distro="leap15"    \
+	        ;;                         \
+	    esac;
+endef
+
 define install_repos
 	for repo in $($(DISTRO_BASE)_PR_REPOS)                              \
 	            $(PR_REPOS) $(1); do                                    \
@@ -152,18 +90,7 @@ define install_repos
 	            branch="$${branch%:*}";                                 \
 	        fi;                                                         \
 	    fi;                                                             \
-	    case $(DISTRO_ID) in                                            \
-	        el7) distro="centos7";                                      \
-	        ;;                                                          \
-	        el8) distro="centos8";                                      \
-	        ;;                                                          \
-	        sle12.3) distro="sles12.3";                                 \
-	        ;;                                                          \
-	        sl42.3) distro="leap42.3";                                  \
-	        ;;                                                          \
-	        sl15.1) distro="leap15";                                    \
-	        ;;                                                          \
-	    esac;                                                           \
+	    $(call distro_map)                                              \
 	    baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/job/$$branch/; \
 	    baseurl+=$$build_number/artifact/artifacts/$$distro/;           \
 	    $(call install_repo,$$baseurl);                                 \
@@ -197,19 +124,19 @@ ifeq ($(DL_VERSION),)
 DL_VERSION = $(VERSION)
 endif
 
-$(NAME)-$(DL_VERSION).tar.$(SRC_EXT).asc: $(SPEC) $(CALLING_MAKEFILE)
+$(NAME)-$(DL_VERSION).tar.$(SRC_EXT).asc:
 	rm -f ./$(NAME)-*.tar.{gz,bz*,xz}.asc
 	curl -f -L -O '$(SOURCE).asc'
 
-$(NAME)-$(DL_VERSION).tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
+$(NAME)-$(DL_VERSION).tar.$(SRC_EXT):
 	rm -f ./$(NAME)-*.tar.{gz,bz*,xz}
 	curl -f -L -O '$(SOURCE)'
 
-v$(DL_VERSION).tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
+v$(DL_VERSION).tar.$(SRC_EXT):
 	rm -f ./v*.tar.{gz,bz*,xz}
 	curl -f -L -O '$(SOURCE)'
 
-$(DL_VERSION).tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
+$(DL_VERSION).tar.$(SRC_EXT):
 	rm -f ./*.tar.{gz,bz*,xz}
 	curl -f -L -O '$(SOURCE)'
 
@@ -388,18 +315,7 @@ else
 chrootbuild: $(SRPM) $(CALLING_MAKEFILE)
 	if [ -w /etc/mock/$(CHROOT_NAME).cfg ]; then                                        \
 	    echo -e "config_opts['yum.conf'] += \"\"\"\n" >> /etc/mock/$(CHROOT_NAME).cfg;  \
-	    case $(DISTRO_ID) in                                                            \
-	        el7) distro="centos7";                                                      \
-	        ;;                                                                          \
-	        el8) distro="centos8";                                                      \
-	        ;;                                                                          \
-	        sle12.3) distro="sles12.3";                                                 \
-	        ;;                                                                          \
-	        sl42.3) distro="leap42.3";                                                  \
-	        ;;                                                                          \
-	        sl15.1) distro="leap15";                                                    \
-	        ;;                                                                          \
-	    esac;                                                                           \
+	    $(call distro_map)                                                              \
 	    for repo in $($(DISTRO_BASE)_PR_REPOS) $(PR_REPOS); do                          \
 	        branch="master";                                                            \
 	        build_number="lastSuccessfulBuild";                                         \
@@ -417,10 +333,15 @@ baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/
 enabled=1\n\
 gpgcheck=False\n" >> /etc/mock/$(CHROOT_NAME).cfg;                                          \
 	    done;                                                                           \
-	    for repo in $($(DISTRO_BASE)_LOCAL_REPOS) $($(DISTRO_BASE)_REPOS); do           \
+	    if ! $(LOCAL_REPOS); then                                                       \
+	        LOCAL_REPOS="";                                                             \
+	    else                                                                            \
+	        LOCAL_REPOS="$($(DISTRO_BASE)_LOCAL_REPOS)";                                \
+	    fi;                                                                             \
+	    for repo in $(JOB_REPOS) $$LOCAL_REPOS $($(DISTRO_BASE)_REPOS); do              \
 	        repo_name=$${repo##*://};                                                   \
 	        repo_name=$${repo_name//\//_};                                              \
-	        echo -e "[$$repo_name]\n\
+	        echo -e "[$${repo_name//@/_}]\n\
 name=$${repo_name}\n\
 baseurl=$${repo}\n\
 enabled=1\n" >> /etc/mock/$(CHROOT_NAME).cfg;                                               \
@@ -458,6 +379,7 @@ packaging_check:
 	          --exclude \*.tar.\*                           \
 	          --exclude \*.code-workspace                   \
 	          --exclude install                             \
+	          --exclude packaging                           \
 	          -bur $(PACKAGING_CHECK_DIR)/ packaging/; then \
 	    exit 1;                                             \
 	fi
