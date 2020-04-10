@@ -8,7 +8,7 @@
 
 Name:		raft
 Version:	0.5.0
-Release:	3%{?relval}%{?dist}
+Release:	4%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
 
@@ -37,7 +37,7 @@ Development libs for Raft consensus protocol
 
 %build
 # only build the static lib
-%make_build static
+%make_build GCOV_CCFLAGS= static
 
 %install
 mkdir -p %{buildroot}/%{_libdir}
@@ -57,6 +57,9 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Fri Apr 10 2020 Brian J. Murrell <brian.murrell@intel> -0.5.0-4
+- Add GCOV_CCFLAGS= to static build
+
 * Thu Apr 09 2020 Brian J. Murrell <brian.murrell@intel> -0.5.0-3
 - Only build the static library
 
