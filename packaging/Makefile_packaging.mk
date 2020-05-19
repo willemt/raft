@@ -36,29 +36,15 @@ RPMS              = $(eval RPMS := $(addsuffix .rpm,$(addprefix _topdir/RPMS/x86
 DEB_TOP          := _topdir/BUILD
 DEB_BUILD        := $(DEB_TOP)/$(NAME)-$(DEB_VERS)
 DEB_TARBASE      := $(DEB_TOP)/$(DEB_NAME)_$(DEB_VERS)
-SOURCE           ?= $(eval SOURCE := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) -S -l $(SPEC) | sed -e 2,\$$d -e 's/.*:  *//'))$(SOURCE)
-PATCHES          ?= $(eval PATCHES := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) -l $(SPEC) | sed -e 1d -e 's/.*:  *//' -e 's/.*\///'))$(PATCHES)
+SOURCE            = $(eval SOURCE := $(shell CHROOT_NAME=$(CHROOT_NAME) spectool -S -l $(SPEC) | sed -e 2,\$$d -e 's/.*:  *//'))$(SOURCE)
+PATCHES           = $(eval PATCHES := $(shell CHROOT_NAME=$(CHROOT_NAME) spectool -l $(SPEC) | sed -e 1d -e 's/.*:  *//' -e 's/.*\///'))$(PATCHES)
 SOURCES          := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE)) $(PATCHES))
 ifeq ($(ID_LIKE),debian)
 DEBS             := $(addsuffix _$(DEB_VERS)-1_amd64.deb,$(shell sed -n '/-udeb/b; s,^Package:[[:blank:]],$(DEB_TOP)/,p' debian/control))
 DEB_PREV_RELEASE := $(shell dpkg-parsechangelog -S version)
 DEB_DSC          := $(DEB_NAME)_$(DEB_PREV_RELEASE)$(GIT_INFO).dsc
-#Ubuntu Containers do not set a UTF-8 environment by default.
-ifndef LANG
-export LANG = C.UTF-8
-endif
-ifndef LC_ALL
-export LC_ALL = C.UTF-8
-endif
 TARGETS := $(DEBS)
 else
-# CentOS/Suse packages that want a locale set need this.
-ifndef LANG
-export LANG = en_US.utf8
-endif
-ifndef LC_ALL
-export LC_ALL = en_US.utf8
-endif
 TARGETS := $(RPMS) $(SRPM)
 endif
 
@@ -127,6 +113,10 @@ endif
 $(NAME)-$(DL_VERSION).tar.$(SRC_EXT).asc:
 	rm -f ./$(NAME)-*.tar.{gz,bz*,xz}.asc
 	curl -f -L -O '$(SOURCE).asc'
+
+$(NAME)-$(DL_VERSION).tar.$(SRC_EXT).sig:
+	rm -f ./$(NAME)-*.tar.{gz,bz*,xz}.sig
+	curl -f -L -O '$(SOURCE).sig'
 
 $(NAME)-$(DL_VERSION).tar.$(SRC_EXT):
 	rm -f ./$(NAME)-*.tar.{gz,bz*,xz}
@@ -338,10 +328,10 @@ gpgcheck=False\n" >> /etc/mock/$(CHROOT_NAME).cfg;                              
 	    else                                                                            \
 	        LOCAL_REPOS="$($(DISTRO_BASE)_LOCAL_REPOS)";                                \
 	    fi;                                                                             \
-	    for repo in $(JOB_REPOS) $$LOCAL_REPOS $($(DISTRO_BASE)_REPOS); do              \
+	    for repo in $$LOCAL_REPOS $($(DISTRO_BASE)_REPOS); do                           \
 	        repo_name=$${repo##*://};                                                   \
 	        repo_name=$${repo_name//\//_};                                              \
-	        echo -e "[$${repo_name//@/_}]\n\
+	        echo -e "[$$repo_name]\n\
 name=$${repo_name}\n\
 baseurl=$${repo}\n\
 enabled=1\n" >> /etc/mock/$(CHROOT_NAME).cfg;                                               \

@@ -886,6 +886,8 @@ void raft_become_leader(raft_server_t* me);
  * currentTerm. */
 void raft_become_follower(raft_server_t* me);
 
+int raft_election_start(raft_server_t* me);
+
 /** Determine if entry is voting configuration change.
  * @param[in] ety The entry to query.
  * @return 1 if this is a voting configuration change. */
