@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -uex
+
+# shellcheck disable=SC2153
+IFS=\| read -r -a distro_base_local_repos <<< "$DISTRO_BASE_LOCAL_REPOS"
+
+if [ -w /etc/mock/"$CHROOT_NAME".cfg ]; then
+    echo -e "config_opts['yum.conf'] += \"\"\"\n" >> /etc/mock/"$CHROOT_NAME".cfg
+    for repo in $DISTRO_BASE_PR_REPOS $PR_REPOS; do
+        branch="master"
+        build_number="lastSuccessfulBuild"
+        if [[ $repo = *@* ]]; then
+            branch="${repo#*@}"
+            repo="${repo%@*}"
+            if [[ $branch = *:* ]]; then
+                build_number="${branch#*:}"
+                branch="${branch%:*}"
+            fi
+        fi
+        echo -e "[$repo:$branch:$build_number]\n\
+name=$repo:$branch:$build_number\n\
+baseurl=${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$repo/job/$branch/$build_number/artifact/artifacts/$DISTRO/\n\
+enabled=1\n\
+gpgcheck=False\n" >> /etc/mock/"$CHROOT_NAME".cfg
+    done
+    for repo in $JOB_REPOS "${distro_base_local_repos[@]}"; do
+        repo_name=${repo##*://}
+        repo_name=${repo_name//\//_}
+        echo -e "[${repo_name//@/_}]\n\
+name=${repo_name}\n\
+baseurl=${repo}\n\
+enabled=1\n" >> /etc/mock/"$CHROOT_NAME".cfg
+    done
+    echo "\"\"\"" >> /etc/mock/"$CHROOT_NAME".cfg
+else
+    echo "Unable to update /etc/mock/$CHROOT_NAME.cfg."
+    echo "You need to make sure it has the needed repos in it yourself."
+fi
+eval mock -r "$CHROOT_NAME" $MOCK_OPTIONS $RPM_BUILD_OPTIONS "$TARGET"

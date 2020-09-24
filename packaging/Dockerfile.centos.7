@@ -1,5 +1,5 @@
 #
-# Copyright 2018-2019, Intel Corporation
+# Copyright 2018-2020, Intel Corporation
 #
 # 'recipe' for Docker to build an RPM
 #
@@ -28,7 +28,7 @@ RUN echo "$USER:$PASSWD" | chpasswd
 RUN usermod -a -G mock $USER
 
 # mock in Docker needs to use the old-chroot option
-RUN grep use_nspawn || \
+RUN grep use_nspawn /etc/mock/site-defaults.cfg || \
     echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
 
 RUN chmod g+w /etc/mock/default.cfg

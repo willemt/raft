@@ -1,5 +1,5 @@
 #!/usr/bin/groovy
-/* Copyright (C) 2019 Intel Corporation
+/* Copyright (C) 2019-2020 Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,4 +44,4 @@
 //  dh: unable to load addon bash-completion: Can't locate Debian/Debhelper/Sequence/bash_completion.pm in @INC (you may need to install the Debian::Debhelper::Sequence::bash_completion module) (@INC contains: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.28.1 /usr/local/share/perl/5.28.1 /usr/lib/x86_64-linux-gnu/perl5/5.28 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.28 /usr/share/perl/5.28 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base) at (eval 12) line 1.
 packageBuildingPipelineDAOS(['make args': '-f Makefile-rpm.mk',
                              'coverity': 'daos-stack/daos',
-                             'distros': ['centos7', 'leap15']])
+                             'distros': ['centos7', 'leap15', 'ubuntu20.04']])
