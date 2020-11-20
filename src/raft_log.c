@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <limits.h>
 
 #include "raft.h"
 #include "raft_private.h"
@@ -22,19 +23,19 @@
 typedef struct
 {
     /* size of array */
-    int size;
+    raft_index_t size;
 
     /* the amount of elements in the array */
-    int count;
+    raft_index_t count;
 
     /* position of the queue */
-    int front;
+    raft_index_t front;
 
     /* we compact the log, and thus need to increment the Base Log Index */
-    int base;
+    raft_index_t base;
 
     /* term of the base */
-    int base_term;
+    raft_term_t base_term;
 
     raft_entry_t* entries;
 
@@ -45,7 +46,7 @@ typedef struct
 
 static int __ensurecapacity(log_private_t * me, int n)
 {
-    int newsize;
+    raft_index_t newsize;
     raft_entry_t *temp;
 
     if ((me->count + n) <= me->size)
@@ -59,7 +60,7 @@ static int __ensurecapacity(log_private_t * me, int n)
 
     if (0 < me->count)
     {
-        int k = me->size - me->front;
+        raft_index_t k = me->size - me->front;
         if (me->count <= k)
         {
             memcpy(&temp[0], &me->entries[me->front],
@@ -83,7 +84,7 @@ static int __ensurecapacity(log_private_t * me, int n)
     return 0;
 }
 
-void log_load_from_snapshot(log_t *me_, int idx, int term)
+void log_load_from_snapshot(log_t *me_, raft_index_t idx, raft_term_t term)
 {
     log_private_t* me = (log_private_t*)me_;
 
@@ -93,7 +94,7 @@ void log_load_from_snapshot(log_t *me_, int idx, int term)
     me->base_term = term;
 }
 
-log_t* log_alloc(int initial_size)
+log_t* log_alloc(raft_index_t initial_size)
 {
     log_private_t* me = (log_private_t*)calloc(1, sizeof(log_private_t));
     if (!me)
@@ -130,38 +131,40 @@ void log_clear(log_t* me_)
     me->base_term = 0;
 }
 
-static int has_idx(log_private_t* me, int idx)
+static int has_idx(log_private_t* me, raft_index_t idx)
 {
     return me->base < idx && idx <= me->base + me->count;
 }
 
 /* Return the me->entries[] subscript for idx. */
-static int subscript(log_private_t* me, int idx)
+static raft_index_t subscript(log_private_t* me, raft_index_t idx)
 {
     return (me->front + (idx - (me->base + 1))) % me->size;
 }
 
 /* Return the maximal number of contiguous entries in me->entries[]
  * starting from and including idx up to at the most n entries. */
-static int batch_up(log_private_t* me, int idx, int n)
+static int batch_up(log_private_t* me, raft_index_t idx, raft_index_t n)
 {
     assert(n > 0);
-    int lo = subscript(me, idx);
-    int hi = subscript(me, idx + n - 1);
-    return (lo <= hi) ?  (hi - lo + 1) : (me->size - lo);
+    raft_index_t lo = subscript(me, idx);
+    raft_index_t hi = subscript(me, idx + n - 1);
+    raft_index_t m = (lo <= hi) ? (hi - lo + 1) : (me->size - lo);
+    return (m > INT_MAX) ? INT_MAX : m;
 }
 
 /* Return the maximal number of contiguous entries in me->entries[]
  * starting from and including idx down to at the most n entries. */
-static int batch_down(log_private_t* me, int idx, int n)
+static int batch_down(log_private_t* me, raft_index_t idx, raft_index_t n)
 {
     assert(n > 0);
-    int hi = subscript(me, idx);
-    int lo = subscript(me, idx - n + 1);
-    return (lo <= hi) ? (hi - lo + 1) : (hi + 1);
+    raft_index_t hi = subscript(me, idx);
+    raft_index_t lo = subscript(me, idx - n + 1);
+    raft_index_t m = (lo <= hi) ? (hi - lo + 1) : (hi + 1);
+    return (m > INT_MAX) ? INT_MAX : m;
 }
 
-raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
+raft_entry_t* log_get_from_idx(log_t* me_, raft_index_t idx, int *n_etys)
 {
     log_private_t* me = (log_private_t*)me_;
 
@@ -175,13 +178,13 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
     return &me->entries[subscript(me, idx)];
 }
 
-raft_entry_t* log_get_at_idx(log_t* me_, int idx)
+raft_entry_t* log_get_at_idx(log_t* me_, raft_index_t idx)
 {
     int n;
     return log_get_from_idx(me_, idx, &n);
 }
 
-int log_count(log_t* me_)
+raft_index_t log_count(log_t* me_)
 {
     return ((log_private_t*)me_)->count;
 }
@@ -197,9 +200,9 @@ int log_append(log_t* me_, raft_entry_t* ety, int *n)
 
     for (i = 0; i < *n; )
     {
-        int idx = me->base + me->count + 1;
+        raft_index_t idx = me->base + me->count + 1;
         int k = batch_up(me, idx, *n - i);
-        int start = subscript(me, me->base + me->count + 1);
+        raft_index_t start = subscript(me, me->base + me->count + 1);
         raft_entry_t *ptr = &me->entries[start];
         int batch_size = k;
         memcpy(ptr, &ety[i], k * sizeof(raft_entry_t));
@@ -221,7 +224,7 @@ int log_append(log_t* me_, raft_entry_t* ety, int *n)
     return 0;
 }
 
-int log_delete(log_t* me_, int idx)
+int log_delete(log_t* me_, raft_index_t idx)
 {
     log_private_t* me = (log_private_t*)me_;
     int e = 0;
@@ -232,8 +235,8 @@ int log_delete(log_t* me_, int idx)
     while (idx <= me->base + me->count)
     {
         int k = batch_down(me, me->base + me->count,
-                               me->base + me->count - idx + 1);
-        int start = subscript(me, me->base + me->count - k + 1);
+                           me->base + me->count - idx + 1);
+        raft_index_t start = subscript(me, me->base + me->count - k + 1);
         raft_entry_t *ptr = &me->entries[start];
         int batch_size = k;
         if (me->cb && me->cb->log_pop)
@@ -251,7 +254,7 @@ int log_delete(log_t* me_, int idx)
     return 0;
 }
 
-int log_poll(log_t* me_, int idx)
+int log_poll(log_t* me_, raft_index_t idx)
 {
     log_private_t* me = (log_private_t*)me_;
     int e = 0;
@@ -307,18 +310,18 @@ void log_free(log_t * me_)
     free(me);
 }
 
-int log_get_current_idx(log_t* me_)
+raft_index_t log_get_current_idx(log_t* me_)
 {
     log_private_t* me = (log_private_t*)me_;
     return log_count(me_) + me->base;
 }
 
-int log_get_base(log_t* me_)
+raft_index_t log_get_base(log_t* me_)
 {
     return ((log_private_t*)me_)->base;
 }
 
-int log_get_base_term(log_t* me_)
+raft_term_t log_get_base_term(log_t* me_)
 {
     return ((log_private_t*)me_)->base_term;
 }

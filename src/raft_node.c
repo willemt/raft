@@ -24,19 +24,19 @@ typedef struct
     raft_server_t* server;
     void* udata;
 
-    int next_idx;
-    int match_idx;
+    raft_index_t next_idx;
+    raft_index_t match_idx;
     /* index of last offered log entry for this node */
-    int offered_idx;
+    raft_index_t offered_idx;
     /* index of last committed log entry for this node */
-    int applied_idx;
+    raft_index_t applied_idx;
 
     int flags;
 
-    int id;
+    raft_node_id_t id;
 } raft_node_private_t;
 
-raft_node_t* raft_node_new(void* udata, int id)
+raft_node_t* raft_node_new(void* udata, raft_node_id_t id)
 {
     raft_node_private_t* me;
     me = (raft_node_private_t*)calloc(1, sizeof(raft_node_private_t));
@@ -63,50 +63,50 @@ void raft_node_set_server(raft_node_t* me_, raft_server_t *server)
     me->server = server;
 }
 
-int raft_node_get_next_idx(raft_node_t* me_)
+raft_index_t raft_node_get_next_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->next_idx;
 }
 
-void raft_node_set_next_idx(raft_node_t* me_, int nextIdx)
+void raft_node_set_next_idx(raft_node_t* me_, raft_index_t nextIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     /* log index begins at 1 */
     me->next_idx = nextIdx < 1 ? 1 : nextIdx;
 }
 
-int raft_node_get_match_idx(raft_node_t* me_)
+raft_index_t raft_node_get_match_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->match_idx;
 }
 
-void raft_node_set_match_idx(raft_node_t* me_, int matchIdx)
+void raft_node_set_match_idx(raft_node_t* me_, raft_index_t matchIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     me->match_idx = matchIdx;
 }
 
-int raft_node_get_offered_idx(raft_node_t* me_)
+raft_index_t raft_node_get_offered_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->offered_idx;
 }
 
-void raft_node_set_offered_idx(raft_node_t* me_, int offeredIdx)
+void raft_node_set_offered_idx(raft_node_t* me_, raft_index_t offeredIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     me->offered_idx = offeredIdx;
 }
 
-int raft_node_get_applied_idx(raft_node_t* me_)
+raft_index_t raft_node_get_applied_idx(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return me->applied_idx;
 }
 
-void raft_node_set_applied_idx(raft_node_t* me_, int appliedIdx)
+void raft_node_set_applied_idx(raft_node_t* me_, raft_index_t appliedIdx)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     me->applied_idx = appliedIdx;
@@ -191,7 +191,7 @@ int raft_node_is_addition_committed(raft_node_t* me_)
     return (!ety || ety->type != RAFT_LOGTYPE_REMOVE_NODE);
 }
 
-int raft_node_get_id(raft_node_t* me_)
+raft_node_id_t raft_node_get_id(raft_node_t* me_)
 {
     raft_node_private_t* me = (raft_node_private_t*)me_;
     return (NULL == me) ? -1 : me->id;

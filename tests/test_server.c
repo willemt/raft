@@ -17,8 +17,8 @@
 static int __raft_persist_term(
     raft_server_t* raft,
     void *udata,
-    int term,
-    int vote
+    raft_term_t term,
+    raft_node_id_t vote
     )
 {
     return 0;
@@ -27,7 +27,7 @@ static int __raft_persist_term(
 static int __raft_persist_vote(
     raft_server_t* raft,
     void *udata,
-    int vote
+    raft_node_id_t vote
     )
 {
     return 0;
@@ -37,7 +37,7 @@ int __raft_applylog(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int idx
+    raft_index_t idx
     )
 {
     return 0;
@@ -47,7 +47,7 @@ int __raft_applylog_shutdown(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int idx
+    raft_index_t idx
     )
 {
     return RAFT_ERR_SHUTDOWN;
@@ -72,7 +72,7 @@ static int __raft_send_appendentries(raft_server_t* raft,
 static int __raft_log_get_node_id(raft_server_t* raft,
         void *udata,
         raft_entry_t *entry,
-        int entry_idx)
+        raft_index_t entry_idx)
 {
     return atoi(entry->data.buf);
 }
@@ -80,7 +80,7 @@ static int __raft_log_get_node_id(raft_server_t* raft,
 static int __raft_log_offer(raft_server_t* raft,
         void* udata,
         raft_entry_t *entries,
-        int entry_idx,
+        raft_index_t entry_idx,
         int *n_entries)
 {
     int i;
@@ -351,7 +351,7 @@ static int __raft_logentry_offer(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int ety_idx,
+    raft_index_t ety_idx,
     int *n_entries
     )
 {
@@ -479,7 +479,7 @@ void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest* tc)
 }
 
 /* If commitidx > lastApplied: increment lastApplied, apply log[lastApplied]
- * to state machine (§5.3) */
+ * to state machine (ï¿½5.3) */
 void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
     CuTest* tc)
 {
@@ -856,7 +856,7 @@ void TestRaft_server_recv_requestvote_response_must_be_candidate_to_receive(
     CuAssertTrue(tc, 0 == raft_get_nvotes_for_me(r));
 }
 
-/* Reply false if term < currentTerm (§5.1) */
+/* Reply false if term < currentTerm (ï¿½5.1) */
 void TestRaft_server_recv_requestvote_reply_false_if_term_less_than_current_term(
     CuTest * tc
     )
@@ -914,7 +914,7 @@ void TestRaft_leader_recv_requestvote_does_not_step_down(
     CuAssertIntEquals(tc, 1, raft_get_current_leader(r));
 }
 
-/* Reply true if term >= currentTerm (§5.1) */
+/* Reply true if term >= currentTerm (ï¿½5.1) */
 void TestRaft_server_recv_requestvote_reply_true_if_term_greater_than_or_equal_to_current_term(
     CuTest * tc
     )
@@ -1038,7 +1038,7 @@ void TestRaft_server_recv_requestvote_depends_on_candidate_id(
 }
 
 /* If votedFor is null or candidateId, and candidate's log is at
- * least as up-to-date as local log, grant vote (§5.2, §5.4) */
+ * least as up-to-date as local log, grant vote (ï¿½5.2, ï¿½5.4) */
 void TestRaft_server_recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_candidate(
     CuTest * tc
     )
@@ -1577,14 +1577,14 @@ typedef enum {
 
 typedef struct {
     __raft_error_type_e type;
-    int idx;
+    raft_index_t idx;
 } __raft_error_t;
 
 static int __raft_log_offer_error(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx,
+    raft_index_t entry_idx,
     int *n_entries)
 {
     __raft_error_t *error = user_data;
@@ -1601,7 +1601,7 @@ static int __raft_log_pop_error(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx,
+    raft_index_t entry_idx,
     int *n_entries)
 {
     __raft_error_t *error = user_data;
@@ -2623,7 +2623,7 @@ void TestRaft_leader_sends_appendentries_with_NextIdx_when_PrevIdx_gt_NextIdx(
     raft_set_state(r, RAFT_STATE_LEADER);
 
     raft_entry_t etys[3] = {};
-    int i;
+    raft_index_t i;
     for (i = 0; i < 3; i++)
     {
         etys[i].term = 1;
@@ -2659,7 +2659,7 @@ void TestRaft_leader_sends_appendentries_with_leader_commit(
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
 
-    int i;
+    raft_index_t i;
 
     for (i=0; i<10; i++)
     {
@@ -2795,7 +2795,7 @@ void TestRaft_leader_retries_appendentries_with_decremented_NextIdx_log_inconsis
 /*
  * If there exists an N such that N > commitidx, a majority
  * of matchidx[i] = N, and log[N].term == currentTerm:
- * set commitidx = N (§5.2, §5.4).  */
+ * set commitidx = N (ï¿½5.2, ï¿½5.4).  */
 void TestRaft_leader_append_entry_to_log_increases_idxno(CuTest * tc)
 {
     raft_cbs_t funcs = {

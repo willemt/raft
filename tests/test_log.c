@@ -12,11 +12,11 @@
 #include "raft_log.h"
 #include "raft_private.h"
 
-static int __logentry_get_node_id(
+static raft_node_id_t __logentry_get_node_id(
     raft_server_t* raft,
     void *udata,
     raft_entry_t *ety,
-    int ety_idx
+    raft_index_t ety_idx
     )
 {
     return 0;
@@ -26,7 +26,7 @@ static int __log_offer(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entries,
-    int entry_idx,
+    raft_index_t entry_idx,
     int *n_entries
     )
 {
@@ -38,7 +38,7 @@ static int __log_pop(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx,
+    raft_index_t entry_idx,
     int *n_entries
     )
 {
@@ -56,7 +56,7 @@ static int __log_pop_failing(
     raft_server_t* raft,
     void *user_data,
     raft_entry_t *entry,
-    int entry_idx,
+    raft_index_t entry_idx,
     int *n_entries
     )
 {

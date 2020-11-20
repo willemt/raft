@@ -14,8 +14,8 @@
 static int __raft_persist_term(
     raft_server_t* raft,
     void *udata,
-    int term,
-    int vote
+    raft_term_t term,
+    raft_node_id_t vote
     )
 {
     return 0;
@@ -24,7 +24,7 @@ static int __raft_persist_term(
 static int __raft_persist_vote(
     raft_server_t* raft,
     void *udata,
-    int vote
+    raft_node_id_t vote
     )
 {
     return 0;
