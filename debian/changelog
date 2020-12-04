@@ -1,9 +1,16 @@
+raft (0.7.1-1) unstable; urgency=medium
+
+  [ Li Wei ]
+  * Fix Coverity issues
+
+ -- Li Wei <wei.g.li@intel.com>  Wed, Dec 02 2020 11:30:00 +0800
+
 raft (0.7.0-1) unstable; urgency=medium
 
   [ Li Wei ]
   * Use 63-bit log indices and terms
 
--- Li Wei <wei.g.li@intel.com>  Tue, Nov 10 2020 10:12:37 +0800
+ -- Li Wei <wei.g.li@intel.com>  Tue, Nov 10 2020 10:12:37 +0800
 
 raft (0.6.0-1) unstable; urgency=medium
 

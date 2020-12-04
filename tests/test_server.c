@@ -2069,7 +2069,7 @@ void TestRaft_follower_recv_appendentries_does_not_deleted_commited_entries(
     ae.prev_log_term = 1;
     /* include entries */
     memset(&e, 0, sizeof(msg_entry_t) * 5);
-    e[0].id = 1;
+    e[0].term = 1;
     e[0].id = 5;
     e[1].term = 1;
     e[1].id = 6;

@@ -7,7 +7,7 @@
 %bcond_with use_release
 
 Name:		raft
-Version:	0.7.0
+Version:	0.7.1
 Release:	1%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
@@ -57,6 +57,9 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Wed Dec 02 2020 Li Wei <wei.g.li@intel.com> -0.7.1-1
+- Fix Coverity issues
+
 * Tue Nov 10 2020 Li Wei <wei.g.li@intel.com> -0.7.0-1
 - Use 63-bit log indices and terms
 

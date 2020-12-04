@@ -132,7 +132,7 @@ int raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(me_, NULL, "election starting: %d %d, term: %d ci: %d",
+    __log(me_, NULL, "election starting: %d %d, term: %ld ci: %ld",
           me->election_timeout_rand, me->timeout_elapsed, me->current_term,
           raft_get_current_idx(me_));
 
@@ -144,7 +144,7 @@ void raft_become_leader(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
-    __log(me_, NULL, "becoming leader term:%d", raft_get_current_term(me_));
+    __log(me_, NULL, "becoming leader term:%ld", raft_get_current_term(me_));
 
     raft_set_state(me_, RAFT_STATE_LEADER);
     me->timeout_elapsed = 0;
@@ -290,7 +290,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     __log(me_, node,
-          "received appendentries response %s ci:%d rci:%d 1stidx:%d",
+          "received appendentries response %s ci:%ld rci:%ld 1stidx:%ld",
           r->success == 1 ? "SUCCESS" : "fail",
           raft_get_current_idx(me_),
           r->current_idx,
@@ -406,7 +406,7 @@ int raft_recv_appendentries(
     int e = 0;
 
     if (0 < ae->n_entries)
-        __log(me_, node, "recvd appendentries t:%d ci:%d lc:%d pli:%d plt:%d #%d",
+        __log(me_, node, "recvd appendentries t:%ld ci:%ld lc:%ld pli:%ld plt:%ld #%d",
               ae->term,
               raft_get_current_idx(me_),
               ae->leader_commit,
@@ -430,7 +430,7 @@ int raft_recv_appendentries(
     else if (ae->term < me->current_term)
     {
         /* 1. Reply false if term < currentTerm (§5.1) */
-        __log(me_, node, "AE term %d is less than current term %d",
+        __log(me_, node, "AE term %ld is less than current term %ld",
               ae->term, me->current_term);
         goto out;
     }
@@ -450,12 +450,12 @@ int raft_recv_appendentries(
         int got = raft_get_entry_term(me_, ae->prev_log_idx, &term);
         if (!got && raft_get_current_idx(me_) < ae->prev_log_idx)
         {
-            __log(me_, node, "AE no log at prev_idx %d", ae->prev_log_idx);
+            __log(me_, node, "AE no log at prev_idx %ld", ae->prev_log_idx);
             goto out;
         }
         else if (got && term != ae->prev_log_term)
         {
-            __log(me_, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
+            __log(me_, node, "AE term doesn't match prev_term (ie. %ld vs %ld) ci:%ld comi:%ld lcomi:%ld pli:%ld",
                   term, ae->prev_log_term, raft_get_current_idx(me_),
                   raft_get_commit_idx(me_), ae->leader_commit, ae->prev_log_idx);
             if (ae->prev_log_idx <= raft_get_commit_idx(me_))
@@ -489,7 +489,7 @@ int raft_recv_appendentries(
             if (ety_index <= raft_get_commit_idx(me_))
             {
                 /* Should never happen; something is seriously wrong! */
-                __log(me_, node, "AE entry conflicts with committed entry ci:%d comi:%d lcomi:%d pli:%d",
+                __log(me_, node, "AE entry conflicts with committed entry ci:%ld comi:%ld lcomi:%ld pli:%ld",
                       raft_get_current_idx(me_), raft_get_commit_idx(me_),
                       ae->leader_commit, ae->prev_log_idx);
                 e = RAFT_ERR_SHUTDOWN;
@@ -674,7 +674,7 @@ int raft_recv_requestvote_response(raft_server_t* me_,
         return 0;
     }
 
-    __log(me_, node, "node responded to requestvote status:%s ct:%d rt:%d",
+    __log(me_, node, "node responded to requestvote status:%s ct:%ld rt:%ld",
           r->vote_granted == 1 ? "granted" :
           r->vote_granted == 0 ? "not granted" : "unknown",
           me->current_term,
@@ -829,7 +829,7 @@ int raft_recv_entry(raft_server_t* me_,
     if (!raft_is_leader(me_))
         return RAFT_ERR_NOT_LEADER;
 
-    __log(me_, NULL, "received entry t:%d id: %d idx: %d",
+    __log(me_, NULL, "received entry t:%ld id: %d idx: %ld",
           me->current_term, ety->id, raft_get_current_idx(me_) + 1);
 
     ety->term = me->current_term;
@@ -913,7 +913,7 @@ int raft_apply_entry(raft_server_t* me_)
     if (!ety)
         return -1;
 
-    __log(me_, NULL, "applying log: %d, id: %d size: %d",
+    __log(me_, NULL, "applying log: %ld, id: %d size: %u",
           log_idx, ety->id, ety->data.len);
 
     me->last_applied_idx++;
@@ -976,7 +976,7 @@ int raft_send_installsnapshot(raft_server_t* me_, raft_node_t* node)
     is.last_idx = log_get_base(me->log);
     is.last_term = log_get_base_term(me->log);
 
-    __log(me_, node, "sending installsnapshot: ci:%d comi:%d t:%d lli:%d llt:%d",
+    __log(me_, node, "sending installsnapshot: ci:%ld comi:%ld t:%ld lli:%ld llt:%ld",
           raft_get_current_idx(me_),
           raft_get_commit_idx(me_),
           is.term,
@@ -1014,7 +1014,7 @@ int raft_send_appendentries(raft_server_t* me_, raft_node_t* node)
     int got = raft_get_entry_term(me_, ae.prev_log_idx, &ae.prev_log_term);
     assert(got);
 
-    __log(me_, node, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
+    __log(me_, node, "sending appendentries node: ci:%ld comi:%ld t:%ld lc:%ld pli:%ld plt:%ld",
           raft_get_current_idx(me_),
           raft_get_commit_idx(me_),
           ae.term,
@@ -1319,7 +1319,7 @@ int raft_begin_snapshot(raft_server_t *me_, raft_index_t idx)
     me->snapshot_in_progress = 1;
 
     __log(me_, NULL,
-        "begin snapshot sli:%d slt:%d slogs:%d",
+        "begin snapshot sli:%ld slt:%ld slogs:%ld",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));
@@ -1354,7 +1354,7 @@ int raft_end_snapshot(raft_server_t *me_)
     me->snapshot_in_progress = 0;
 
     __log(me_, NULL,
-        "end snapshot base:%d commit-index:%d current-index:%d\n",
+        "end snapshot base:%ld commit-index:%ld current-index:%ld\n",
         log_get_base(me->log),
         raft_get_commit_idx(me_),
         raft_get_current_idx(me_));
@@ -1386,7 +1386,7 @@ int raft_begin_load_snapshot(
     raft_set_snapshot_metadata(me_, last_included_term, me->last_applied_idx);
 
     __log(me_, NULL,
-        "loaded snapshot sli:%d slt:%d slogs:%d\n",
+        "loaded snapshot sli:%ld slt:%ld slogs:%ld\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
         raft_get_num_snapshottable_logs(me_));
