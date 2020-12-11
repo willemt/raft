@@ -469,7 +469,7 @@ The process works like this:
 2. Save the current membership details to the snapshot.
 3. Save the finite state machine to the snapshot.
 4. End snapshotting with ``raft_end_snapshot``.
-5. When the ``send_snapshot`` callback fires, the user must propogate the snapshot to the peer.
+5. When the ``send_snapshot`` callback fires, the user must propagate the snapshot to the peer.
 6. Once the peer has the snapshot, they call ``raft_begin_load_snapshot``.
 7. Peer calls ``raft_add_node`` to add nodes as per the snapshot's membership info.
 8. Peer calls ``raft_node_set_voting`` to nodes as per the snapshot's membership info.
