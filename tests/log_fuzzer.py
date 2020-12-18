@@ -5,6 +5,7 @@ import unittest
 
 from hypothesis import given
 from hypothesis.strategies import lists, just, integers, one_of
+from distutils.spawn import find_executable
 
 
 class Libraft(object):
@@ -28,7 +29,16 @@ class Libraft(object):
         self.lib = ffi.dlopen(library)
 
         def load(fname):
-            return subprocess.check_output(["gcc", "-E", fname])
+            gcc = find_executable('gcc')
+            if gcc is None:
+                print("#Error, unable to locate gcc")
+                return 1
+            elif not gcc.startswith('/usr/bin') and not gcc.startswith('/bin'):
+                print("#Error, find_executable(gcc)=", gcc)
+                print("#Unable to locate gcc under /bin or /usr/bin.")
+                return 1
+            else:
+                return subprocess.check_output([gcc, "-E", fname])
 
         ffi.cdef(load('include/raft.h'))
         ffi.cdef(load('include/raft_log.h'))
@@ -85,7 +95,7 @@ class CoreTestCase(unittest.TestCase):
                 unique_id += 1
 
                 ret = r.log_append_entry(l, entry)
-                assert ret == 0
+                assert ret == 0 # nosec
 
                 log.append(entry)
 
@@ -94,20 +104,20 @@ class CoreTestCase(unittest.TestCase):
 
                 if log.entries:
                     ret = r.log_poll(l, entry_ptr)
-                    assert ret == 0
+                    assert ret == 0 # nosec
 
                     ety_expected = log.poll()
                     ety_actual = self.r.ffi.cast('raft_entry_t**', entry_ptr)[0]
-                    assert ety_actual.id == ety_expected.id
+                    assert ety_actual.id == ety_expected.id # nosec
 
             elif isinstance(cmd, int):
                 if log.entries:
                     log.delete(cmd)
                     ret = r.log_delete(l, cmd)
-                    assert ret == 0
+                    assert ret == 0 # nosec
 
             else:
-                assert False
+                assert False # nosec
 
             self.assertEqual(r.log_count(l), log.count())
 
