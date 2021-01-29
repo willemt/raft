@@ -1399,8 +1399,10 @@ int raft_begin_load_snapshot(
     {
         if (raft_get_nodeid(me_) == raft_node_get_id(me->nodes[i]))
             my_node_by_idx = i;
-        else
-            raft_node_set_active(me->nodes[i], 0);
+        else {
+            raft_node_free(me->nodes[i]);
+            me->nodes[i] = NULL;
+        }
     }
 
     /* this will be realloc'd by a raft_add_node */
