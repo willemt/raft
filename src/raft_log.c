@@ -150,6 +150,9 @@ int log_append_entry(log_t* me_, raft_entry_t* ety)
         return e;
 
     memcpy(&me->entries[me->back], ety, sizeof(raft_entry_t));
+    /** copy the data buf */
+    me->entries[me->back].data.buf = malloc(ety->data.len);
+    memcpy(me->entries[me->back].data.buf, ety->data.buf, ety->data.len);
 
     if (me->cb && me->cb->log_offer)
     {
