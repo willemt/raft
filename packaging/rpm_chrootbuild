@@ -6,6 +6,13 @@ set -uex
 IFS=\| read -r -a distro_base_local_repos <<< "$DISTRO_BASE_LOCAL_REPOS"
 
 if [ -w /etc/mock/"$CHROOT_NAME".cfg ]; then
+    # Remove the distro repos
+    if [[ $CHROOT_NAME =~ opensuse-leap-* ]]; then
+        ed /etc/mock/"$CHROOT_NAME".cfg << EOF
+/^# repos$/+2;/^"""$/-1d
+wq
+EOF
+    fi
     echo -e "config_opts['yum.conf'] += \"\"\"\n" >> /etc/mock/"$CHROOT_NAME".cfg
     for repo in $DISTRO_BASE_PR_REPOS $PR_REPOS; do
         branch="master"

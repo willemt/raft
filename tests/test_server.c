@@ -329,6 +329,7 @@ void TestRaft_server_append_entry_means_entry_gets_current_term(CuTest* tc)
 
 void TestRaft_server_append_entry_is_retrievable(CuTest * tc)
 {
+  raft_entry_t* kept;
     void *r = raft_new();
     raft_set_callbacks(r, &generic_funcs, NULL);
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -341,7 +342,7 @@ void TestRaft_server_append_entry_is_retrievable(CuTest * tc)
     ety.data.buf = (unsigned char*)"aaa";
     raft_append_entry(r, &ety);
 
-    raft_entry_t* kept =  raft_get_entry_from_idx(r, 1);
+    CuAssertTrue(tc, NULL != (kept = raft_get_entry_from_idx(r, 1)));
     CuAssertTrue(tc, NULL != kept->data.buf);
     CuAssertIntEquals(tc, ety.data.len, kept->data.len);
     CuAssertTrue(tc, kept->data.buf == ety.data.buf);
@@ -367,6 +368,7 @@ void TestRaft_server_append_entry_user_can_set_data_buf(CuTest * tc)
         .persist_term = __raft_persist_term,
     };
     char *buf = "aaa";
+    raft_entry_t* kept;
 
     void *r = raft_new();
     raft_set_state(r, RAFT_STATE_CANDIDATE);
@@ -380,7 +382,7 @@ void TestRaft_server_append_entry_user_can_set_data_buf(CuTest * tc)
     raft_append_entry(r, &ety);
     /* User's input entry is intact. */
     CuAssertTrue(tc, ety.data.buf == buf);
-    raft_entry_t* kept =  raft_get_entry_from_idx(r, 1);
+    CuAssertTrue(tc, NULL != (kept = raft_get_entry_from_idx(r, 1)));
     CuAssertTrue(tc, NULL != kept->data.buf);
     /* Data buf is the one set by log_offer. */
     CuAssertTrue(tc, kept->data.buf == tc);
@@ -1223,7 +1225,7 @@ void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
     raft_cbs_t funcs = {
         .persist_term = __raft_persist_term,
     };
-
+    raft_entry_t *log;
     void *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
 
@@ -1260,7 +1262,7 @@ void TestRaft_follower_recv_appendentries_increases_log(CuTest * tc)
     raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
     CuAssertTrue(tc, 1 == aer.success);
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
-    raft_entry_t* log = raft_get_entry_from_idx(r, 1);
+    CuAssertTrue(tc, NULL != (log = raft_get_entry_from_idx(r, 1)));
     CuAssertTrue(tc, 2 == log->term);
 }
 

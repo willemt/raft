@@ -131,7 +131,7 @@ _topdir/SOURCES/%: % | _topdir/SOURCES/
 # At least one spec file, SLURM (sles), has a different version for the
 # download file than the version in the spec file.
 ifeq ($(DL_VERSION),)
-DL_VERSION = $(VERSION)
+DL_VERSION = $(subst ~,,$(VERSION))
 endif
 ifeq ($(DL_NAME),)
 DL_NAME = $(NAME)
@@ -389,6 +389,9 @@ show_common_rpm_args:
 
 show_version:
 	@echo '$(VERSION)'
+
+show_dl_version:
+	@echo '$(DL_VERSION)'
 
 show_release:
 	@echo '$(RELEASE)'

@@ -1,3 +1,10 @@
+raft (0.7.2-1) unstable; urgency=medium
+
+  [ Kenneth Cain ]
+  * Fix more Coverity issues in test_server
+
+ -- Kenneth Cain <kenneth.c.cain@intel.com>  Tue, Feb 09 2021 15:20:00 +0800
+
 raft (0.7.1-1) unstable; urgency=medium
 
   [ Li Wei ]
