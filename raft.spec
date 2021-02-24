@@ -7,7 +7,7 @@
 %bcond_with use_release
 
 Name:		raft
-Version:	0.7.2
+Version:	0.7.3
 Release:	1%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
@@ -57,6 +57,9 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Wed Feb 24 2021 Li Wei <wei.g.li@intel.com> -0.7.3-1
+- Fix disruptions from removed replicas
+
 * Tue Feb 09 2021 Kenneth Cain <kenneth.c.cain@intel> - 0.7.2-1
 - Fix more Coverity issues in test_server
 
