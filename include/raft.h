@@ -666,7 +666,7 @@ raft_index_t raft_get_last_applied_idx(raft_server_t* me);
 raft_index_t raft_node_get_next_idx(raft_node_t* node);
 
 /**
- * @return this node's user data */
+ * @return this node's match index */
 raft_index_t raft_node_get_match_idx(raft_node_t* me);
 
 /**
