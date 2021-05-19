@@ -527,11 +527,6 @@ out:
     return e;
 }
 
-int raft_already_voted(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->voted_for != -1;
-}
-
 static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 {
     if (!raft_node_is_voting(raft_get_my_node((void*)me)))
@@ -540,8 +535,7 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
     if (vr->term < raft_get_current_term((void*)me))
         return 0;
 
-    /* TODO: if voted for is candidate return 1 (if below checks pass) */
-    if (raft_already_voted((void*)me))
+    if (me->voted_for != -1 && me->voted_for != vr->candidate_id)
         return 0;
 
     /* Below we check if log is more up-to-date... */
@@ -585,7 +579,8 @@ int raft_recv_requestvote(raft_server_t* me_,
 
     /* Reject request if we have a leader */
     if (me->current_leader && me->current_leader != node &&
-            (me->timeout_elapsed < me->election_timeout)) {
+        (me->timeout_elapsed < me->election_timeout))
+    {
         r->vote_granted = 0;
         goto done;
     }
