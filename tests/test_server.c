@@ -1058,20 +1058,22 @@ void TestRaft_server_recv_requestvote_dont_grant_vote_if_we_didnt_vote_for_this_
     raft_add_node(r, NULL, 2, 0);
     raft_set_current_term(r, 1);
 
-    /* vote for self */
-    raft_vote_for_nodeid(r, 1);
-
+    /* votedFor is null; vote for 0 */
     msg_requestvote_t rv = {};
     rv.term = 1;
-    rv.candidate_id = 1;
+    rv.candidate_id = 0;
     rv.last_log_idx = 1;
     rv.last_log_term = 1;
     msg_requestvote_response_t rvr;
-    raft_recv_requestvote(r, raft_get_node(r, 2), &rv, &rvr);
-    CuAssertTrue(tc, 0 == rvr.vote_granted);
+    raft_recv_requestvote(r, raft_get_node(r, 0), &rv, &rvr);
+    CuAssertTrue(tc, 1 == rvr.vote_granted);
 
-    /* vote for ID 0 */
-    raft_vote_for_nodeid(r, 0);
+    /* votedFor is 0; vote for 0 */
+    raft_recv_requestvote(r, raft_get_node(r, 0), &rv, &rvr);
+    CuAssertTrue(tc, 1 == rvr.vote_granted);
+
+    /* votedFor is 0; don't vote for 2 */
+    rv.candidate_id = 2;
     raft_recv_requestvote(r, raft_get_node(r, 2), &rv, &rvr);
     CuAssertTrue(tc, 0 == rvr.vote_granted);
 }
