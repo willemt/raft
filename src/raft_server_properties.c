@@ -203,6 +203,12 @@ int raft_is_candidate(raft_server_t* me_)
     return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
 }
 
+int raft_is_prevoted_candidate(raft_server_t* me_)
+{
+    raft_server_private_t* me = (void*)me_;
+    return raft_get_state(me_) == RAFT_STATE_CANDIDATE && !me->prevote;
+}
+
 int raft_is_self(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (void*)me_;

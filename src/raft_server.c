@@ -128,7 +128,7 @@ int raft_delete_entry_from_idx(raft_server_t* me_, raft_index_t idx)
     return log_delete(me->log, idx);
 }
 
-int raft_election_start(raft_server_t* me_)
+void raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -136,7 +136,7 @@ int raft_election_start(raft_server_t* me_)
           me->election_timeout_rand, me->timeout_elapsed, me->current_term,
           raft_get_current_idx(me_));
 
-    return raft_become_candidate(me_);
+    raft_become_candidate(me_);
 }
 
 void raft_become_leader(raft_server_t* me_)
@@ -161,24 +161,54 @@ void raft_become_leader(raft_server_t* me_)
     }
 }
 
-int raft_become_candidate(raft_server_t* me_)
+void raft_become_candidate(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
     __log(me_, NULL, "becoming candidate");
 
+    raft_set_state(me_, RAFT_STATE_CANDIDATE);
+    me->prevote = 1;
+
+    for (i = 0; i < me->num_nodes; i++)
+        raft_node_vote_for_me(me->nodes[i], 0);
+    raft_node_vote_for_me(raft_get_my_node(me_), 1);
+
+    raft_randomize_election_timeout(me_);
+    me->timeout_elapsed = 0;
+
+    for (i = 0; i < me->num_nodes; i++)
+    {
+        raft_node_t* node = me->nodes[i];
+
+        if (!raft_is_self(me_, node) &&
+            raft_node_is_active(node) &&
+            raft_node_is_voting(node))
+        {
+            raft_send_requestvote(me_, node);
+        }
+    }
+}
+
+int raft_become_prevoted_candidate(raft_server_t* me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    int i;
+
+    __log(me_, NULL, "becoming prevoted candidate");
+
+    me->prevote = 0;
     int e = raft_set_current_term(me_, raft_get_current_term(me_) + 1);
     if (0 != e)
         return e;
     for (i = 0; i < me->num_nodes; i++)
         raft_node_vote_for_me(me->nodes[i], 0);
-    raft_vote_for_nodeid(me_, me->node_id);
+    e = raft_vote_for_nodeid(me_, me->node_id);
+    if (0 != e)
+        return e;
+    raft_node_vote_for_me(raft_get_my_node(me_), 1);
     me->leader_id = -1;
-    raft_set_state(me_, RAFT_STATE_CANDIDATE);
-
-    raft_randomize_election_timeout(me_);
-    me->timeout_elapsed = 0;
 
     for (i = 0; i < me->num_nodes; i++)
     {
@@ -239,11 +269,7 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
     {
         if (1 < raft_get_num_voting_nodes(me_) &&
             my_node && raft_node_is_voting(my_node))
-        {
-            int e = raft_election_start(me_);
-            if (0 != e)
-                return e;
-        }
+            raft_election_start(me_);
     }
 
     if (me->last_applied_idx < raft_get_commit_idx(me_) &&
@@ -537,10 +563,15 @@ static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
     if (my_node && !raft_node_is_voting(my_node))
         return 0;
 
+    /* For a prevote, we could theoretically proceed to the votedFor check
+     * below, if vr->term == currentTerm - 1. That, however, would only matter
+     * if we had rejected a previous RequestVote from a third server, who must
+     * have already won a prevote phase. Hence, we choose not to look into
+     * votedFor for simplicity. */
     if (vr->term < raft_get_current_term((void*)me))
         return 0;
 
-    if (me->voted_for != -1 && me->voted_for != vr->candidate_id)
+    if (!vr->prevote && me->voted_for != -1 && me->voted_for != vr->candidate_id)
         return 0;
 
     /* Below we check if log is more up-to-date... */
@@ -592,19 +623,21 @@ int raft_recv_requestvote(raft_server_t* me_,
     if (__should_grant_vote(me, vr))
     {
         /* It shouldn't be possible for a leader or candidate to grant a vote
-         * Both states would have voted for themselves */
-        assert(!(raft_is_leader(me_) || raft_is_candidate(me_)));
+         * Both states would have voted for themselves
+         * A candidate may grant a prevote though */
+        assert(!raft_is_leader(me_) && (vr->prevote || !raft_is_candidate(me_)));
 
-        e = raft_vote_for_nodeid(me_, vr->candidate_id);
-        if (0 == e)
-            r->vote_granted = 1;
-        else
-            r->vote_granted = 0;
+        r->vote_granted = 1;
+        if (!vr->prevote)
+        {
+            e = raft_vote_for_nodeid(me_, vr->candidate_id);
+            if (0 != e)
+                r->vote_granted = 0;
 
-        /* there must be in an election. */
-        me->leader_id = -1;
-
-        me->timeout_elapsed = 0;
+            /* there must be in an election. */
+            me->leader_id = -1;
+            me->timeout_elapsed = 0;
+        }
     }
     else
     {
@@ -623,12 +656,14 @@ int raft_recv_requestvote(raft_server_t* me_,
     }
 
 done:
-    __log(me_, node, "node requested vote: %d replying: %s",
+    __log(me_, node, "node requested vote%s: %d replying: %s",
+          vr->prevote ? " (prevote)" : "",
           node == NULL ? -1 : raft_node_get_id(node),
           r->vote_granted == 1 ? "granted" :
           r->vote_granted == 0 ? "not granted" : "unknown");
 
     r->term = raft_get_current_term(me_);
+    r->prevote = vr->prevote;
     return e;
 }
 
@@ -646,11 +681,14 @@ int raft_recv_requestvote_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(me_, node, "node responded to requestvote status: %s",
+    __log(me_, node, "node responded to requestvote%s status:%s ct:%ld rt:%ld",
+          r->prevote ? " (prevote)" : "",
           r->vote_granted == 1 ? "granted" :
-          r->vote_granted == 0 ? "not granted" : "unknown");
+          r->vote_granted == 0 ? "not granted" : "unknown",
+          me->current_term,
+          r->term);
 
-    if (!raft_is_candidate(me_))
+    if (!raft_is_candidate(me_) || me->prevote != r->prevote)
     {
         return 0;
     }
@@ -671,12 +709,6 @@ int raft_recv_requestvote_response(raft_server_t* me_,
         return 0;
     }
 
-    __log(me_, node, "node responded to requestvote status:%s ct:%ld rt:%ld",
-          r->vote_granted == 1 ? "granted" :
-          r->vote_granted == 0 ? "not granted" : "unknown",
-          me->current_term,
-          r->term);
-
     switch (r->vote_granted)
     {
         case RAFT_REQUESTVOTE_ERR_GRANTED:
@@ -684,7 +716,12 @@ int raft_recv_requestvote_response(raft_server_t* me_,
                 raft_node_vote_for_me(node, 1);
             int votes = raft_get_nvotes_for_me(me_);
             if (raft_votes_is_majority(raft_get_num_voting_nodes(me_), votes))
-                raft_become_leader(me_);
+            {
+                if (r->prevote)
+                    raft_become_prevoted_candidate(me_);
+                else
+                    raft_become_leader(me_);
+            }
             break;
 
         case RAFT_REQUESTVOTE_ERR_NOT_GRANTED:
@@ -875,12 +912,14 @@ int raft_send_requestvote(raft_server_t* me_, raft_node_t* node)
     assert(node);
     assert(!raft_is_self(me_, node));
 
-    __log(me_, node, "sending requestvote to: %d", raft_node_get_id(node));
+    __log(me_, node, "sending requestvote%s to: %d",
+          me->prevote ? " (prevote)" : "", raft_node_get_id(node));
 
     rv.term = me->current_term;
     rv.last_log_idx = raft_get_current_idx(me_);
     rv.last_log_term = raft_get_last_log_term(me_);
     rv.candidate_id = raft_get_nodeid(me_);
+    rv.prevote = me->prevote;
     if (me->cb.send_requestvote)
         e = me->cb.send_requestvote(me_, me->udata, node, &rv);
     return e;
@@ -1130,17 +1169,13 @@ int raft_get_nvotes_for_me(raft_server_t* me_)
 
     for (i = 0, votes = 0; i < me->num_nodes; i++)
     {
-        if (!raft_is_self(me_, me->nodes[i]) &&
-            raft_node_is_active(me->nodes[i]) &&
+        if (raft_node_is_active(me->nodes[i]) &&
             raft_node_is_voting(me->nodes[i]) &&
             raft_node_has_vote_for_me(me->nodes[i]))
         {
             votes += 1;
         }
     }
-
-    if (me->voted_for == raft_get_nodeid(me_))
-        votes += 1;
 
     return votes;
 }

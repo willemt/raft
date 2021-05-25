@@ -119,7 +119,7 @@ typedef struct
     raft_index_t idx;
 } msg_entry_response_t;
 
-/** Vote request message.
+/** Vote/prevote request message.
  * Sent to nodes when a server wants to become leader.
  * This message could force a leader/candidate to become a follower. */
 typedef struct
@@ -135,10 +135,13 @@ typedef struct
 
     /** term of candidate's last log entry */
     raft_term_t last_log_term;
+
+    /** true if this is a prevote request */
+    int prevote;
 } msg_requestvote_t;
 
-/** Vote request response message.
- * Indicates if node has accepted the server's vote request. */
+/** Vote/prevote response message.
+ * Indicates if node has accepted, or would accept, the server's vote request. */
 typedef struct
 {
     /** currentTerm, for candidate to update itself */
@@ -146,6 +149,9 @@ typedef struct
 
     /** true means candidate received vote */
     int vote_granted;
+
+    /** true if this is a prevote response */
+    int prevote;
 } msg_requestvote_response_t;
 
 /** Appendentries message.
@@ -890,7 +896,7 @@ void raft_become_leader(raft_server_t* me);
  * currentTerm. */
 void raft_become_follower(raft_server_t* me);
 
-int raft_election_start(raft_server_t* me);
+void raft_election_start(raft_server_t* me);
 
 /** Determine if entry is voting configuration change.
  * @param[in] ety The entry to query.

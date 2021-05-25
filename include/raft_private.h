@@ -44,6 +44,9 @@ typedef struct {
     /* follower/leader/candidate indicator */
     int state;
 
+    /* true if this server is in the candidate prevote state (§4.2.3, §9.6) */
+    int prevote;
+
     /* amount of time left till timeout */
     int timeout_elapsed;
  
@@ -79,7 +82,9 @@ typedef struct {
     raft_term_t snapshot_last_term;
 } raft_server_private_t;
 
-int raft_become_candidate(raft_server_t* me);
+void raft_become_candidate(raft_server_t* me);
+int raft_become_prevoted_candidate(raft_server_t* me_);
+int raft_is_prevoted_candidate(raft_server_t* me_);
 
 void raft_randomize_election_timeout(raft_server_t* me_);
 
