@@ -34,6 +34,8 @@ typedef struct
     int flags;
 
     raft_node_id_t id;
+
+    int removed;
 } raft_node_private_t;
 
 raft_node_t* raft_node_new(void* udata, raft_node_id_t id)

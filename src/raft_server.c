@@ -947,7 +947,7 @@ int raft_send_appendentries_all(raft_server_t* me_)
     int i, e;
 
     me->timeout_elapsed = 0;
-    for (i = 0; i < me->num_nodes; i++)
+    for (i = me->num_nodes - 1; i >= 0; i--)
     {
         if (me->node == me->nodes[i] || !raft_node_is_active(me->nodes[i]))
             continue;
