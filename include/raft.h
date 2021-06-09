@@ -776,6 +776,16 @@ void raft_node_set_voting(raft_node_t* node, int voting);
  * @return 1 if this is a voting node. Otherwise 0. */
 int raft_node_is_voting(raft_node_t* me_);
 
+/** Tell if node has been marked for removal
+ * @return 1 if this is a removed node, Otherwise 0. */
+int raft_node_is_removed(raft_node_t* me_);
+
+/** Turn a node into a removed node.
+ * neccessary to enable removing a node after an appendentry with an update commit idx is sent
+ * enabling removed node to know it was remvoed 
+ */
+void raft_node_set_removed(raft_node_t* me_);
+
 /** Check if a node has sufficient logs to be able to join the cluster.
  **/
 int raft_node_has_sufficient_logs(raft_node_t* me_);

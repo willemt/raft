@@ -863,8 +863,13 @@ int raft_apply_entry(raft_server_t* me_)
                 raft_node_set_voting_committed(node, 0);
             break;
         case RAFT_LOGTYPE_REMOVE_NODE:
-            if (node)
-                raft_remove_node(me_, node);
+            if (node) {
+                if (raft_is_leader(me_)) {
+                    raft_node_set_removed(me_);
+                } else {
+                    raft_remove_node(me_, node);
+                }
+            }
             break;
         default:
             break;
@@ -950,6 +955,9 @@ int raft_send_appendentries_all(raft_server_t* me_)
         e = raft_send_appendentries(me_, me->nodes[i]);
         if (0 != e)
             return e;
+        if (raft_node_is_removed(me->nodes[i])) {
+            raft_remove_node(me_, me->nodes[i]);
+        }
     }
 
     return 0;
