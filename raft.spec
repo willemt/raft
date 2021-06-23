@@ -9,11 +9,11 @@
 %global debug_package %{nil}
 
 Name:		raft
-Version:	0.7.3
-Release:	2%{?relval}%{?dist}
+Version:	0.8.0
+Release:	1%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
-Provides:   daos-raft
+Provides:	daos-raft = %version-%release%{?dist}
 
 License:	BSD-3-Clause
 URL:		https://github.com/daos-stack/%{name}
@@ -31,7 +31,7 @@ cleanly addresses all major pieces needed for practical systems.
 
 %package devel
 Summary:	Development libs
-Provides:   daos-raft-devel
+Provides:   daos-raft-devel = %version-%release%{?dist}
 
 %description devel
 Development libs for Raft consensus protocol
@@ -61,6 +61,10 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Mon May 31 2021 Li Wei <wei.g.li@intel.com> -0.8.0-1
+- Add Pre-Vote
+- Set version-release for daos-raft* packages
+
 * Mon Apr 26 2021 Brian J. Murrell <brian.murrell@intel> -0.7.3-2
 - Provides daos-raft to avoid getting other raft packages
 - disable debug{info,source} package builds
