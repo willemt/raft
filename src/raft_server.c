@@ -175,6 +175,7 @@ void raft_become_candidate(raft_server_t* me_)
         raft_node_vote_for_me(me->nodes[i], 0);
     raft_node_vote_for_me(raft_get_my_node(me_), 1);
 
+    me->leader_id = -1;
     raft_randomize_election_timeout(me_);
     me->timeout_elapsed = 0;
 
@@ -208,7 +209,6 @@ int raft_become_prevoted_candidate(raft_server_t* me_)
     if (0 != e)
         return e;
     raft_node_vote_for_me(raft_get_my_node(me_), 1);
-    me->leader_id = -1;
 
     for (i = 0; i < me->num_nodes; i++)
     {
