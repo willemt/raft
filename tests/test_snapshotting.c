@@ -379,13 +379,13 @@ void TestRaft_follower_load_from_snapshot(CuTest * tc)
 
     CuAssertIntEquals(tc, 0, raft_periodic(r, 1000));
 
-    /* current idx means snapshot was unnecessary */
     ety.id = 2;
     raft_append_entry(r, &ety);
     ety.id = 3;
     raft_append_entry(r, &ety);
     raft_set_commit_idx(r, 7);
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 6, 5));
+    /* last_included_index conflicts with committed entry */
+    CuAssertIntEquals(tc, RAFT_ERR_SHUTDOWN, raft_begin_load_snapshot(r, 6, 5));
     CuAssertIntEquals(tc, 7, raft_get_commit_idx(r));
 }
 
@@ -467,7 +467,8 @@ void TestRaft_follower_load_from_snapshot_does_not_break_cluster_safety(CuTest *
     ety.data.len = strlen("entry");
     raft_append_entry(r, &ety);
 
-    CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 2, 2));
+    /* log mismatch */
+    CuAssertIntEquals(tc, 0, raft_begin_load_snapshot(r, 2, 2));
 }
 
 void TestRaft_follower_load_from_snapshot_fails_if_log_is_newer(CuTest * tc)
@@ -495,7 +496,7 @@ void TestRaft_follower_load_from_snapshot_fails_if_log_is_newer(CuTest * tc)
     CuAssertIntEquals(tc, -1, raft_begin_load_snapshot(r, 2, 2));
 }
 
-void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTest* tc)
+void TestRaft_leader_sends_snapshot_when_node_next_index_was_compacted(CuTest* tc)
 {
     raft_cbs_t funcs = {
         .send_appendentries = __raft_send_appendentries_capture,
@@ -545,10 +546,10 @@ void TestRaft_leader_sends_appendentries_when_node_next_index_was_compacted(CuTe
 
     raft_set_state(r, RAFT_STATE_LEADER);
     raft_set_current_term(r, 2);
-    CuAssertIntEquals(tc, 0, raft_send_appendentries(r, node));
-    CuAssertIntEquals(tc, 2, ae.term);
-    CuAssertIntEquals(tc, 3, ae.prev_log_idx);
-    CuAssertIntEquals(tc, 2, ae.prev_log_term);
+    CuAssertIntEquals(tc, RAFT_ERR_NEEDS_SNAPSHOT, raft_send_appendentries(r, node));
+    // CuAssertIntEquals(tc, 2, ae.term);
+    // CuAssertIntEquals(tc, 3, ae.prev_log_idx);
+    // CuAssertIntEquals(tc, 2, ae.prev_log_term);
 }
 
 void TestRaft_recv_entry_fails_if_snapshot_in_progress(CuTest* tc)
@@ -662,7 +663,7 @@ void TestRaft_follower_recv_appendentries_is_successful_when_previous_log_idx_eq
     CuAssertIntEquals(tc, 1, aer.success);
 }
 
-void TestRaft_leader_sends_appendentries_with_correct_prev_log_idx_when_snapshotted(
+void TestRaft_leader_not_send_appendentries_when_snapshotted(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
@@ -682,6 +683,7 @@ void TestRaft_leader_sends_appendentries_with_correct_prev_log_idx_when_snapshot
     /* i'm leader */
     raft_set_state(r, RAFT_STATE_LEADER);
 
+    CuAssertTrue(tc, NULL != raft_add_node(r, NULL, 2, 0));
     raft_node_t* p = raft_get_node_from_idx(r, 1);
     CuAssertTrue(tc, NULL != p);
     raft_node_set_next_idx(p, 4);
@@ -689,9 +691,9 @@ void TestRaft_leader_sends_appendentries_with_correct_prev_log_idx_when_snapshot
     /* receive appendentries messages */
     raft_send_appendentries(r, p);
     msg_appendentries_t* ae = sender_poll_msg_data(sender);
-    CuAssertTrue(tc, NULL != ae);
-    CuAssertIntEquals(tc, 2, ae->prev_log_term);
-    CuAssertIntEquals(tc, 4, ae->prev_log_idx);
+    CuAssertTrue(tc, NULL == ae);
+    // CuAssertIntEquals(tc, 2, ae->prev_log_term);
+    // CuAssertIntEquals(tc, 4, ae->prev_log_idx);
 }
 
 void TestRaft_cancel_snapshot_restores_state(CuTest* tc)
@@ -812,6 +814,9 @@ void TestRaft_leader_sends_snapshot_if_log_was_compacted(CuTest* tc)
     aer.first_idx = 4;
 
     raft_recv_appendentries_response(r, node, &aer);
-    CuAssertIntEquals(tc, 1, send_snapshot_count);
-}
+    CuAssertIntEquals(tc, 0, send_snapshot_count);
 
+    /* It is ok to send snapshot when request timeout */
+    raft_periodic(r, ((raft_server_private_t*)r)->request_timeout);
+    CuAssertIntEquals(tc, 2, send_snapshot_count);
+}
