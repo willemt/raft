@@ -3,10 +3,10 @@ TEST_DIR = ./tests
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 VPATH = src
 
-GCOV_OUTPUT = *.gcda *.gcno *.gcov 
+GCOV_OUTPUT = *.gcda *.gcno *.gcov src/*.gcda src/*.gcno src/*.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
-CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
+override CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
 	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
 	  -Wunused-variable \
 	  $(GCOV_CCFLAGS) -I$(LLQUEUE_DIR) -Iinclude -g -O2 -fPIC
@@ -18,10 +18,10 @@ ASANFLAGS = -fsanitize=address
 SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh
-CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
-CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
-CFLAGS += $(ASANFLAGS)
-CFLAGS += -Wno-nullability-completeness
+override CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/
+override CFLAGS += -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
+override CFLAGS += $(ASANFLAGS)
+override CFLAGS += -Wno-nullability-completeness
 else
 SHAREDFLAGS = -shared
 SHAREDEXT = so
@@ -96,4 +96,9 @@ clean:
 	@rm -f $(TEST_DIR)/main_test.c src/*.o $(GCOV_OUTPUT); \
 	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
 	if [ -f libraft.a ]; then rm libraft.a; fi;\
-	if [ -f tests_main ]; then rm tests_main; fi;
+	if [ -f tests_main ]; then rm tests_main; fi;\
+	if [ -f tests.c ]; then rm tests.c; fi;\
+	if [ -f tests.o ]; then rm tests.o; fi;\
+	if [ -f tests.cpython* ]; then rm tests.cpython*; fi;\
+	if [ -d CLinkedListQueue ]; then rm -rf CLinkedListQueue; fi;\
+	if [ -d .hypothesis ]; then rm -rf .hypothesis; fi;

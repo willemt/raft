@@ -221,6 +221,16 @@ raft_term_t raft_get_last_log_term(raft_server_t* me_)
         raft_entry_t* ety = raft_get_entry_from_idx(me_, current_idx);
         if (ety)
             return ety->term;
+        else
+        {
+            /* ety is NULL when:
+             * 1. current_idx is 0
+             * 2. current_idx is compacted (must equals to snapshot_last_idx)
+             * 3. current_idx is greater than current_idx (never)
+             */
+            assert(current_idx == raft_get_snapshot_last_idx(me_));
+            return raft_get_snapshot_last_term(me_);
+        }
     }
     return 0;
 }
