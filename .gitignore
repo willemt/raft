@@ -1,5 +1,14 @@
 *.o
 *.gcno
 *~
-libcraft.so
-libcraft.a
+*.so
+*.a
+*.gcda
+/tests.c
+__pycache__
+.hypothesis
+*.gcov
+CLinkedListQueue/
+tests/main_test.c
+tests_main
+

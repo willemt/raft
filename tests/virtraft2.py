@@ -149,7 +149,7 @@ class Snapshot(object):
         self.members = []
 
 
-SnapshotMember = collections.namedtuple('SnapshotMember', ['id', 'voting'], verbose=False)
+SnapshotMember = collections.namedtuple('SnapshotMember', ['id', 'voting'])
 
 
 def raft_send_requestvote(raft, udata, node, msg):
