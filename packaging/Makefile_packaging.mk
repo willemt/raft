@@ -75,13 +75,12 @@ define distro_map
 	case $(DISTRO_ID) in               \
 	    el7) distro="centos7"          \
 	    ;;                             \
-	    el8) distro="centos8"          \
+	    el8) distro="centos8";         \
+		     if [ -n "$DOT_VER" ] ; then distro="centos8.${DOT_VER}"; fi \
 	    ;;                             \
-	    sle12.3) distro="sles12.3"     \
+	    sl15.2) distro=leap15.2        \
 	    ;;                             \
-	    sl42.3) distro="leap42.3"      \
-	    ;;                             \
-	    sl15.*) distro="leap15"        \
+	    sl15.*) distro=leap15.3        \
 	    ;;                             \
 	    ubuntu*) distro="$(DISTRO_ID)" \
 	    ;;                             \
@@ -131,8 +130,7 @@ all: $(TARGETS)
 	xz -z $<
 
 _topdir/SOURCES/%: % | _topdir/SOURCES/
-	rm -f $@
-	ln $< $@
+	if [ ! -d "$@" ]; then rm -f "$@"; ln "$<" "$@"; fi
 
 # At least one spec file, SLURM (sles), has a different version for the
 # download file than the version in the spec file.
@@ -309,8 +307,11 @@ ifneq ($(DAOS_STACK_$(DISTRO_BASE)_DOCKER_$(DAOS_REPO_TYPE)_REPO),)
 DISTRO_REPOS = $(DAOS_STACK_$(DISTRO_BASE)_DOCKER_$(DAOS_REPO_TYPE)_REPO)
 $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_DOCKER_$(DAOS_REPO_TYPE)_REPO)/|
 endif
-ifneq ($(DAOS_STACK_$(DISTRO_BASE)_APPSTREAM_REPO),)
-$(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_APPSTREAM_REPO)|
+ifneq ($(DAOS_STACK_$(DISTRO_BASE)_APPSTREAM_$(DAOS_REPO_TYPE)_REPO),)
+$(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_APPSTREAM_$(DAOS_REPO_TYPE)_REPO)|
+endif
+ifneq ($(DAOS_STACK_$(DISTRO_BASE)_POWERTOOLS_$(DAOS_REPO_TYPE)_REPO),)
+$(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_POWERTOOLS_$(DAOS_REPO_TYPE)_REPO)|
 endif
 ifneq ($(ID_LIKE),debian)
 ifneq ($(DAOS_STACK_INTEL_ONEAPI_REPO),)
@@ -318,6 +319,8 @@ $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)$(REPOSITORY_URL)$(DA
 endif
 endif
 endif
+# else
+# Mirror repos for building a point release.
 endif
 ifeq ($(ID_LIKE),debian)
 chrootbuild: $(DEB_TOP)/$(DEB_DSC)
@@ -393,7 +396,7 @@ endif
 test:
 	# Test the rpmbuild by installing the built RPM
 	$(call install_repos,$(REPO_NAME)@$(BRANCH_NAME):$(BUILD_NUMBER))
-	yum -y install $(TEST_PACKAGES)
+	dnf -y install $(TEST_PACKAGES)
 
 show_spec:
 	@echo '$(SPEC)'

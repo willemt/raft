@@ -1,3 +1,11 @@
+raft (0.8.1-1) unstable; urgency=medium
+
+  [ Li Wei ]
+  * Optimize InstallSnapshot performance
+  * Update packaging
+
+ -- Li Wei <wei.g.li@intel.com>  Mon, Aug 30 2021 17:47:00 +0800
+
 raft (0.8.0-1) unstable; urgency=medium
 
   [ Li Wei ]

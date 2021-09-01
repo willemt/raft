@@ -38,18 +38,33 @@ DIST        := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
 VERSION_ID  := 8
 DISTRO_ID   := el8
 DISTRO_BASE := EL_8
+ifeq ($(DAOS_STACK_CENTOS_8_VERSION),8.$(DOT_VER))
+DAOS_REPO_TYPE ?= STABLE
+else
+DAOS_REPO_TYPE ?= DEV
+endif
 SED_EXPR    := 1s/$(DIST)//p
 endif
 ifeq ($(CHROOT_NAME),opensuse-leap-15.2-x86_64)
 VERSION_ID  := 15.2
 DISTRO_ID   := sl15.2
 DISTRO_BASE := LEAP_15
+ifeq ($(DAOS_STACK_LEAP_15_VERSION),15.2)
+DAOS_REPO_TYPE ?= STABLE
+else
+DAOS_REPO_TYPE ?= DEV
+endif
 SED_EXPR    := 1p
 endif
 ifeq ($(CHROOT_NAME),opensuse-leap-15.3-x86_64)
 VERSION_ID  := 15.3
 DISTRO_ID   := sl15.3
 DISTRO_BASE := LEAP_15
+ifeq ($(DAOS_STACK_LEAP_15_VERSION),15.3)
+DAOS_REPO_TYPE ?= STABLE
+else
+DAOS_REPO_TYPE ?= DEV
+endif
 SED_EXPR    := 1p
 endif
 endif

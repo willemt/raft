@@ -825,11 +825,8 @@ int raft_recv_installsnapshot_response(raft_server_t* me_,
     if (0 != e)
         return e;
 
-    if (!r->complete)
-        return 0;
-
     /* The snapshot installation is complete. Update the node state. */
-    if (raft_node_get_match_idx(node) < r->last_idx)
+    if (r->complete && raft_node_get_match_idx(node) < r->last_idx)
     {
         raft_node_set_match_idx(node, r->last_idx);
         raft_node_set_next_idx(node, r->last_idx + 1);

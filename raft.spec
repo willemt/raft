@@ -9,7 +9,7 @@
 %global debug_package %{nil}
 
 Name:		raft
-Version:	0.8.0
+Version:	0.8.1
 Release:	1%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
@@ -61,6 +61,10 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Mon Aug 30 2021 Li Wei <wei.g.li@intel.com> -0.8.1-1
+- Optimize InstallSnapshot performance
+- Update packaging
+
 * Mon May 31 2021 Li Wei <wei.g.li@intel.com> -0.8.0-1
 - Add Pre-Vote
 - Set version-release for daos-raft* packages
