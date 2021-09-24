@@ -1,6 +1,6 @@
 from cffi import FFI
 
-import subprocess
+import subprocess #nosec
 import unittest
 
 from hypothesis import given
