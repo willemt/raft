@@ -1,4 +1,0 @@
-[submodule "packaging"]
-	path = packaging
-	url = https://github.com/daos-stack/packaging.git
-	branch = master
