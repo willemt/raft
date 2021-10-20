@@ -1,4 +1,4 @@
-CONTRIB_DIR = .
+CONTRIB_DIR = contrib
 TEST_DIR = ./tests
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 VPATH = src
@@ -36,18 +36,7 @@ $(BUILDDIR):
 $(BUILDDIR)/%.o: %.c $(wildcard include/*.h) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-clinkedlistqueue:
-	mkdir -p $(LLQUEUE_DIR)/.git
-	git --git-dir=$(LLQUEUE_DIR)/.git init 
-	pushd $(LLQUEUE_DIR); git pull http://github.com/willemt/CLinkedListQueue master; popd
-
-download-contrib: clinkedlistqueue
-
 $(TEST_DIR)/main_test.c: $(TEST_DIR)/test_*.c
-	if test -d $(LLQUEUE_DIR); \
-	then echo have contribs; \
-	else make download-contrib; \
-	fi
 	cd $(TEST_DIR) && sh make-tests.sh "test_*.c" > main_test.c && cd ..
 
 .PHONY: shared

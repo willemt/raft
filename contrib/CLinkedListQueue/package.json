@@ -1,0 +1,9 @@
+{
+  "name": "linked-list-queue",
+  "version": "0.0.1",
+  "repo": "willemt/linked-list-queue",
+  "description": "A queue using a linked list",
+  "keywords": ["queue"],
+  "license": "BSD",
+  "src": ["linked_list_queue.c", "linked_list_queue.h"]
+}
