@@ -802,10 +802,12 @@ int raft_append_entry(raft_server_t* me_, raft_entry_t* ety)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    if (raft_entry_is_voting_cfg_change(ety))
+    int e = log_append_entry(me->log, ety);
+
+    if (e == 0 && raft_entry_is_voting_cfg_change(ety))
         me->voting_cfg_change_log_idx = raft_get_current_idx(me_);
 
-    return log_append_entry(me->log, ety);
+    return e;
 }
 
 int raft_apply_entry(raft_server_t* me_)
