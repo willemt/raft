@@ -128,7 +128,7 @@ int raft_delete_entry_from_idx(raft_server_t* me_, raft_index_t idx)
     return log_delete(me->log, idx);
 }
 
-void raft_election_start(raft_server_t* me_)
+int raft_election_start(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
@@ -136,7 +136,7 @@ void raft_election_start(raft_server_t* me_)
           me->election_timeout_rand, me->timeout_elapsed, me->current_term,
           raft_get_current_idx(me_));
 
-    raft_become_candidate(me_);
+    return raft_become_candidate(me_);
 }
 
 void raft_become_leader(raft_server_t* me_)
@@ -161,7 +161,26 @@ void raft_become_leader(raft_server_t* me_)
     }
 }
 
-void raft_become_candidate(raft_server_t* me_)
+int raft_count_votes(raft_server_t* me_)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+
+    int votes = raft_get_nvotes_for_me(me_);
+    if (raft_votes_is_majority(raft_get_num_voting_nodes(me_), votes))
+    {
+        if (me->prevote)
+        {
+            int e = raft_become_prevoted_candidate(me_);
+            if (0 != e)
+                return e;
+        }
+        else
+            raft_become_leader(me_);
+    }
+    return 0;
+}
+
+int raft_become_candidate(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
@@ -190,6 +209,10 @@ void raft_become_candidate(raft_server_t* me_)
             raft_send_requestvote(me_, node);
         }
     }
+
+    /* We've already got at least one prevote from ourself, which is enough if
+     * we are the only voting node. */
+    return raft_count_votes(me_);
 }
 
 int raft_become_prevoted_candidate(raft_server_t* me_)
@@ -221,7 +244,10 @@ int raft_become_prevoted_candidate(raft_server_t* me_)
             raft_send_requestvote(me_, node);
         }
     }
-    return 0;
+
+    /* We've already got at least one vote from ourself, which is enough if we
+     * are the only voting node. */
+    return raft_count_votes(me_);
 }
 
 void raft_become_follower(raft_server_t* me_)
@@ -241,22 +267,6 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
 
     me->timeout_elapsed += msec_since_last_period;
 
-    /* Only one voting node means it's safe for us to become the leader */
-    if (1 == raft_get_num_voting_nodes(me_) &&
-        my_node &&
-        raft_node_is_voting(my_node) &&
-        /*
-         * Check when node is voting but not active:
-         * This occurs when we have just two nodes and this node was previously
-         * removed and then added back. In response to 'remove' log entry,
-         * this node is marked inactive but then becomes the leader. Eventually,
-         * when the log entries are applied, the node gets removed while being
-         * the leader. Probably needs a better solution.
-         */
-        raft_node_is_active(my_node) &&
-        !raft_is_leader(me_))
-        raft_become_leader(me_);
-
     if (me->state == RAFT_STATE_LEADER)
     {
         if (me->request_timeout <= me->timeout_elapsed)
@@ -267,9 +277,12 @@ int raft_periodic(raft_server_t* me_, int msec_since_last_period)
          * happen when we get a client request */
         !raft_snapshot_is_in_progress(me_))
     {
-        if (1 < raft_get_num_voting_nodes(me_) &&
-            my_node && raft_node_is_voting(my_node))
-            raft_election_start(me_);
+        if (my_node && raft_node_is_voting(my_node))
+        {
+            int e = raft_election_start(me_);
+            if (0 != e)
+                return e;
+        }
     }
 
     if (me->last_applied_idx < raft_get_commit_idx(me_) &&
@@ -714,15 +727,7 @@ int raft_recv_requestvote_response(raft_server_t* me_,
         case RAFT_REQUESTVOTE_ERR_GRANTED:
             if (node)
                 raft_node_vote_for_me(node, 1);
-            int votes = raft_get_nvotes_for_me(me_);
-            if (raft_votes_is_majority(raft_get_num_voting_nodes(me_), votes))
-            {
-                if (r->prevote)
-                    raft_become_prevoted_candidate(me_);
-                else
-                    raft_become_leader(me_);
-            }
-            break;
+            return raft_count_votes(me_);
 
         case RAFT_REQUESTVOTE_ERR_NOT_GRANTED:
             break;

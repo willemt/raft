@@ -14,7 +14,7 @@ fi
 : "${WORKSPACE:=$PWD}"
 mock_config_dir="$WORKSPACE/mock"
 original_cfg_file="/etc/mock/${CHROOT_NAME}.cfg"
-cfg_file="$mock_config_dir/${CHROOT_NAME}_daos.cfg"
+cfg_file="$mock_config_dir/${CHROOT_NAME}.cfg"
 mkdir -p "$mock_config_dir"
 ln -sf /etc/mock/templates "$mock_config_dir/"
 ln -sf /etc/mock/logging.ini "$mock_config_dir/"
@@ -57,6 +57,6 @@ done
 echo "\"\"\"" >> "$cfg_file"
 
 # shellcheck disable=SC2086
-eval mock --configdir "$mock_config_dir" -r "${CHROOT_NAME}_daos" \
-     "${repo_dels[*]}" "${repo_adds[*]}" \
+eval mock --configdir "$mock_config_dir" -r "${CHROOT_NAME}" \
+     ${repo_dels[*]} ${repo_adds[*]}                         \
      $MOCK_OPTIONS $RPM_BUILD_OPTIONS "$TARGET"

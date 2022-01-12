@@ -82,7 +82,7 @@ typedef struct {
     raft_term_t snapshot_last_term;
 } raft_server_private_t;
 
-void raft_become_candidate(raft_server_t* me);
+int raft_become_candidate(raft_server_t* me);
 int raft_become_prevoted_candidate(raft_server_t* me_);
 int raft_is_prevoted_candidate(raft_server_t* me_);
 
@@ -144,6 +144,8 @@ int raft_node_has_vote_for_me(raft_node_t* me_);
 void raft_node_set_has_sufficient_logs(raft_node_t* me_);
 
 int raft_votes_is_majority(const int nnodes, const int nvotes);
+
+int raft_count_votes(raft_server_t* me_);
 
 void raft_offer_log(raft_server_t* me_, raft_entry_t* entries,
                     int n_entries, raft_index_t idx);

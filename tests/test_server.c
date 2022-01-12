@@ -653,8 +653,8 @@ void TestRaft_server_election_timeout_does_promote_us_to_leader_if_there_is_only
     raft_add_node(r, NULL, 1, 1);
     raft_set_election_timeout(r, 1000);
 
-    /* clock over (ie. 1000 + 1), causing new election */
-    raft_periodic(r, 1001);
+    /* clock over (ie. 1000 * 2 + 1), causing new election */
+    raft_periodic(r, 2001);
 
     CuAssertTrue(tc, 1 == raft_is_leader(r));
 }
@@ -672,8 +672,8 @@ void TestRaft_server_election_timeout_does_promote_us_to_leader_if_there_is_only
     raft_add_non_voting_node(r, NULL, 2, 0);
     raft_set_election_timeout(r, 1000);
 
-    /* clock over (ie. 1000 + 1), causing new election */
-    raft_periodic(r, 1001);
+    /* clock over (ie. 2000 + 1), causing new election */
+    raft_periodic(r, 2001);
 
     CuAssertTrue(tc, 1 == raft_is_leader(r));
 }
@@ -2359,6 +2359,7 @@ void TestRaft_candidate_becomes_candidate_is_candidate(CuTest * tc)
     void *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
     raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
 
     raft_become_candidate(r);
     CuAssertTrue(tc, raft_is_candidate(r));
@@ -2375,6 +2376,7 @@ void TestRaft_follower_becoming_candidate_increments_current_term(CuTest * tc)
     void *r = raft_new();
     raft_set_callbacks(r, &funcs, NULL);
     raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
 
     CuAssertTrue(tc, 0 == raft_get_current_term(r));
     raft_become_candidate(r);
@@ -2395,6 +2397,7 @@ void TestRaft_follower_becoming_candidate_votes_for_self(CuTest * tc)
     raft_set_callbacks(r, &funcs, NULL);
 
     raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
     CuAssertTrue(tc, -1 == raft_get_voted_for(r));
     raft_become_candidate(r);
     raft_become_prevoted_candidate(r);

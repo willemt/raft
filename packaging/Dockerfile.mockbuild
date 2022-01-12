@@ -6,7 +6,7 @@
 
 # Pull base image
 FROM fedora:latest
-MAINTAINER daos-stack <daos@daos.groups.io>
+LABEL maintainer="daos@daos.groups.io>"
 
 # use same UID as host and default value of 1000 if not specified
 ARG UID=1000
@@ -28,3 +28,6 @@ RUN usermod -a -G mock $USER
 RUN grep use_nspawn /etc/mock/site-defaults.cfg || \
     echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
 
+ARG CACHEBUST
+RUN dnf -y upgrade && \
+    dnf clean all

@@ -27,30 +27,38 @@ SPECTOOL := spectool
 # DISTRO_BASE (i.e. EL_7)
 # from the CHROOT_NAME
 ifeq ($(CHROOT_NAME),epel-7-x86_64)
-DIST        := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
-VERSION_ID  := 7
-DISTRO_ID   := el7
-DISTRO_BASE := EL_7
-SED_EXPR    := 1s/$(DIST)//p
+DIST            := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
+VERSION_ID      := 7
+DISTRO_ID       := el7
+DISTRO_BASE     := EL_7
+DISTRO_VERSION  ?= $(VERSION_ID)
+ORIG_TARGET_VER := 7
+SED_EXPR        := 1s/$(DIST)//p
 endif
 ifeq ($(CHROOT_NAME),epel-8-x86_64)
-DIST        := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
-VERSION_ID  := 8
-DISTRO_ID   := el8
-DISTRO_BASE := EL_8
-SED_EXPR    := 1s/$(DIST)//p
+DIST            := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
+VERSION_ID      := 8
+DISTRO_ID       := el8
+DISTRO_BASE     := EL_8
+DISTRO_VERSION  ?= $(VERSION_ID)
+ORIG_TARGET_VER := 8
+SED_EXPR        := 1s/$(DIST)//p
 endif
 ifeq ($(CHROOT_NAME),opensuse-leap-15.2-x86_64)
-VERSION_ID  := 15.2
-DISTRO_ID   := sl15.2
-DISTRO_BASE := LEAP_15
-SED_EXPR    := 1p
+VERSION_ID      := 15.2
+DISTRO_ID       := sl15.2
+DISTRO_BASE     := LEAP_15
+DISTRO_VERSION  ?= $(VERSION_ID)
+ORIG_TARGET_VER := 15.2
+SED_EXPR        := 1p
 endif
 ifeq ($(CHROOT_NAME),opensuse-leap-15.3-x86_64)
-VERSION_ID  := 15.3
-DISTRO_ID   := sl15.3
-DISTRO_BASE := LEAP_15
-SED_EXPR    := 1p
+VERSION_ID      := 15.3
+DISTRO_ID       := sl15.3
+DISTRO_BASE     := LEAP_15
+DISTRO_VERSION  ?= $(VERSION_ID)
+ORIG_TARGET_VER := 15.2
+SED_EXPR        := 1p
 endif
 endif
 ifeq ($(ID),centos)
