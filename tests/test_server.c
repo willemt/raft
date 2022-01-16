@@ -1335,6 +1335,37 @@ void TestRaft_server_recv_requestvote_ignore_if_master_is_fresh(CuTest * tc)
     CuAssertTrue(tc, 1 == rvr.vote_granted);
 }
 
+void TestRaft_server_recv_requestvote_ignore_local_membership(CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .persist_vote = __raft_persist_vote,
+    };
+
+    void* r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+
+    /* empty local membership */
+    msg_requestvote_t rv = {
+        .term = 1,
+        .candidate_id = 2,
+        .last_log_idx = 2,
+        .last_log_term = 1
+    };
+    msg_requestvote_response_t rvr;
+    CuAssertIntEquals(tc, 0, raft_recv_requestvote(r, NULL, &rv, &rvr));
+    CuAssertIntEquals(tc, 1, rvr.vote_granted);
+
+    raft_add_non_voting_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+
+    /* nonvoting */
+    rv.term = 2;
+    rv.last_log_idx = 3;
+    rv.last_log_term = 2;
+    CuAssertIntEquals(tc, 0, raft_recv_requestvote(r, NULL, &rv, &rvr));
+    CuAssertIntEquals(tc, 1, rvr.vote_granted);
+}
+
 void TestRaft_follower_becomes_follower_is_follower(CuTest * tc)
 {
     void *r = raft_new();

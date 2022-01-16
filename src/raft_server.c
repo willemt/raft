@@ -565,11 +565,6 @@ out:
 
 static int __should_grant_vote(raft_server_private_t* me, msg_requestvote_t* vr)
 {
-    raft_node_t *my_node = raft_get_my_node((void*)me);
-
-    if (my_node && !raft_node_is_voting(my_node))
-        return 0;
-
     /* For a prevote, we could theoretically proceed to the votedFor check
      * below, if vr->term == currentTerm - 1. That, however, would only matter
      * if we had rejected a previous RequestVote from a third server, who must
@@ -609,7 +604,7 @@ int raft_recv_requestvote(raft_server_t* me_,
         node = raft_get_node(me_, vr->candidate_id);
 
     /* Reject request if we have a leader */
-    if (me->leader_id != -1 && me->leader_id != raft_node_get_id(node) &&
+    if (me->leader_id != -1 && me->leader_id != vr->candidate_id &&
         me->timeout_elapsed < me->election_timeout)
     {
         r->vote_granted = 0;
