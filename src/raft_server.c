@@ -1137,10 +1137,10 @@ void raft_remove_node(raft_server_t* me_, raft_node_t* node)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
+    assert(node);
+
     if (me->cb.notify_membership_event)
         me->cb.notify_membership_event(me_, raft_get_udata(me_), node, NULL, RAFT_MEMBERSHIP_REMOVE);
-
-    assert(node);
 
     int i, found = 0;
     for (i = 0; i < me->num_nodes; i++)

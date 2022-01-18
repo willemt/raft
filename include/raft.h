@@ -438,7 +438,7 @@ typedef int (
  *
  * @param[in] raft The Raft server making this callback
  * @param[in] user_data User data that is passed from Raft server
- * @param[in] node The node that is the subject of this log. Could be NULL.
+ * @param[in] node The node that is the subject of this log
  * @param[in] entry The entry that was the trigger for the event. Could be NULL.
  * @param[in] type The type of membership change */
 typedef void (
