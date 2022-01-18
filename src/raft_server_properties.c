@@ -165,9 +165,11 @@ raft_node_t* raft_get_my_node(raft_server_t *me_)
     return raft_get_node(me_, me->node_id);
 }
 
-raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const raft_index_t idx)
+raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const int idx)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
+    if (idx < 0 || me->num_nodes <= idx)
+        return NULL;
     return me->nodes[idx];
 }
 

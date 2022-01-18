@@ -787,7 +787,7 @@ raft_node_t* raft_get_node(raft_server_t* me_, const raft_node_id_t id);
  * Used for iterating through nodes
  * @param[in] node The node's idx
  * @return node pointed to by node idx */
-raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const raft_index_t idx);
+raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const int idx);
 
 /**
  * @return number of votes this server has received this election */
