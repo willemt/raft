@@ -22,6 +22,17 @@ static raft_node_id_t __logentry_get_node_id(
     return 0;
 }
 
+static raft_node_id_t __logentry_get_node_id_check(
+    raft_server_t* raft,
+    void *udata,
+    raft_entry_t *ety,
+    raft_index_t ety_idx
+    )
+{
+    assert(ety->data.buf);
+    return atoi(ety->data.buf);
+}
+
 static int __log_offer(
     raft_server_t* raft,
     void *user_data,
@@ -42,12 +53,16 @@ static int __log_pop(
     int *n_entries
     )
 {
-    raft_entry_t* copy = malloc(*n_entries * sizeof(*entry));
     int i;
-    for (i = 0; i < *n_entries; i++)
+    for (i = *n_entries - 1; i >= 0; i--)
     {
-        memcpy(copy, entry--, sizeof(*copy));
-        llqueue_offer(user_data, copy++);
+        assert(entry_idx + i == entry[i].id);
+        raft_entry_t* copy = malloc(sizeof(*copy));
+        assert(copy);
+        memcpy(copy, &entry[i], sizeof(*copy));
+        entry[i].data.buf = NULL;
+        entry[i].data.len = 0;
+        llqueue_offer(user_data, copy);
     }
     return 0;
 }
@@ -97,8 +112,6 @@ void TestLog_append_is_not_empty(CuTest * tc)
     void *l;
     raft_entry_t e;
 
-    void *r = raft_new();
-
     memset(&e, 0, sizeof(raft_entry_t));
 
     e.id = 1;
@@ -107,7 +120,7 @@ void TestLog_append_is_not_empty(CuTest * tc)
     raft_cbs_t funcs = {
         .log_offer = __log_offer
     };
-    log_set_callbacks(l, &funcs, r);
+    log_set_callbacks(l, &funcs, tc);
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
     CuAssertIntEquals(tc, 1, log_count(l));
     log_free(l);
@@ -190,10 +203,12 @@ void TestLog_delete(CuTest * tc)
 
     log_delete(l, 2);
     CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertIntEquals(tc, e2.id, ((raft_entry_t*)llqueue_poll(queue))->id);
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
 
     log_delete(l, 1);
     CuAssertIntEquals(tc, 0, log_count(l));
+    CuAssertIntEquals(tc, e1.id, ((raft_entry_t*)llqueue_poll(queue))->id);
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
     log_free(l);
 }
@@ -229,6 +244,8 @@ void TestLog_delete_onwards(CuTest * tc)
     log_delete(l, 2);
     CuAssertIntEquals(tc, 1, log_count(l));
     CuAssertIntEquals(tc, e1.id, log_get_at_idx(l, 1)->id);
+    CuAssertIntEquals(tc, e3.id, ((raft_entry_t*)llqueue_poll(queue))->id);
+    CuAssertIntEquals(tc, e2.id, ((raft_entry_t*)llqueue_poll(queue))->id);
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
     log_free(l);
@@ -303,6 +320,76 @@ void TestLog_delete_fails_for_idx_zero(CuTest * tc)
     log_free(l);
 }
 
+/* This test also verifies that an entry is processed before it is popped
+   via the "buf" assertion in __logentry_get_node_id_check. */
+void TestLog_delete_processes_cfg_entries(CuTest * tc)
+{
+    void *l;
+    raft_entry_t e;
+
+    void* queue = llqueue_new();
+    void *r = raft_new();
+    raft_cbs_t funcs = {
+        .log_pop = __log_pop,
+        .log_get_node_id = __logentry_get_node_id_check
+    };
+    raft_set_callbacks(r, &funcs, queue);
+
+    l = log_new();
+    log_set_callbacks(l, &funcs, r);
+
+    memset(&e, 0, sizeof(raft_entry_t));
+
+    e.id = 1;
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+
+    e.id = 2;
+    e.type = RAFT_LOGTYPE_ADD_NONVOTING_NODE;
+    e.data.buf = "2";
+    e.data.len = 2;
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+    raft_node_t* node = raft_get_node(r, 2);
+    CuAssertPtrNotNull(tc, node);
+    CuAssertTrue(tc, !raft_node_is_voting(node));
+
+    e.id = 3;
+    e.type = RAFT_LOGTYPE_PROMOTE_NODE;
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+    node = raft_get_node(r, 2);
+    CuAssertPtrNotNull(tc, node);
+    CuAssertTrue(tc, raft_node_is_voting(node));
+
+    e.id = 4;
+    e.type = RAFT_LOGTYPE_DEMOTE_NODE;
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+    node = raft_get_node(r, 2);
+    CuAssertPtrNotNull(tc, node);
+    CuAssertTrue(tc, !raft_node_is_voting(node));
+
+    e.id = 5;
+    e.type = RAFT_LOGTYPE_REMOVE_NONVOTING_NODE;
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+    CuAssertPtrEquals(tc, NULL, raft_get_node(r, 2));
+
+    CuAssertIntEquals(tc, 5, log_get_current_idx(l));
+
+    /* Delete the last two entries. */
+    CuAssertIntEquals(tc, 0, log_delete(l, 4));
+    CuAssertIntEquals(tc, 3, log_count(l));
+    node = raft_get_node(r, 2);
+    CuAssertPtrNotNull(tc, node);
+    CuAssertTrue(tc, raft_node_is_voting(node));
+
+    CuAssertIntEquals(tc, 3, log_get_current_idx(l));
+
+    /* Delete the last two entries. */
+    CuAssertIntEquals(tc, 0, log_delete(l, 2));
+    CuAssertIntEquals(tc, 1, log_count(l));
+    CuAssertPtrEquals(tc, NULL, raft_get_node(r, 2));
+
+    log_free(l);
+}
+
 void TestLog_poll(CuTest * tc)
 {
     void* queue = llqueue_new();
@@ -358,6 +445,53 @@ void TestLog_poll(CuTest * tc)
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 2));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 3));
     CuAssertIntEquals(tc, 3, log_get_current_idx(l));
+    log_free(l);
+}
+
+void TestLog_delete_batches(CuTest * tc)
+{
+    void* queue = llqueue_new();
+    void *r = raft_new();
+    raft_cbs_t funcs = {
+        .log_pop = __log_pop,
+        .log_get_node_id = __logentry_get_node_id
+    };
+    raft_set_callbacks(r, &funcs, queue);
+
+    void *l;
+    raft_entry_t e;
+
+    memset(&e, 0, sizeof(raft_entry_t));
+
+    l = log_new();
+    log_set_callbacks(l, &funcs, r);
+
+    /* Fill the internal array. */
+    int i;
+    int n = log_size(l);
+    for (i = 0; i < n; i++)
+    {
+        e.id = i + 1;
+        CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+    }
+    CuAssertIntEquals(tc, log_size(l), log_count(l));
+
+    /* Poll one entry, then append one entry, which occupies array index 0. */
+    CuAssertIntEquals(tc, 0, log_poll(l, 1));
+    CuAssertIntEquals(tc, log_size(l) - 1, log_count(l));
+    e.id = n + 1;
+    CuAssertIntEquals(tc, 0, log_append_entry(l, &e));
+    CuAssertIntEquals(tc, log_size(l), log_count(l));
+
+    /* Delete the last two entries, which should end up in two batches. The
+       "index == id" assertion in __log_pop should catch bugs that mess up
+       batch indices. */
+    CuAssertIntEquals(tc, 0, log_delete(l, n));
+    CuAssertIntEquals(tc, n - 2, log_count(l));
+    CuAssertIntEquals(tc, n + 1, ((raft_entry_t*)llqueue_poll(queue))->id);
+    CuAssertIntEquals(tc, n, ((raft_entry_t*)llqueue_poll(queue))->id);
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, n));
+    CuAssertTrue(tc, NULL == log_get_at_idx(l, n + 1));
     log_free(l);
 }
 

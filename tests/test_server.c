@@ -83,14 +83,6 @@ static int __raft_log_offer(raft_server_t* raft,
         raft_index_t entry_idx,
         int *n_entries)
 {
-    int i;
-    for (i = 0; i < *n_entries; ++i)
-    {
-        raft_entry_t *ety = &entries[i];
-
-        if (ety->type == RAFT_LOGTYPE_ADD_NONVOTING_NODE)
-            raft_add_non_voting_node(raft, NULL, atoi(ety->data.buf), false);
-    }
     return 0;
 }
 
@@ -205,17 +197,6 @@ void TestRaft_server_voting_results_in_voting(CuTest * tc)
     CuAssertTrue(tc, 1 == raft_get_voted_for(r));
     raft_vote(r, raft_get_node(r, 9));
     CuAssertTrue(tc, 9 == raft_get_voted_for(r));
-}
-
-void TestRaft_server_add_node_makes_non_voting_node_voting(CuTest * tc)
-{
-    void *r = raft_new();
-    void* n1 = raft_add_non_voting_node(r, NULL, 9, 0);
-
-    CuAssertTrue(tc, !raft_node_is_voting(n1));
-    raft_add_node(r, NULL, 9, 0);
-    CuAssertTrue(tc, raft_node_is_voting(n1));
-    CuAssertIntEquals(tc, 1, raft_get_num_nodes(r));
 }
 
 void TestRaft_server_add_node_with_already_existing_id_is_not_allowed(CuTest * tc)
@@ -701,7 +682,12 @@ void TestRaft_server_recv_entry_auto_commits_if_we_are_the_only_node(CuTest * tc
 
 void TestRaft_server_recv_entry_fails_if_there_is_already_a_voting_change(CuTest * tc)
 {
+    raft_cbs_t funcs = {
+        .log_get_node_id = __raft_log_get_node_id,
+    };
+
     void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
     raft_add_node(r, NULL, 1, 1);
     raft_set_election_timeout(r, 1000);
     raft_become_leader(r);
@@ -709,19 +695,79 @@ void TestRaft_server_recv_entry_fails_if_there_is_already_a_voting_change(CuTest
 
     /* entry message */
     msg_entry_t ety = {};
-    ety.type = RAFT_LOGTYPE_ADD_NODE;
+    ety.type = RAFT_LOGTYPE_ADD_NONVOTING_NODE;
     ety.id = 1;
-    ety.data.buf = "entry";
-    ety.data.len = strlen("entry");
+    ety.data.buf = "2";
+    ety.data.len = 2;
 
     /* receive entry */
     msg_entry_response_t cr;
     CuAssertTrue(tc, 0 == raft_recv_entry(r, &ety, &cr));
     CuAssertTrue(tc, 1 == raft_get_log_count(r));
 
+    /* promote */
+    ety.type = RAFT_LOGTYPE_PROMOTE_NODE;
     ety.id = 2;
+    CuAssertTrue(tc, 0 == raft_recv_entry(r, &ety, &cr));
+    CuAssertTrue(tc, 2 == raft_get_log_count(r));
+
+    ety.type = RAFT_LOGTYPE_DEMOTE_NODE;
+    ety.id = 3;
     CuAssertTrue(tc, RAFT_ERR_ONE_VOTING_CHANGE_ONLY == raft_recv_entry(r, &ety, &cr));
     CuAssertTrue(tc, 1 == raft_get_commit_idx(r));
+}
+
+void TestRaft_server_recv_entry_succeeds_when_adding_a_removed_node(CuTest * tc)
+{
+    raft_cbs_t funcs = {
+        .log_get_node_id = __raft_log_get_node_id,
+    };
+
+    void *r = raft_new();
+    raft_set_callbacks(r, &funcs, NULL);
+    raft_add_node(r, NULL, 1, 1);
+    raft_set_election_timeout(r, 1000);
+    raft_become_leader(r);
+    CuAssertIntEquals(tc, 0, raft_get_commit_idx(r));
+
+    /* entry message */
+    msg_entry_t ety = {};
+    ety.type = RAFT_LOGTYPE_ADD_NODE;
+    ety.id = 1;
+    ety.data.buf = "2";
+    ety.data.len = 2;
+
+    /* add node 2 */
+    msg_entry_response_t cr;
+    CuAssertIntEquals(tc, 0, raft_recv_entry(r, &ety, &cr));
+    CuAssertIntEquals(tc, 1, raft_get_log_count(r));
+    CuAssertIntEquals(tc, 2, raft_get_num_nodes(r));
+    CuAssertIntEquals(tc, 2, raft_get_num_voting_nodes(r));
+    CuAssertPtrNotNull(tc, raft_get_node(r, 2));
+    raft_set_commit_idx(r, 1);
+    raft_apply_all(r);
+
+    /* remove node 2 */
+    ety.type = RAFT_LOGTYPE_REMOVE_NODE;
+    ety.id = 2;
+    CuAssertIntEquals(tc, 0, raft_recv_entry(r, &ety, &cr));
+    CuAssertIntEquals(tc, 2, raft_get_log_count(r));
+    CuAssertIntEquals(tc, 1, raft_get_num_nodes(r));
+    CuAssertIntEquals(tc, 1, raft_get_num_voting_nodes(r));
+    CuAssertPtrEquals(tc, NULL, raft_get_node(r, 2));
+    raft_set_commit_idx(r, 2);
+    raft_apply_all(r);
+
+    /* re-add node 2 */
+    ety.type = RAFT_LOGTYPE_ADD_NODE;
+    ety.id = 3;
+    CuAssertIntEquals(tc, 0, raft_recv_entry(r, &ety, &cr));
+    CuAssertIntEquals(tc, 3, raft_get_log_count(r));
+    CuAssertIntEquals(tc, 2, raft_get_num_nodes(r));
+    CuAssertIntEquals(tc, 2, raft_get_num_voting_nodes(r));
+    CuAssertPtrNotNull(tc, raft_get_node(r, 2));
+    raft_set_commit_idx(r, 3);
+    raft_apply_all(r);
 }
 
 void TestRaft_server_cfg_sets_num_nodes(CuTest * tc)
@@ -3340,7 +3386,7 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_for_nod
     raft_add_node(r, NULL, 2, 0);
     raft_add_node(r, NULL, 3, 0);
     raft_add_node(r, NULL, 4, 0);
-    raft_node_t* node = raft_add_non_voting_node(r, NULL, 5, 0);
+    raft_node_t* node = raft_add_node(r, NULL, 5, 0);
 
     int has_sufficient_logs_flag = 0;
     raft_set_callbacks(r, &funcs, &has_sufficient_logs_flag);
@@ -3372,6 +3418,7 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_for_nod
     aer.current_idx = 2;
     aer.first_idx = 1;
 
+    raft_node_set_voting(node, 0);
     raft_recv_appendentries_response(r, node, &aer);
     CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
 
@@ -4424,11 +4471,12 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_v
     raft_recv_appendentries_response(r, raft_get_node(r, 3), &aer);
     CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
 
+    /* promote node 3 */
     ety.id++;
-    ety.type = RAFT_LOGTYPE_ADD_NODE;
-    raft_recv_entry(r, &ety, &etyr);
+    ety.type = RAFT_LOGTYPE_PROMOTE_NODE;
+    CuAssertIntEquals(tc, 0, raft_recv_entry(r, &ety, &etyr));
 
-    /* we now get a response from node 2, but it's still behind */
+    /* we now get a response from node 2, but a voting change is in progress */
     raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
     CuAssertIntEquals(tc, 1, has_sufficient_logs_flag);
 

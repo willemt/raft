@@ -58,7 +58,7 @@ int raft_get_num_voting_nodes(raft_server_t* me_)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     int i, num = 0;
     for (i = 0; i < me->num_nodes; i++)
-        if (raft_node_is_active(me->nodes[i]) && raft_node_is_voting(me->nodes[i]))
+        if (raft_node_is_voting(me->nodes[i]))
             num++;
     return num;
 }

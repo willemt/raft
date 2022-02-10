@@ -189,6 +189,12 @@ raft_index_t log_count(log_t* me_)
     return ((log_private_t*)me_)->count;
 }
 
+/* For testing purposes only. */
+raft_index_t log_size(log_t* me_)
+{
+    return ((log_private_t*)me_)->size;
+}
+
 int log_append(log_t* me_, raft_entry_t* ety, int *n)
 {
     log_private_t* me = (log_private_t*)me_;
@@ -236,16 +242,20 @@ int log_delete(log_t* me_, raft_index_t idx)
     {
         int k = batch_down(me, me->base + me->count,
                            me->base + me->count - idx + 1);
-        raft_index_t start = subscript(me, me->base + me->count - k + 1);
+        raft_index_t start_idx = me->base + me->count - k + 1;
+        raft_index_t start = subscript(me, start_idx);
         raft_entry_t *ptr = &me->entries[start];
         int batch_size = k;
+        /* We must process the entries before log_pop destroys them. */
+        raft_pop_log(me->raft, ptr, k, start_idx);
         if (me->cb && me->cb->log_pop)
-            e = me->cb->log_pop(me->raft, raft_get_udata(me->raft),
-                                 ptr, idx, &k);
+            e = me->cb->log_pop(me->raft, raft_get_udata(me->raft), ptr, start_idx, &k);
         if (k > 0)
         {
-            raft_pop_log(me->raft, ptr, k, idx);
             me->count -= k;
+            /* Undo the raft_pop_log call above for entries that have not been
+               popped. */
+            raft_offer_log(me->raft, ptr, batch_size - k, start_idx);
         }
         if (0 != e)
             return e;

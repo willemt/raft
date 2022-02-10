@@ -20,6 +20,7 @@ typedef enum {
     RAFT_ERR_NEEDS_SNAPSHOT=-6,
     RAFT_ERR_SNAPSHOT_IN_PROGRESS=-7,
     RAFT_ERR_SNAPSHOT_ALREADY_LOADED=-8,
+    RAFT_ERR_INVALID_CFG_CHANGE=-9,
     RAFT_ERR_LAST=-100,
 } raft_error_e;
 
@@ -59,18 +60,24 @@ typedef enum {
     RAFT_LOGTYPE_ADD_NODE,
     /**
      * Membership change.
-     * Nodes become demoted when we want to remove them from the cluster.
-     * Demoted nodes can't take part in voting or start elections.
-     * Demoted nodes become inactive, as per raft_node_is_active.
+     * Demote a voting node to a non-voting node.
      */
     RAFT_LOGTYPE_DEMOTE_NODE,
     /**
      * Membership change.
-     * The node is removed from the cluster.
-     * This happens after the node has been demoted.
-     * Removing nodes is a 2 step process: first demote, then remove.
+     * Remove a voting node.
      */
     RAFT_LOGTYPE_REMOVE_NODE,
+    /**
+     * Membership change.
+     * Promote a non-voting node to a voting node.
+     */
+    RAFT_LOGTYPE_PROMOTE_NODE,
+    /**
+     * Membership change.
+     * Remove a non-voting node.
+     */
+    RAFT_LOGTYPE_REMOVE_NONVOTING_NODE,
     /**
      * Users can piggyback the entry mechanism by specifying log types that
      * are higher than RAFT_LOGTYPE_NUM.
@@ -496,6 +503,7 @@ typedef struct
 
     /** Callback for determining which node this configuration log entry
      * affects. This call only applies to configuration change log entries.
+     * @note entry_idx may be 0, indicating that the index is unknown.
      * @return the node ID of the node */
     func_logentry_event_f log_get_node_id;
 
@@ -541,11 +549,7 @@ void raft_set_callbacks(raft_server_t* me, raft_cbs_t* funcs, void* user_data);
 
 /** Add node.
  *
- * If a voting node already exists the call will fail.
- *
- * @note The order this call is made is important.
- *  This call MUST be made in the same order as the other raft nodes.
- *  This is because the node ID is assigned depending on when this call is made
+ * If a node with the same ID already exists the call will fail.
  *
  * @param[in] user_data The user data for the node.
  *  This is obtained using raft_node_get_udata.
@@ -752,10 +756,6 @@ int raft_get_request_timeout(raft_server_t* me);
 /**
  * @return index of last applied entry */
 raft_index_t raft_get_last_applied_idx(raft_server_t* me);
-
-/**
- * Set index of the last applied entry */
-void raft_set_last_applied_idx(raft_server_t* me_, raft_index_t idx);
 
 /**
  * @return the node's next index */
@@ -979,30 +979,5 @@ raft_index_t raft_get_snapshot_last_idx(raft_server_t *me_);
 raft_term_t raft_get_snapshot_last_term(raft_server_t *me_);
 
 void raft_set_snapshot_metadata(raft_server_t *me_, raft_term_t term, raft_index_t idx);
-
-/** Check if a node is active.
- * Active nodes could become voting nodes.
- * This should be used for creating the membership snapshot.
- **/
-int raft_node_is_active(raft_node_t* me_);
-
-/** Make the node active.
- *
- * The user sets this to 1 between raft_begin_load_snapshot and
- * raft_end_load_snapshot.
- *
- * @param[in] active Set a node as active if this is 1
- **/
-void raft_node_set_active(raft_node_t* me_, int active);
-
-/** Check if a node's voting status has been committed.
- * This should be used for creating the membership snapshot.
- **/
-int raft_node_is_voting_committed(raft_node_t* me_);
-
-/** Check if a node's membership to the cluster has been committed.
- * This should be used for creating the membership snapshot.
- **/
-int raft_node_is_addition_committed(raft_node_t* me_);
 
 #endif /* RAFT_H_ */

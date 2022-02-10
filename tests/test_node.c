@@ -10,10 +10,10 @@
 #include "raft_log.h"
 #include "raft_private.h"
 
-void TestRaft_is_non_voting_by_default(CuTest * tc)
+void TestRaft_is_voting_by_default(CuTest * tc)
 {
     raft_node_t *p = raft_node_new((void*)1, 1);
-    CuAssertTrue(tc, !raft_node_is_voting(p));
+    CuAssertTrue(tc, raft_node_is_voting(p));
     raft_node_free(p);
 }
 

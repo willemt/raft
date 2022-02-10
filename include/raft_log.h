@@ -56,4 +56,6 @@ raft_index_t log_get_base(log_t* me_);
 
 raft_term_t log_get_base_term(log_t* me_);
 
+raft_index_t log_size(log_t* me_);
+
 #endif /* RAFT_LOG_H_ */
