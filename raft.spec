@@ -31,7 +31,7 @@ cleanly addresses all major pieces needed for practical systems.
 
 %package devel
 Summary:	Development libs
-Provides:   daos-raft-devel = %version-%release%{?dist}
+Provides:   daos-raft-devel = %version-%release
 
 %description devel
 Development libs for Raft consensus protocol
