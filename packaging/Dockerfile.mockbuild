@@ -1,11 +1,11 @@
 #
-# Copyright 2018-2021, Intel Corporation
+# Copyright 2018-2022, Intel Corporation
 #
 # 'recipe' for Docker to build an RPM
 #
 
 # Pull base image
-FROM fedora:latest
+FROM fedora:35
 LABEL maintainer="daos@daos.groups.io>"
 
 # use same UID as host and default value of 1000 if not specified
@@ -14,7 +14,7 @@ ARG UID=1000
 # Install basic tools
 RUN dnf -y install mock make \
                    rpm-build curl createrepo rpmlint redhat-lsb-core git \
-                   python-srpm-macros rpmdevtools
+                   python-srpm-macros rpmdevtools mock-core-configs\ \<\ 37.1
 
 # Add build user (to keep rpmbuild happy)
 ENV USER build
@@ -29,5 +29,5 @@ RUN grep use_nspawn /etc/mock/site-defaults.cfg || \
     echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
 
 ARG CACHEBUST
-RUN dnf -y upgrade && \
+RUN dnf -y upgrade --exclude mock-core-configs && \
     dnf clean all
