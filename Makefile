@@ -4,7 +4,13 @@ LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 VPATH = src
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
+
+ifdef RAFT_PRODUCTION
+GCOV_CCFLAGS =
+else
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
+endif
+
 SHELL  = /bin/bash
 CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
 	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \
@@ -14,7 +20,13 @@ CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-ali
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Darwin)
+
+ifdef RAFT_PRODUCTION
+ASANFLAGS =
+else
 ASANFLAGS = -fsanitize=address
+endif
+
 SHAREDFLAGS = -dynamiclib
 SHAREDEXT = dylib
 # We need to include the El Capitan specific /usr/includes, aargh

@@ -17,10 +17,19 @@ There are no dependencies, however https://github.com/willemt/linked-List-queue 
 Building
 ========
 
+For debugging/development:
+
 .. code-block:: bash
    :class: ignore
 
    make tests
+
+For production (to omit coverage & debugging tools):
+
+.. code-block:: bash
+   :class: ignore
+
+   RAFT_PRODUCTION=1 make
 
 Quality Assurance
 =================
