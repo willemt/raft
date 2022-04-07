@@ -32,6 +32,13 @@ void raft_set_request_timeout(raft_server_t* me_, int millisec)
     me->request_timeout = millisec;
 }
 
+void raft_set_nodeid(raft_server_t* me_, raft_node_id_t id)
+{
+    raft_server_private_t* me = (raft_server_private_t*)me_;
+    assert(me->node_id == -1);
+    me->node_id = id;
+}
+
 raft_node_id_t raft_get_nodeid(raft_server_t* me_)
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;

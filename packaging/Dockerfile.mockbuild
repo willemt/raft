@@ -5,8 +5,8 @@
 #
 
 # Pull base image
-FROM fedora:35
-LABEL maintainer="daos@daos.groups.io>"
+FROM fedora:latest
+LABEL maintainer="daos@daos.groups.io"
 
 # use same UID as host and default value of 1000 if not specified
 ARG UID=1000
@@ -14,7 +14,7 @@ ARG UID=1000
 # Install basic tools
 RUN dnf -y install mock make \
                    rpm-build curl createrepo rpmlint redhat-lsb-core git \
-                   python-srpm-macros rpmdevtools mock-core-configs\ \<\ 37.1
+                   python-srpm-macros rpmdevtools
 
 # Add build user (to keep rpmbuild happy)
 ENV USER build
@@ -29,5 +29,5 @@ RUN grep use_nspawn /etc/mock/site-defaults.cfg || \
     echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
 
 ARG CACHEBUST
-RUN dnf -y upgrade --exclude mock-core-configs && \
+RUN dnf -y upgrade && \
     dnf clean all

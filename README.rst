@@ -62,11 +62,12 @@ Be aware that this library is not thread safe. You will need to ensure that the 
 Initializing the Raft server
 ----------------------------
 
-Instantiate a new Raft server using ``raft_new``.
+Instantiate a new Raft server using ``raft_new`` and ``raft_set_nodeid``.
 
 .. code-block:: c
 
     void* raft = raft_new();
+    raft_set_nodeid(raft, self_node_id);
 
 We tell the Raft server what the cluster configuration is by using the ``raft_add_node`` function. For example, if we have 5 servers [#]_ in our cluster, we call ``raft_add_node`` 5 [#]_ times.
 
@@ -77,7 +78,7 @@ We tell the Raft server what the cluster configuration is by using the ``raft_ad
 Where:
 
 * ``connection_user_data`` is a pointer to user data.
-* ``peer_is_self`` is boolean indicating that this is the current server's server index.
+* ``peer_is_self`` is boolean indicating that this is the current server's server index. This MUST be consistent with the raft_set_nodeid call above.
 * ``node_id`` is the unique integer ID of the node. Peers use this to identify themselves. This SHOULD be a random integer.
 
 .. [#] AKA "Raft peer"

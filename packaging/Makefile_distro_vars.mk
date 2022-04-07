@@ -26,7 +26,7 @@ SPECTOOL := spectool
 # DISTRO_ID (i.e. el7)
 # DISTRO_BASE (i.e. EL_7)
 # from the CHROOT_NAME
-ifeq ($(CHROOT_NAME),epel-7-x86_64)
+ifeq ($(patsubst %epel-7-x86_64,,$(lastword $(subst +, ,$(CHROOT_NAME)))),)
 DIST            := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
 VERSION_ID      := 7
 DISTRO_ID       := el7
@@ -35,7 +35,7 @@ DISTRO_VERSION  ?= $(VERSION_ID)
 ORIG_TARGET_VER := 7
 SED_EXPR        := 1s/$(DIST)//p
 endif
-ifeq ($(CHROOT_NAME),epel-8-x86_64)
+ifeq ($(patsubst %epel-8-x86_64,,$(lastword $(subst +, ,$(CHROOT_NAME)))),)
 DIST            := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
 VERSION_ID      := 8
 DISTRO_ID       := el8
@@ -62,6 +62,18 @@ SED_EXPR        := 1p
 endif
 endif
 ifeq ($(ID),centos)
+ID = el
+endif
+ifeq ($(ID),rocky)
+ID = el
+endif
+ifeq ($(ID),almalinux)
+ID = el
+endif
+ifeq ($(ID),rhel)
+ID = el
+endif
+ifeq ($(ID),el)
 DISTRO_ID := el$(VERSION_ID)
 DISTRO_BASE := $(basename EL_$(VERSION_ID))
 DIST        := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})

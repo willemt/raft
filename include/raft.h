@@ -697,6 +697,10 @@ int raft_recv_entry(raft_server_t* me,
                     msg_entry_t* ety,
                     msg_entry_response_t *r);
 
+/** Set this server's node ID.
+ * This should be called right after raft_new/raft_clear. */
+void raft_set_nodeid(raft_server_t* me, raft_node_id_t id);
+
 /**
  * @return server's node ID; -1 if it doesn't know what it is */
 raft_node_id_t raft_get_nodeid(raft_server_t* me);

@@ -9,7 +9,7 @@
 %global debug_package %{nil}
 
 Name:		raft
-Version:	0.9.0
+Version:	0.9.1
 Release:	1%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
@@ -61,6 +61,10 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Wed Apr 06 2022 Li Wei <wei.g.li@intel.com> -0.9.1-1
+- Fix membership changes
+- Fix node ID initialization
+
 * Wed Jan 05 2022 Li Wei <wei.g.li@intel.com> -0.9.0-1
 - Remove the upstream optimization that allows election-less leaders
 - Update packaging

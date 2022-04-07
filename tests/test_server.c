@@ -132,6 +132,10 @@ void TestRaft_server_get_my_node(CuTest * tc)
 void TestRaft_server_can_run_with_empty_configuration(CuTest * tc)
 {
     void *r = raft_new();
+    CuAssertIntEquals(tc, -1, raft_get_nodeid(r));
+    raft_set_nodeid(r, 1);
+    CuAssertIntEquals(tc, 1, raft_get_nodeid(r));
+
     CuAssertIntEquals(tc, 0, raft_periodic(r, 1));
 
     msg_entry_response_t mr;

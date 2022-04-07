@@ -1,3 +1,11 @@
+raft (0.9.1-1) unstable; urgency=medium
+
+  [ Li Wei ]
+  * Fix membership changes
+  * Fix node ID initialization
+
+ -- Li Wei <wei.g.li@intel.com>  Wed, Apr 06 2022 20:04:00 +0800
+
 raft (0.9.0-1) unstable; urgency=medium
 
   [ Li Wei ]
