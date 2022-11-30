@@ -7,7 +7,7 @@ GIT_NUM_COMMITS := $(shell git rev-list HEAD --count)
 
 GIT_INFO := $(GIT_NUM_COMMITS).g$(GIT_SHORT)
 
-BUILD_DEFINES := --define "relval $(GIT_INFO)"
+BUILD_DEFINES := --define "relval .$(GIT_INFO)"
 RPM_BUILD_OPTIONS := $(BUILD_DEFINES)
 
 include packaging/Makefile_packaging.mk

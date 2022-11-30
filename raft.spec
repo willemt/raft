@@ -10,12 +10,12 @@
 
 Name:		raft
 Version:	0.9.1
-Release:	1%{?relval}%{?dist}
+Release:	2%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
 Provides:	daos-raft = %version-%release%{?dist}
 
-License:	BSD-3-Clause
+License:	BSD
 URL:		https://github.com/daos-stack/%{name}
 Source0:	https://github.com/daos-stack/%{name}/releases/download/%{shortcommit0}/%{name}-%{version}.tar.gz
 
@@ -56,11 +56,15 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 %files devel
 %defattr(-,root,root,-)
+%doc README.rst
 %{_libdir}/*
 %{_includedir}/*
 
 
 %changelog
+* Fri Nov 25 2022 Brian J. Murrell <brian.murrell@intel> -0.9.1-2
+- Change BuildArchitectures: noarch
+
 * Wed Apr 06 2022 Li Wei <wei.g.li@intel.com> -0.9.1-1
 - Fix membership changes
 - Fix node ID initialization

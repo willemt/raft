@@ -40,6 +40,9 @@ DIST            := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
 VERSION_ID      := 8
 DISTRO_ID       := el8
 DISTRO_BASE     := EL_8
+ifneq ($(DISTRO_VERSION_EL8),)
+override DISTRO_VERSION := $(DISTRO_VERSION_EL8)
+endif
 DISTRO_VERSION  ?= $(VERSION_ID)
 ORIG_TARGET_VER := 8
 SED_EXPR        := 1s/$(DIST)//p
@@ -57,7 +60,15 @@ VERSION_ID      := 15.3
 DISTRO_ID       := sl15.3
 DISTRO_BASE     := LEAP_15
 DISTRO_VERSION  ?= $(VERSION_ID)
-ORIG_TARGET_VER := 15.2
+ORIG_TARGET_VER := 15.3
+SED_EXPR        := 1p
+endif
+ifeq ($(CHROOT_NAME),opensuse-leap-15.4-x86_64)
+VERSION_ID      := 15.4
+DISTRO_ID       := sl15.4
+DISTRO_BASE     := LEAP_15
+DISTRO_VERSION  ?= $(VERSION_ID)
+ORIG_TARGET_VER := 15.4
 SED_EXPR        := 1p
 endif
 endif

@@ -1,5 +1,5 @@
 #
-# Copyright 2018-2022, Intel Corporation
+# Copyright 2018-2022 Intel Corporation
 #
 # 'recipe' for Docker to build an RPM
 #
@@ -8,13 +8,23 @@
 FROM fedora:latest
 LABEL maintainer="daos@daos.groups.io"
 
-# use same UID as host and default value of 1000 if not specified
-ARG UID=1000
+# Use local repo server if present
+ARG REPO_FILE_URL
+RUN if [ -n "$REPO_FILE_URL" ]; then                            \
+        cd /etc/yum.repos.d/ &&                                 \
+        curl -f -o daos_ci-fedora-artifactory.repo.tmp          \
+             "$REPO_FILE_URL"daos_ci-fedora-artifactory.repo && \
+        rm -f *.repo &&                                         \
+        mv daos_ci-fedora-artifactory.repo{.tmp,};              \
+    fi
 
 # Install basic tools
-RUN dnf -y install mock make \
-                   rpm-build curl createrepo rpmlint redhat-lsb-core git \
+RUN dnf -y install mock make                                        \
+                   rpm-build createrepo rpmlint redhat-lsb-core git \
                    python-srpm-macros rpmdevtools
+
+# use same UID as host and default value of 1000 if not specified
+ARG UID=1000
 
 # Add build user (to keep rpmbuild happy)
 ENV USER build
@@ -24,10 +34,18 @@ RUN echo "$USER:$PASSWD" | chpasswd
 # add the user to the mock group so it can run mock
 RUN usermod -a -G mock $USER
 
-# mock in Docker needs to use the old-chroot option
-RUN grep use_nspawn /etc/mock/site-defaults.cfg || \
-    echo "config_opts['use_nspawn'] = False" >> /etc/mock/site-defaults.cfg
+# Monkey-patch rpmlint until a new release is made with
+# https://github.com/rpm-software-management/rpmlint/pull/795 in it
+COPY packaging/rpmlint--ignore-unused-rpmlintrc.patch .
+RUN (cd $(python3 -c 'import site; print(site.getsitepackages()[-1])') &&                    \
+     patch -p1 &&                                                                            \
+     rm -f rpmlint/__pycache__/{cli,lint}.*.pyc) < rpmlint--ignore-unused-rpmlintrc.patch && \
+    rm -f  rpmlint--ignore-unused-rpmlintrc.patch
 
-ARG CACHEBUST
+ARG CB0
 RUN dnf -y upgrade && \
     dnf clean all
+
+# show the release that was built
+ARG CACHEBUST
+RUN cat /etc/os-release

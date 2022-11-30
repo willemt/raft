@@ -7,7 +7,7 @@ raft_server.c.gcov
 *~
 libcraft.so
 libcraft.a
-
 _topdir/
 *.tar.*
 *.code-workspace
+mock

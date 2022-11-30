@@ -6,7 +6,7 @@
 # force bash (looking at you Ubuntu)
 SHELL=/bin/bash
 
-# Put site overrides (i.e. REPOSITORY_URL, DAOS_STACK_*_LOCAL_REPO) in here
+# Put site overrides (i.e. DAOS_STACK_*_LOCAL_REPO) in here
 -include Makefile.local
 
 # default to Leap 15 distro for chrootbuild
@@ -19,7 +19,9 @@ endif
 
 CALLING_MAKEFILE := $(word 1, $(MAKEFILE_LIST))
 
-TOPDIR  ?= $(CURDIR)
+# this Makefile should always be executed from it's own dir
+TOPDIR ?= $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+
 BUILD_PREFIX ?= .
 
 DOT     := .
@@ -28,11 +30,6 @@ RPM_BUILD_OPTIONS += $(EXTERNAL_RPM_BUILD_OPTIONS)
 # some defaults the caller can override
 PACKAGING_CHECK_DIR ?= ../packaging
 LOCAL_REPOS ?= true
-ifeq ($(ID_LIKE),debian)
-DAOS_REPO_TYPE ?= LOCAL
-else
-DAOS_REPO_TYPE ?= STABLE
-endif
 TEST_PACKAGES ?= ${NAME}
 
 # unfortunately we cannot always name the repo the same as the project
@@ -43,6 +40,7 @@ LEAP_15_PR_REPOS         ?= $(shell git show -s --format=%B | sed -ne 's/^PR-rep
 EL_7_PR_REPOS            ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-el7: *\(.*\)/\1/p')
 EL_8_PR_REPOS            ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-el8: *\(.*\)/\1/p')
 UBUNTU_20_04_PR_REPOS    ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-ubuntu20: *\(.*\)/\1/p')
+REPO_FILES_PR            ?= $(shell git show -s --format=%B | sed -ne 's/^Repo-files-PR: *\(.*\)/\1/p')
 
 ifneq ($(PKG_GIT_COMMIT),)
 ifeq ($(GITHUB_PROJECT),)
@@ -100,27 +98,29 @@ define distro_map
 endef
 
 define install_repos
-	IFS='|' read -ra BASES <<< "$($(DISTRO_BASE)_LOCAL_REPOS)";         \
-	for baseurl in "$${BASES[@]}"; do                                   \
-	    baseurl="$${baseurl# *}";                                       \
-	    $(call install_repo,$$baseurl);                                 \
-	done
-	for repo in $($(DISTRO_BASE)_PR_REPOS)                              \
-	            $(PR_REPOS) $(1); do                                    \
-	    branch="master";                                                \
-	    build_number="lastSuccessfulBuild";                             \
-	    if [[ $$repo = *@* ]]; then                                     \
-	        branch="$${repo#*@}";                                       \
-	        repo="$${repo%@*}";                                         \
-	        if [[ $$branch = *:* ]]; then                               \
-	            build_number="$${branch#*:}";                           \
-	            branch="$${branch%:*}";                                 \
-	        fi;                                                         \
-	    fi;                                                             \
-	    $(call distro_map)                                              \
+	if [ "$(ID_LIKE)" = "debian" ]; then                            \
+	    IFS='|' read -ra BASES <<< "$($(DISTRO_BASE)_LOCAL_REPOS)"; \
+	    for baseurl in "$${BASES[@]}"; do                           \
+	        baseurl="$${baseurl# *}";                               \
+	        $(call install_repo,$$baseurl)                          \
+	    done;                                                       \
+	fi
+	for repo in $($(DISTRO_BASE)_PR_REPOS)                                                             \
+	            $(PR_REPOS) $(1); do                                                                   \
+	    branch="master";                                                                               \
+	    build_number="lastSuccessfulBuild";                                                            \
+	    if [[ $$repo = *@* ]]; then                                                                    \
+	        branch="$${repo#*@}";                                                                      \
+	        repo="$${repo%@*}";                                                                        \
+	        if [[ $$branch = *:* ]]; then                                                              \
+	            build_number="$${branch#*:}";                                                          \
+	            branch="$${branch%:*}";                                                                \
+	        fi;                                                                                        \
+	    fi;                                                                                            \
+	    $(call distro_map)                                                                             \
 	    baseurl=$${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$$repo/job/$$branch/; \
-	    baseurl+=$$build_number/artifact/artifacts/$$distro/;           \
-	    $(call install_repo,$$baseurl);                                 \
+	    baseurl+=$$build_number/artifact/artifacts/$$distro/;                                          \
+	    $(call install_repo,$$baseurl)                                                                 \
         done
 endef
 
@@ -154,28 +154,8 @@ ifeq ($(DL_NAME),)
 DL_NAME = $(NAME)
 endif
 
-$(DL_NAME)$(DL_VERSION).linux-amd64.tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
-	rm -f ./$(DL_NAME)*.tar{gz,bz*,xz}
-	$(SPECTOOL) -g $(SPEC)
-
-$(DL_NAME)-$(DL_VERSION).tar.$(SRC_EXT).asc: $(SPEC) $(CALLING_MAKEFILE)
-	rm -f ./$(DL_NAME)-*.tar.{gz,bz*,xz}.asc
-	$(SPECTOOL) -g $(SPEC)
-
-$(DL_NAME)-$(DL_VERSION).tar.$(SRC_EXT).sig: $(SPEC) $(CALLING_MAKEFILE)
-	rm -f ./$(DL_NAME)-*.tar.{gz,bz*,xz}.sig
-	$(SPECTOOL) -g $(SPEC)
-
-$(DL_NAME)-$(DL_VERSION).tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
-	rm -f ./$(DL_NAME)-*.tar.{gz,bz*,xz}
-	$(SPECTOOL) -g $(SPEC)
-
-v$(DL_VERSION).tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
-	rm -f ./v*.tar.{gz,bz*,xz}
-	$(SPECTOOL) -g $(SPEC)
-
-$(DL_VERSION).tar.$(SRC_EXT): $(SPEC) $(CALLING_MAKEFILE)
-	rm -f ./*.tar.{gz,bz*,xz}
+$(notdir $(SOURCE)): $(SPEC) $(CALLING_MAKEFILE)
+	# TODO: need to clean up old ones
 	$(SPECTOOL) -g $(SPEC)
 
 $(DEB_TOP)/%: % | $(DEB_TOP)/
@@ -299,6 +279,10 @@ $(RPMS): $(SRPM) $(CALLING_MAKEFILE)
 
 rpms: $(RPMS)
 
+repo: rpms
+	rm -rf _topdir/RPMS/repodata/
+	createrepo _topdir/RPMS/
+
 $(DEBS): $(CALLING_MAKEFILE)
 
 debs: $(DEBS)
@@ -334,60 +318,29 @@ patch:
 endif
 
 # *_LOCAL_* repos are locally built packages.
-# *_GROUP_* repos are a local mirror of a group of upstream repos.
-# *_GROUP_* repos may not supply a repomd.xml.key.
 ifeq ($(LOCAL_REPOS),true)
-  ifneq ($(REPOSITORY_URL),)
-    # group repos are not working in Nexus so we hack in the group members directly below
-    #ifneq ($(DAOS_STACK_$(DISTRO_BASE)_DOCKER_$(DAOS_REPO_TYPE)_REPO),)
-    #DISTRO_REPOS = $(DAOS_STACK_$(DISTRO_BASE)_DOCKER_$(DAOS_REPO_TYPE)_REPO)
-    #$(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_DOCKER_$(DAOS_REPO_TYPE)_REPO)/
-    #endif
-    ifneq ($(DAOS_STACK_$(DISTRO_BASE)_$(DAOS_REPO_TYPE)_REPO),)
-      ifeq ($(ID_LIKE),debian)
-        # $(DISTRO_BASE)_LOCAL_REPOS is a list separated by | because you cannot pass lists
-        # of values with spaces as environment variables
-        $(DISTRO_BASE)_LOCAL_REPOS := [trusted=yes]
-      else
-        $(DISTRO_BASE)_LOCAL_REPOS := $(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO)
-        DISTRO_REPOS = disabled # any non-empty value here works and is not used beyond testing if the value is empty or not
-      endif # ifeq ($(ID_LIKE),debian)
-      ifeq ($(DISTRO_BASE), EL_8)
-        # hack to use 8.3 non-group repos on EL_8
-        $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(subst $(ORIG_TARGET_VER),$(DISTRO_VERSION),$(REPOSITORY_URL)repository/rocky-8.5-base-x86_64-proxy|$(REPOSITORY_URL)repository/rocky-8.5-extras-x86_64-proxy|$(REPOSITORY_URL)repository/epel-el-8-x86_64-proxy)
-      else ifeq ($(DISTRO_BASE), EL_7)
-        # hack to use 7.9 non-group repos on EL_7
-        $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(subst $(ORIG_TARGET_VER),$(DISTRO_VERSION),$(REPOSITORY_URL)repository/centos-7.9-base-x86_64-proxy|$(REPOSITORY_URL)repository/centos-7.9-extras-x86_64-proxy|$(REPOSITORY_URL)repository/centos-7.9-updates-x86_64-proxy|$(REPOSITORY_URL)repository/epel-el-7-x86_64-proxy)
-      else ifeq ($(DISTRO_BASE), LEAP_15)
-        # hack to use 15 non-group repos on LEAP_15
-        $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(subst $(ORIG_TARGET_VER),$(DISTRO_VERSION),$(REPOSITORY_URL)repository/opensuse-15.2-oss-x86_64-proxy|$(REPOSITORY_URL)repository/opensuse-15.2-update-oss-x86_64-provo-mirror-proxy|$(REPOSITORY_URL)repository/opensuse-15.2-update-non-oss-x86_64-proxy|$(REPOSITORY_URL)repository/opensuse-15.2-non-oss-x86_64-proxy|$(REPOSITORY_URL)repository/opensuse-15.2-repo-sle-update-proxy|$(REPOSITORY_URL)repository/opensuse-15.2-repo-backports-update-proxy)
-      else
-        # debian
-        $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS) $(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_$(DAOS_REPO_TYPE)_REPO)
-      endif # ifeq ($(DISTRO_BASE), *)
-    endif #ifneq ($(DAOS_STACK_$(DISTRO_BASE)_$(DAOS_REPO_TYPE)_REPO),)
-    ifneq ($(DAOS_STACK_$(DISTRO_BASE)_APPSTREAM_REPO),)
-      $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(subst centos-8.3,rocky-8.5,$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_APPSTREAM_REPO))
-    endif
-    # group repos are not working in Nexus so we hack in the group members directly above
-    ifneq ($(DAOS_STACK_$(DISTRO_BASE)_POWERTOOLS_REPO),)
-      $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(subst centos-8.3,rocky-8.5,$(REPOSITORY_URL)$(DAOS_STACK_$(DISTRO_BASE)_POWERTOOLS_REPO))
-    endif
-    ifneq ($(ID_LIKE),debian)
-      ifneq ($(DAOS_STACK_INTEL_ONEAPI_REPO),)
-        $(DISTRO_BASE)_LOCAL_REPOS := $($(DISTRO_BASE)_LOCAL_REPOS)|$(REPOSITORY_URL)$(DAOS_STACK_INTEL_ONEAPI_REPO)
-      endif # ifneq ($(DAOS_STACK_INTEL_ONEAPI_REPO),)
-    endif # ifneq ($(ID_LIKE),debian)
-  endif # ifneq ($(REPOSITORY_URL),)
+  ifneq ($(ARTIFACTORY_URL),)
+    ifneq ($(DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO),)
+      DISTRO_REPOS = disabled # any non-empty value here works and is not used beyond testing if the value is empty or not
+	  # convert to artifactory url
+      DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO := $(subst reposi,artifac,$(DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO))
+      # $(DISTRO_BASE)_LOCAL_REPOS is a list separated by | because you cannot pass lists
+      # of values with spaces as environment variables
+      $(DISTRO_BASE)_LOCAL_REPOS := [trusted=yes] $(ARTIFACTORY_URL)$(subst stack,stack-daos,$(DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO))
+      $(DISTRO_BASE)_LOCAL_REPOS += |[trusted=yes] $(ARTIFACTORY_URL)$(subst stack,stack-deps,$(DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO))
+    endif #ifneq ($(DAOS_STACK_$(DISTRO_BASE)_LOCAL_REPO),)
+  endif # ifneq ($(ARTIFACTORY_URL),)
 endif # ifeq ($(LOCAL_REPOS),true)
 ifeq ($(ID_LIKE),debian)
 chrootbuild: $(DEB_TOP)/$(DEB_DSC)
 	$(call distro_map)                                      \
 	DISTRO="$$distro"                                       \
 	PR_REPOS="$(PR_REPOS)"                                  \
+	REPO_FILES_PR="$(REPO_FILES_PR)"                        \
 	DISTRO_BASE_PR_REPOS="$($(DISTRO_BASE)_PR_REPOS)"       \
 	JENKINS_URL="$${JENKINS_URL}"                           \
 	JOB_REPOS="$(JOB_REPOS)"                                \
+	REPO_FILE_URL="$(REPO_FILE_URL)"                        \
 	DISTRO_BASE_LOCAL_REPOS="$($(DISTRO_BASE)_LOCAL_REPOS)" \
 	VERSION_CODENAME="$(VERSION_CODENAME)"                  \
 	DEB_TOP="$(DEB_TOP)"                                    \
@@ -400,26 +353,59 @@ chrootbuild: $(SRPM) $(CALLING_MAKEFILE)
 	DISTRO="$$distro"                                       \
 	CHROOT_NAME="$(CHROOT_NAME)"                            \
 	PR_REPOS="$(PR_REPOS)"                                  \
+	REPO_FILES_PR="$(REPO_FILES_PR)"                        \
 	DISTRO_BASE_PR_REPOS="$($(DISTRO_BASE)_PR_REPOS)"       \
 	JENKINS_URL="$${JENKINS_URL}"                           \
 	JOB_REPOS="$(JOB_REPOS)"                                \
-	DISTRO_BASE_LOCAL_REPOS="$($(DISTRO_BASE)_LOCAL_REPOS)" \
+	REPO_FILE_URL="$(REPO_FILE_URL)"                        \
 	MOCK_OPTIONS="$(MOCK_OPTIONS)"                          \
 	RPM_BUILD_OPTIONS='$(RPM_BUILD_OPTIONS)'                \
 	DISTRO_REPOS='$(DISTRO_REPOS)'                          \
+	ARTIFACTORY_URL="$(ARTIFACTORY_URL)"                    \
+	DISTRO_VERSION="$(DISTRO_VERSION)"                      \
 	TARGET="$<"                                             \
 	packaging/rpm_chrootbuild
 endif
 
+podman_chrootbuild:
+	if ! podman build --build-arg REPO_FILE_URL=$(REPO_FILE_URL) \
+	                  -t $(subst +,-,$(CHROOT_NAME))-chrootbuild \
+	                  -f packaging/Dockerfile.mockbuild .; then  \
+		echo "Container build failed";                           \
+	    exit 1;                                                  \
+	fi
+	rm -f /var/lib/mock/$(CHROOT_NAME)/result/{root,build}.log
+	if ! podman run --rm --privileged -w $(TOPDIR) -v=$(TOPDIR)/..:$(TOPDIR)/..                                                     \
+	                -it $(subst +,-,$(CHROOT_NAME))-chrootbuild                                                                     \
+	                bash -c 'if ! DISTRO_REPOS=false                                                                                \
+	                              REPO_FILE_URL=$(REPO_FILE_URL)                                                                    \
+	                              make REPO_FILES_PR=$(REPO_FILES_PR)                                                               \
+	                                   MOCK_OPTIONS=$(MOCK_OPTIONS)                                                                 \
+	                                   CHROOT_NAME=$(CHROOT_NAME) -C $(CURDIR) chrootbuild; then                                    \
+	                                 cat /var/lib/mock/$(CHROOT_NAME)/{result/{root,build},root/builddir/build/BUILD/*/config}.log; \
+	                                 exit 1;                                                                                        \
+	                             fi;                                                                                                \
+	                             rpmlint $$(ls /var/lib/mock/$(CHROOT_NAME)/result/*.rpm |                                          \
+	                                 grep -v -e debuginfo -e debugsource -e src.rpm)'
+
 docker_chrootbuild:
-	$(DOCKER) build --build-arg UID=$$(id -u) -t chrootbuild \
-	                -f packaging/Dockerfile.mockbuild .
-	$(DOCKER) run --privileged=true -w $(TOPDIR) -v=$(TOPDIR):$(TOPDIR) \
-	              -it chrootbuild bash -c "make -C $(CURDIR)            \
-	              CHROOT_NAME=$(CHROOT_NAME) chrootbuild"
+	if ! $(DOCKER) build --build-arg UID=$$(id -u) -t chrootbuild   \
+	                     --build-arg REPO_FILE_URL=$(REPO_FILE_URL) \
+	                     -f packaging/Dockerfile.mockbuild .; then  \
+		echo "Container build failed";                         \
+	    exit 1;                                                \
+	fi
+	rm -f /var/lib/mock/$(CHROOT_NAME)/result/{root,build}.log
+	if ! $(DOCKER) run --user=$$(id -u) --privileged=true -w $(TOPDIR) \
+	              -v=$(TOPDIR):$(TOPDIR)                               \
+	              -it chrootbuild bash -c "make -C $(CURDIR)           \
+	              CHROOT_NAME=$(CHROOT_NAME) chrootbuild"; then        \
+	    cat /var/lib/mock/$(CHROOT_NAME)/result/{root,build}.log;      \
+	    exit 1;                                                        \
+	fi
 
 rpmlint: $(SPEC)
-	rpmlint $<
+	rpmlint --ignore-unused-rpmlintrc $<
 
 packaging_check:
 	if grep -e --repo $(CALLING_MAKEFILE); then                                    \
@@ -455,6 +441,9 @@ test:
 	# Test the rpmbuild by installing the built RPM
 	$(call install_repos,$(REPO_NAME)@$(BRANCH_NAME):$(BUILD_NUMBER))
 	dnf -y install $(TEST_PACKAGES)
+
+show_NAME:
+	@echo '$(NAME)'
 
 show_DISTRO_ID:
 	@echo '$(DISTRO_ID)'

@@ -29,6 +29,10 @@ done
 for repo in $JOB_REPOS "${distro_base_local_repos[@]}"; do
     repo_args="$repo_args|deb ${repo} $VERSION_CODENAME main"
 done
+# NB: This PPA is needed to support modern go toolchains on ubuntu 20.04.
+# After the build is updated to use 22.04, which supports go >= 1.18, it
+# should no longer be needed.
+repo_args="$repo_args|deb [trusted=yes] https://ppa.launchpadcontent.net/longsleep/golang-backports/ubuntu focal main"
 echo "$repo_args"
 if [ "$repo_args" = "|" ]; then
     repo_args=""

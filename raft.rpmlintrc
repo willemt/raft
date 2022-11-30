@@ -1,0 +1,9 @@
+# This line is mandatory to access the configuration functions
+from Config import *
+
+# we want the static lib in this case
+addFilter('raft-devel.x86_64: E: static-library-without-debuginfo /usr/lib64/libraft.a')
+addFilter('raft.x86_64: E: no-binary')
+addFilter('name-repeated-in-summary Raft')
+# https://github.com/rpm-software-management/rpmlint/issues/856
+addFilter('W: incoherent-version-in-changelog')
