@@ -34,17 +34,23 @@ RUN echo "$USER:$PASSWD" | chpasswd
 # add the user to the mock group so it can run mock
 RUN usermod -a -G mock $USER
 
-# Monkey-patch rpmlint until a new release is made with
-# https://github.com/rpm-software-management/rpmlint/pull/795 in it
-COPY packaging/rpmlint--ignore-unused-rpmlintrc.patch .
-RUN (cd $(python3 -c 'import site; print(site.getsitepackages()[-1])') &&                    \
-     patch -p1 &&                                                                            \
-     rm -f rpmlint/__pycache__/{cli,lint}.*.pyc) < rpmlint--ignore-unused-rpmlintrc.patch && \
-    rm -f  rpmlint--ignore-unused-rpmlintrc.patch
-
 ARG CB0
 RUN dnf -y upgrade && \
     dnf clean all
+
+# Monkey-patch rpmlint until a new release is made with
+# https://github.com/rpm-software-management/rpmlint/pull/795 in it
+# But make sure to patch after dnf upgrade so that an upgraded rpmlint
+# RPM doesn't wipe out our patch
+COPY packaging/rpmlint--ignore-unused-rpmlintrc.patch .
+RUN (cd $(python3 -c 'import site; print(site.getsitepackages()[-1])') &&                      \
+     if ! grep -e --ignore-unused-rpmlintrc rpmlint/cli.py; then                               \
+         if ! patch -p1; then                                                                  \
+             exit 1;                                                                           \
+         fi;                                                                                   \
+         rm -f rpmlint/__pycache__/{cli,lint}.*.pyc;                                           \
+     fi) < rpmlint--ignore-unused-rpmlintrc.patch;                                             \
+    rm -f  rpmlint--ignore-unused-rpmlintrc.patch
 
 # show the release that was built
 ARG CACHEBUST

@@ -2,14 +2,13 @@
 
 set -uex
 
-# shellcheck disable=SC2153
-IFS=\| read -r -a distro_base_local_repos <<< "$DISTRO_BASE_LOCAL_REPOS"
+if [ -n "${ARTIFACTORY_URL:-}" ] && "$LOCAL_REPOS"; then
+    echo "MIRRORSITE=${ARTIFACTORY_URL}artifactory/ubuntu-proxy" | sudo tee /root/.pbuilderrc
+fi
 
 # shellcheck disable=SC2086
-sudo pbuilder create                                                                                                                                                           \
-    --extrapackages "gnupg ca-certificates"                                                                                                                                    \
-    --othermirror                                                                                                                                                              \
-    "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $VERSION_CODENAME universe|deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $VERSION_CODENAME-updates main universe" \
+sudo pbuilder create                        \
+    --extrapackages "gnupg ca-certificates" \
     $DISTRO_ID_OPT
 
 repo_args=""
@@ -26,13 +25,18 @@ for repo in $DISTRO_BASE_PR_REPOS $PR_REPOS; do
     fi
     repo_args="$repo_args|deb [trusted=yes] ${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$repo/job/$branch/$build_number/artifact/artifacts/$DISTRO/ ./"
 done
-for repo in $JOB_REPOS "${distro_base_local_repos[@]}"; do
-    repo_args="$repo_args|deb ${repo} $VERSION_CODENAME main"
+
+repo_args+="|$(curl -sSf "$REPO_FILE_URL"daos_ci-"$DISTRO"-artifactory.list |
+            sed -e 's/#.*//' -e '/ubuntu-proxy/d' -e '/^$/d' -e '/^$/d'     \
+                -e 's/signed-by=.*\.gpg/trusted=yes/'                       |
+            sed -e ':a; N; $!ba; s/\n/|/g')"
+for repo in $JOB_REPOS; do
+    repo_args+="|deb ${repo} $VERSION_CODENAME main"
 done
 # NB: This PPA is needed to support modern go toolchains on ubuntu 20.04.
 # After the build is updated to use 22.04, which supports go >= 1.18, it
 # should no longer be needed.
-repo_args="$repo_args|deb [trusted=yes] https://ppa.launchpadcontent.net/longsleep/golang-backports/ubuntu focal main"
+repo_args="$repo_args|deb [trusted=yes] https://ppa.launchpadcontent.net/longsleep/golang-backports/ubuntu $VERSION_CODENAME main"
 echo "$repo_args"
 if [ "$repo_args" = "|" ]; then
     repo_args=""

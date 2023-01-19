@@ -12,7 +12,6 @@ Package: libraft-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: same
-Depends: libraft0 (= ${binary:Version}), ${misc:Depends}
 Description: C implementation of the Raft consensus protocol
  Raft is a consensus algorithm that is designed to be easy to understand.
  It's equivalent to Paxos in fault-tolerance and performance. The difference
@@ -21,15 +20,3 @@ Description: C implementation of the Raft consensus protocol
  .
  This package is needed to compile programs against raft.
  It contains the header files and links needed for compiling.
-
-Package: libraft0
-Architecture: any
-Multi-Arch: same
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: C implementation of the Raft consensus protocol
- Raft is a consensus algorithm that is designed to be easy to understand.
- It's equivalent to Paxos in fault-tolerance and performance. The difference
- is that it's decomposed into relatively independent subproblems, and it
- cleanly addresses all major pieces needed for practical systems.
- .
- This package contains the shared libraries.

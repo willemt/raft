@@ -16,7 +16,7 @@
 name := raft
 prefix := /usr
 includedir := $(prefix)/include
-libdir := $(prefix)/lib/$(DEB_BUILD_MULTIARCH)
+libdir := /lib/$(DEB_BUILD_MULTIARCH)
 buildroot := debian/tmp
 install_includedir := $(buildroot)$(includedir)
 install_libdir := $(buildroot)$(libdir)
@@ -26,9 +26,11 @@ install_libdir := $(buildroot)$(libdir)
 %:
 	dh $@
 
+override_dh_auto_build:
+	dh_auto_build -- GCOV_CCFLAGS= static
+
 override_dh_auto_install:
 	mkdir -p $(install_libdir)
 	mkdir -p $(install_includedir)
-	cp libraft.so $(install_libdir)
+	cp libraft.a $(install_libdir)
 	cp include/* $(install_includedir)
-
