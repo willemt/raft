@@ -2831,6 +2831,36 @@ void TestRaft_candidate_grant_prevote(
     CuAssertTrue(tc, rvr.vote_granted);
 }
 
+void TestRaft_candidate_recv_requestvote_may_grant_vote(
+    CuTest * tc)
+{
+    void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
+
+    raft_add_node(r, NULL, 1, 1);
+    raft_add_node(r, NULL, 2, 0);
+    raft_add_node(r, NULL, 3, 0);
+
+    /* receive AE from leader */
+    msg_appendentries_t ae;
+    memset(&ae, 0, sizeof(msg_appendentries_t));
+    ae.term = 1;
+    msg_appendentries_response_t aer;
+    raft_recv_appendentries(r, raft_get_node(r, 2), &ae, &aer);
+    CuAssertTrue(tc, aer.success);
+    CuAssertIntEquals(tc, 2, raft_get_current_leader(r));
+
+    raft_become_candidate(r);
+
+    /* candidate grants requestvote without assertion failure */
+    msg_requestvote_t rv;
+    msg_requestvote_response_t rvr;
+    memset(&rv, 0, sizeof(msg_requestvote_t));
+    rv.term = 1;
+    raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
+    CuAssertTrue(tc, rvr.vote_granted);
+}
+
 /* Candidate 5.2 */
 void TestRaft_candidate_recv_appendentries_frm_leader_results_in_follower(
     CuTest * tc)

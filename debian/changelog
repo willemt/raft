@@ -1,3 +1,10 @@
+raft (0.9.2-1) unstable; urgency=medium
+
+  [ Li Wei ]
+  * Fix assertion failures in raft_recv_requestvote
+
+ -- Li Wei <wei.g.li@intel.com>  Mon, Feb 13 2023 10:14:00 +0800
+
 raft (0.9.1-1) unstable; urgency=medium
 
   [ Li Wei ]

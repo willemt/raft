@@ -9,8 +9,8 @@
 %global debug_package %{nil}
 
 Name:		raft
-Version:	0.9.1
-Release:	2%{?relval}%{?dist}
+Version:	0.9.2
+Release:	1%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
 Provides:	daos-raft = %version-%release%{?dist}
@@ -62,6 +62,9 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Mon Feb 13 2023 Li Wei <wei.g.li@intel.com> -0.9.2-1
+- Fix assertion failures in raft_recv_requestvote
+
 * Fri Nov 25 2022 Brian J. Murrell <brian.murrell@intel> -0.9.1-2
 - Change BuildArchitectures: noarch
 

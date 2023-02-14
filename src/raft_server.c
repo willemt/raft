@@ -222,7 +222,6 @@ int raft_become_prevoted_candidate(raft_server_t* me_)
 
     __log(me_, NULL, "becoming prevoted candidate");
 
-    me->prevote = 0;
     int e = raft_set_current_term(me_, raft_get_current_term(me_) + 1);
     if (0 != e)
         return e;
@@ -232,6 +231,7 @@ int raft_become_prevoted_candidate(raft_server_t* me_)
     if (0 != e)
         return e;
     raft_node_vote_for_me(raft_get_my_node(me_), 1);
+    me->prevote = 0;
 
     for (i = 0; i < me->num_nodes; i++)
     {
@@ -627,10 +627,10 @@ int raft_recv_requestvote(raft_server_t* me_,
 
     if (__should_grant_vote(me, vr))
     {
-        /* It shouldn't be possible for a leader or candidate to grant a vote
+        /* It shouldn't be possible for a leader or prevoted candidate to grant a vote
          * Both states would have voted for themselves
          * A candidate may grant a prevote though */
-        assert(!raft_is_leader(me_) && (vr->prevote || !raft_is_candidate(me_)));
+        assert(!raft_is_leader(me_) && (!raft_is_candidate(me_) || me->prevote || vr->prevote));
 
         r->vote_granted = 1;
         if (!vr->prevote)
