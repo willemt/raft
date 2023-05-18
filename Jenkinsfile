@@ -43,4 +43,4 @@
 /* groovylint-disable-next-line CompileStatic */
 packageBuildingPipelineDAOS(['make args': '-f Makefile-rpm.mk',
                              'coverity': 'daos-stack/daos',
-                             'distros': ['centos7', 'el8', 'leap15', 'ubuntu20.04']])
+                             'distros': ['centos7', 'el8', 'el9', 'leap15', 'ubuntu20.04']])

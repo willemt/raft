@@ -12,6 +12,7 @@ sudo pbuilder create                        \
     $DISTRO_ID_OPT
 
 repo_args=""
+repos_added=()
 for repo in $DISTRO_BASE_PR_REPOS $PR_REPOS; do
     branch="master"
     build_number="lastSuccessfulBuild"
@@ -23,6 +24,11 @@ for repo in $DISTRO_BASE_PR_REPOS $PR_REPOS; do
             branch="${branch%:*}"
         fi
     fi
+    if [[ " ${repos_added[*]} " = *\ ${repo}\ * ]]; then
+        # don't add duplicates, first found wins
+        continue
+    fi
+    repos_added+=("$repo")
     repo_args="$repo_args|deb [trusted=yes] ${JENKINS_URL:-https://build.hpdd.intel.com/}job/daos-stack/job/$repo/job/$branch/$build_number/artifact/artifacts/$DISTRO/ ./"
 done
 
@@ -31,6 +37,13 @@ repo_args+="|$(curl -sSf "$REPO_FILE_URL"daos_ci-"$DISTRO"-artifactory.list |
                 -e 's/signed-by=.*\.gpg/trusted=yes/'                       |
             sed -e ':a; N; $!ba; s/\n/|/g')"
 for repo in $JOB_REPOS; do
+    repo_name=${repo##*://}
+    repo_name=${repo_name//\//_}
+    if [[ " ${repos_added[*]} " = *\ ${repo_name}\ * ]]; then
+        # don't add duplicates, first found wins
+        continue
+    fi
+    repos_added+=("$repo_name")
     repo_args+="|deb ${repo} $VERSION_CODENAME main"
 done
 # NB: This PPA is needed to support modern go toolchains on ubuntu 20.04.

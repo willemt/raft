@@ -39,6 +39,7 @@ PR_REPOS                 ?= $(shell git show -s --format=%B | sed -ne 's/^PR-rep
 LEAP_15_PR_REPOS         ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-leap15: *\(.*\)/\1/p')
 EL_7_PR_REPOS            ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-el7: *\(.*\)/\1/p')
 EL_8_PR_REPOS            ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-el8: *\(.*\)/\1/p')
+EL_9_PR_REPOS            ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-el9: *\(.*\)/\1/p')
 UBUNTU_20_04_PR_REPOS    ?= $(shell git show -s --format=%B | sed -ne 's/^PR-repos-ubuntu20: *\(.*\)/\1/p')
 REPO_FILES_PR            ?= $(shell git show -s --format=%B | sed -ne 's/^Repo-files-PR: *\(.*\)/\1/p')
 
@@ -64,10 +65,16 @@ RPMS              = $(eval RPMS := $(addsuffix .rpm,$(addprefix _topdir/RPMS/x86
 DEB_TOP          := _topdir/BUILD
 DEB_BUILD        := $(DEB_TOP)/$(NAME)-$(VERSION)
 DEB_TARBASE      := $(DEB_TOP)/$(DEB_NAME)_$(VERSION)
-SOURCE           ?= $(eval SOURCE := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) $(COMMON_RPM_ARGS) -S -l $(SPEC) | sed -e 2,\$$d -e 's/\#/\\\#/g' -e 's/.*:  *//'))$(SOURCE)
-PATCHES          ?= $(eval PATCHES := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) $(COMMON_RPM_ARGS) -l $(SPEC) | sed -ne 1d -e 's/.*:  *//' -e 's/.*\///' -e '/\.patch/p'))$(PATCHES)
-OTHER_SOURCES    := $(eval OTHER_SOURCES := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) $(COMMON_RPM_ARGS) -l $(SPEC) | sed -ne 1d -e 's/.*:  *//' -e 's/.*\///' -e '/\.patch/d' -e p))$(OTHER_SOURCES)
-SOURCES          := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE)) $(PATCHES) $(OTHER_SOURCES))
+REAL_SOURCE      ?= $(eval REAL_SOURCE := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) $(COMMON_RPM_ARGS) -S -l $(SPEC) | sed -e 2,\$$d -e 's/\#/\\\#/g' -e 's/Source.*:  *//'))$(REAL_SOURCE)
+ifeq ($(ID_LIKE),debian)
+ifneq ($(DEB_SOURCE),)
+SOURCE           ?= $(DEB_SOURCE)
+endif
+endif
+SOURCE           ?= $(REAL_SOURCE)
+PATCHES          ?= $(eval PATCHES := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) $(COMMON_RPM_ARGS) -l $(SPEC) | sed -ne 1d -e '/already present/d' -e 's/.*:  *//' -e 's/.*\///' -e '/\.patch/p'))$(PATCHES)
+OTHER_SOURCES    := $(eval OTHER_SOURCES := $(shell CHROOT_NAME=$(CHROOT_NAME) $(SPECTOOL) $(COMMON_RPM_ARGS) -l $(SPEC) | sed -ne 1d -e '/already present/d' -e '/^Patch.*:/d' -e 's/Source.*:  *//' -e 's/.*\///' -e p))$(OTHER_SOURCES)
+SOURCES          := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE) $(OTHER_SOURCES)) $(PATCHES))
 ifeq ($(ID_LIKE),debian)
 DEBS             := $(addsuffix _$(VERSION)-1_amd64.deb,$(shell sed -n '/-udeb/b; s,^Package:[[:blank:]],$(DEB_TOP)/,p' $(TOPDIR)/debian/control))
 DEB_PREV_RELEASE := $(shell cd $(TOPDIR) && dpkg-parsechangelog -S version)
@@ -84,7 +91,7 @@ define distro_map
 	case $(DISTRO_ID) in               \
 	    el7) distro="centos7"          \
 	    ;;                             \
-	    el8) distro="el8"              \
+	    el*) distro="$(DISTRO_ID)"     \
 	    ;;                             \
 	    sle12.3) distro="sles12.3"     \
 	    ;;                             \
@@ -154,7 +161,7 @@ ifeq ($(DL_NAME),)
 DL_NAME = $(NAME)
 endif
 
-$(notdir $(SOURCE)): $(SPEC) $(CALLING_MAKEFILE)
+$(notdir $(SOURCE) $(OTHER_SOURCES) $(REAL_SOURCE)): $(SPEC) $(CALLING_MAKEFILE)
 	# TODO: need to clean up old ones
 	$(SPECTOOL) -g $(SPEC)
 
@@ -181,27 +188,29 @@ $(DEB_TOP)/.patched: $(PATCHES) check-env deb_detar | \
 	$(DEB_BUILD)/debian/
 	mkdir -p ${DEB_BUILD}/debian/patches
 	mkdir -p $(DEB_TOP)/patches
-	for f in $(PATCHES); do \
-          rm -f $(DEB_TOP)/patches/*; \
-	  if git mailsplit -o$(DEB_TOP)/patches < "$$f" ;then \
-	      fn=$$(basename "$$f"); \
-	      for f1 in $(DEB_TOP)/patches/*;do \
-	        [ -e "$$f1" ] || continue; \
-	        f1n=$$(basename "$$f1"); \
-	        echo "$${fn}_$${f1n}" >> $(DEB_BUILD)/debian/patches/series ; \
-	        mv "$$f1" $(DEB_BUILD)/debian/patches/$${fn}_$${f1n}; \
-	      done; \
-	  else \
-	    fb=$$(basename "$$f"); \
-	    cp "$$f" $(DEB_BUILD)/debian/patches/ ; \
-	    echo "$$fb" >> $(DEB_BUILD)/debian/patches/series ; \
-	    if ! grep -q "^Description:\|^Subject:" "$$f" ;then \
-	      sed -i '1 iSubject: Auto added patch' \
-	        "$(DEB_BUILD)/debian/patches/$$fb" ;fi ; \
-	    if ! grep -q "^Origin:\|^Author:\|^From:" "$$f" ;then \
-	      sed -i '1 iOrigin: other' \
-	        "$(DEB_BUILD)/debian/patches/$$fb" ;fi ; \
-	  fi ; \
+	for f in $(PATCHES); do                                              \
+          rm -f $(DEB_TOP)/patches/*;                                    \
+	  if git mailsplit -o$(DEB_TOP)/patches < "$$f"; then                \
+	      fn=$$(basename "$$f");                                         \
+	      for f1 in $(DEB_TOP)/patches/*;do                              \
+	        [ -e "$$f1" ] || continue;                                   \
+	        f1n=$$(basename "$$f1");                                     \
+	        echo "$${fn}_$${f1n}" >> $(DEB_BUILD)/debian/patches/series; \
+	        mv "$$f1" $(DEB_BUILD)/debian/patches/$${fn}_$${f1n};        \
+	      done;                                                          \
+	  else                                                               \
+	    fb=$$(basename "$$f");                                           \
+	    cp "$$f" $(DEB_BUILD)/debian/patches/;                           \
+	    echo "$$fb" >> $(DEB_BUILD)/debian/patches/series;               \
+	    if ! grep -q "^Description:\|^Subject:" "$$f"; then              \
+	      sed -i '1 iSubject: Auto added patch'                          \
+	        "$(DEB_BUILD)/debian/patches/$$fb";                          \
+		fi;                                                              \
+	    if ! grep -q "^Origin:\|^Author:\|^From:" "$$f"; then            \
+	      sed -i '1 iOrigin: other'                                      \
+	        "$(DEB_BUILD)/debian/patches/$$fb";                          \
+		fi;                                                              \
+	  fi;                                                                \
 	done
 	touch $@
 
@@ -271,6 +280,9 @@ $(DEB_TOP)/$(DEB_DSC): $(CALLING_MAKEFILE) $(DEB_BUILD).tar.$(SRC_EXT) \
 	cd $(DEB_BUILD); dpkg-buildpackage -S --no-sign --no-check-builddeps
 
 $(SRPM): $(SPEC) $(SOURCES)
+	if [ -f bz-1955184_find-requires ]; then \
+	    chmod 755 bz-1955184_find-requires;  \
+	fi
 	rpmbuild -bs $(COMMON_RPM_ARGS) $(RPM_BUILD_OPTIONS) $(SPEC)
 
 srpm: $(SRPM)
@@ -413,6 +425,7 @@ packaging_check:
 	          --exclude install                             \
 	          --exclude packaging                           \
 	          --exclude utils                               \
+	          --exclude .vscode                             \
 	          -bur $(PACKAGING_CHECK_DIR)/ packaging/; then \
 	    exit 1;                                             \
 	fi
@@ -462,6 +475,9 @@ show_rpms:
 
 show_source:
 	@echo '$(SOURCE)'
+
+show_real_source:
+	@echo '$(REAL_SOURCE)'
 
 show_patches:
 	@echo '$(PATCHES)'

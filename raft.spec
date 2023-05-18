@@ -10,7 +10,7 @@
 
 Name:		raft
 Version:	0.9.2
-Release:	1%{?relval}%{?dist}
+Release:	2%{?relval}%{?dist}
 
 Summary:	C implementation of the Raft Consensus protocol, BSD licensed
 Provides:	daos-raft = %version-%release%{?dist}
@@ -22,6 +22,8 @@ Source0:	https://github.com/daos-stack/%{name}/releases/download/%{shortcommit0}
 %if 0%{?suse_version} >= 1315
 Group:		Development/Libraries/C and C++
 %endif
+
+BuildRequires:	make, gcc
 
 %description
 Raft is a consensus algorithm that is designed to be easy to understand.
@@ -62,6 +64,9 @@ cp -a include/* %{buildroot}/%{_includedir}
 
 
 %changelog
+* Thu Jun 22 2023 Brian J. Murrell <brian.murrell@intel> -0.9.2-2
+- Add BR: make, gcc
+
 * Mon Feb 13 2023 Li Wei <wei.g.li@intel.com> -0.9.2-1
 - Fix assertion failures in raft_recv_requestvote
 
